@@ -2,7 +2,13 @@
 
 import React, { useContext, useState, useEffect, ReactNode, createContext } from 'react';
 import { Address, Product } from '../types';
-import { API_URL } from '@/api/api';
+import { api, API_URL } from '@/api/api';
+import { migrateKey } from '@/lib/localStorage';
+
+const COMPARE_KEY = 'lapshark_compare';
+const RECENTLY_VIEWED_KEY = 'lapshark_recently_viewed';
+migrateKey('techmart_compare', COMPARE_KEY);
+migrateKey('techmart_recently_viewed', RECENTLY_VIEWED_KEY);
 
 interface UserFeatureContextType {
   wishlist: Product[];
@@ -10,7 +16,6 @@ interface UserFeatureContextType {
   recentlyViewed: Product[];
   addresses: Address[];
   selectedAddressId: string | null;
-  userLocation: UserLocation | null;
 
   addToWishlist: (product: Product) => void;
   removeFromWishlist: (productId: string) => void;
@@ -29,12 +34,9 @@ interface UserFeatureContextType {
   addToRecentlyViewed: (product: Product) => void;
 }
 
-interface UserLocation {
-  latitude: number;
-  longitude: number;
-  error?: string;
-}
-
+const authHeader = () => ({
+  headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+});
 const UserFeatureContext = createContext<UserFeatureContextType | undefined>(undefined);
 
 export const UserFeatureProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -42,38 +44,90 @@ export const UserFeatureProvider: React.FC<{ children: ReactNode }> = ({ childre
   // ------------------------------
   // WISHLIST
   // ------------------------------
-  const [wishlist, setWishlist] = useState<Product[]>(() => {
-    const saved = localStorage.getItem('techmart_wishlist');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const isLoggedIn = () => {
+    if (typeof window === "undefined") return false;
+    return !!localStorage.getItem("token");
+  };
+
+
+  const [wishlist, setWishlist] = useState<Product[]>([]);
+  const fetchWishlist = async () => {
+    try {
+      const res = await api.get("/wishlist", authHeader());
+
+      if (res.data?.items) {
+        const normalized = res.data.items.map((item: any) => ({
+          productId: item.productId,
+          title: item.title,
+          image: item.image,
+          finalPrice: item.finalPrice,
+          price: item.price,
+          specs: item.specs
+        }));
+
+        setWishlist(normalized);
+      }
+    } catch (err) {
+      console.error("Fetch wishlist failed", err);
+    }
+  };
+
 
   useEffect(() => {
-    localStorage.setItem('techmart_wishlist', JSON.stringify(wishlist));
-  }, [wishlist]);
+    if (isLoggedIn()) {
+      fetchWishlist();
+    }
+  }, []);
 
-  const addToWishlist = (product: Product) => {
+  const addToWishlist = async (product: Product) => {
+    const productId = product._id || product.productId || product.id;
+    if (!productId) return;
+
+    if (isLoggedIn()) {
+      try {
+        await api.post("/wishlist/add", { productId }, authHeader());
+        fetchWishlist();
+      } catch (err) {
+        console.error("Add to wishlist failed", err);
+      }
+      return;
+    }
+
+    // Guest user
     setWishlist(prev =>
-      prev.some(p => p.productId === product.productId) ? prev : [...prev, product]
+      prev.some(p => p.productId === productId) ? prev : [...prev, product]
     );
   };
 
-  const removeFromWishlist = (productId: string) => {
+
+  const removeFromWishlist = async (productId: string) => {
+    if (isLoggedIn()) {
+      try {
+        await api.delete(`/wishlist/${productId}`, authHeader());
+        fetchWishlist();
+      } catch (err) {
+        console.error("Remove wishlist failed", err);
+      }
+      return;
+    }
+
+    // Guest user
     setWishlist(prev => prev.filter(p => p.productId !== productId));
   };
+
 
   const isInWishlist = (productId: string) =>
     wishlist.some(p => p.productId === productId);
 
-  // ------------------------------
-  // COMPARE
-  // ------------------------------
+
   const [compareList, setCompareList] = useState<Product[]>(() => {
-    const saved = localStorage.getItem('techmart_compare');
+    if (typeof window === "undefined") return [];
+    const saved = localStorage.getItem(COMPARE_KEY);
     return saved ? JSON.parse(saved) : [];
   });
 
   useEffect(() => {
-    localStorage.setItem('techmart_compare', JSON.stringify(compareList));
+    localStorage.setItem(COMPARE_KEY, JSON.stringify(compareList));
   }, [compareList]);
 
   const addToCompare = (product: Product) => {
@@ -100,12 +154,13 @@ export const UserFeatureProvider: React.FC<{ children: ReactNode }> = ({ childre
   // RECENTLY VIEWED
   // ------------------------------
   const [recentlyViewed, setRecentlyViewed] = useState<Product[]>(() => {
-    const saved = localStorage.getItem('techmart_recently_viewed');
+    if (typeof window === "undefined") return [];
+    const saved = localStorage.getItem(RECENTLY_VIEWED_KEY);
     return saved ? JSON.parse(saved) : [];
   });
 
   useEffect(() => {
-    localStorage.setItem('techmart_recently_viewed', JSON.stringify(recentlyViewed));
+    localStorage.setItem(RECENTLY_VIEWED_KEY, JSON.stringify(recentlyViewed));
   }, [recentlyViewed]);
   const addToRecentlyViewed = (product: Product) => {
     setRecentlyViewed(prev => {
@@ -240,28 +295,6 @@ export const UserFeatureProvider: React.FC<{ children: ReactNode }> = ({ childre
   };
 
   // ------------------------------
-  // USER LOCATION
-  // ------------------------------
-  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
-
-  useEffect(() => {
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude
-          });
-        },
-        (error) => {
-          console.warn("Location permission denied or unavailable", error);
-          setUserLocation({ latitude: 0, longitude: 0, error: error.message });
-        }
-      );
-    }
-  }, []);
-
-  // ------------------------------
   // PROVIDER
   // ------------------------------
   return (
@@ -271,7 +304,6 @@ export const UserFeatureProvider: React.FC<{ children: ReactNode }> = ({ childre
       recentlyViewed,
       addresses,
       selectedAddressId,
-      userLocation,
 
       addToWishlist,
       removeFromWishlist,

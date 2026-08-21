@@ -1,20 +1,18 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Lapshark — E-Commerce Platform
 
-# Run and deploy your AI Studio app
+A full React e-commerce platform with a customer-facing storefront and an admin dashboard.
 
-This contains everything you need to run your app locally.
+## Run locally
 
-View your app in AI Studio: https://ai.studio/apps/drive/1SjSAH6YSRiczSAIcP1gTA_DBl8ltVc-h
+Prerequisites: Node.js
 
-## Run Locally
+1. Install dependencies: `npm install`
+2. Set the required environment variables in `.env.local` (see `.env.development.local` for what's needed)
+3. Run the app: `npm run dev`
 
-**Prerequisites:**  Node.js
+## Structure
 
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+- `app/` — Next.js App Router pages (storefront + `app/admin/` dashboard)
+- `components/` — shared UI components
+- `context/` — auth, cart, and user-feature state
+- `api/` — API client

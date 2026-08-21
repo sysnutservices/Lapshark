@@ -10,6 +10,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return {
         title: `Order #${id} Confirmed | LapShark`,
         description: 'Thank you for your purchase!',
+        robots: { index: false, follow: false },
     };
 }
 

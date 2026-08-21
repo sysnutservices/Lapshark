@@ -14,7 +14,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [hydrated, setHydrated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
   // ⭐ Load user + token on page reload
@@ -38,8 +37,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         localStorage.removeItem("token");
       }
     }
-
-    setHydrated(true);
   }, []);
 
   // ⭐ LOGIN FUNCTION
@@ -77,8 +74,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.removeItem("user");
     localStorage.removeItem("token");
   };
-
-  if (!hydrated) return null;
 
   return (
     <AuthContext.Provider value={{ user, login, logout, isAdmin }}>

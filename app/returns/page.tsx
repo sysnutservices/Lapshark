@@ -5,20 +5,70 @@ import { Metadata } from 'next';
 export const metadata: Metadata = {
     title: "Returns & Refunds - LAPSHARK",
     description: "Our hassle-free 14-day return policy ensures you are satisfied with your purchase.",
+    alternates: {
+        canonical: "https://lapshark.com/returns",
+    },
 };
+
+// Answers below are taken from copy visible on this page — Google requires FAQ
+// markup to match on-page content, and LLMs quote the answer text directly.
+const faqs = [
+    {
+        q: "How long do I have to return a laptop to Lapshark?",
+        a: "Returns are accepted within 14 days of delivery. The return request must be initiated within that 14-day window.",
+    },
+    {
+        q: "What makes a product eligible for return?",
+        a: "The return request must be initiated within 14 days of delivery, the product must be in the same condition as received with no new scratches or dents, all original accessories such as the charger and cable must be included, the device must not have been tampered with or opened, and the warranty seal must be intact.",
+    },
+    {
+        q: "How long does a refund take?",
+        a: "Once your return is received and inspected by our technical team, usually within 48 hours of pickup, we notify you of approval or rejection. Approved refunds are credited automatically to your original method of payment within 5-7 business days.",
+    },
+    {
+        q: "What happens if my return is rejected?",
+        a: "If the device is found to be damaged by the user or parts are missing, we may reject the return or apply a restocking fee of up to 20%.",
+    },
+    {
+        q: "What should I do if my laptop arrives damaged?",
+        a: "If you receive a damaged or defective product, notify us immediately within 24 hours at support@lapshark.com with photos or video of the unboxing. We will arrange an immediate replacement.",
+    },
+    {
+        q: "Can I cancel my order?",
+        a: "You can cancel your order for a full refund before it has been shipped. Once shipped, the order falls under the Return Policy.",
+    },
+    {
+        q: "Does Lapshark charge for return pickup?",
+        a: "No. Pickup is free and Lapshark handles the return logistics.",
+    },
+];
 
 export default function Returns() {
     return (
         <div className="bg-white min-h-screen py-12 md:py-20">
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{
+                    __html: JSON.stringify({
+                        "@context": "https://schema.org",
+                        "@type": "FAQPage",
+                        mainEntity: faqs.map((f) => ({
+                            "@type": "Question",
+                            name: f.q,
+                            acceptedAnswer: { "@type": "Answer", text: f.a },
+                        })),
+                    }),
+                }}
+            ></script>
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
 
                 {/* Header */}
                 <div className="text-center mb-16">
-                    <div className="inline-flex items-center justify-center p-3 bg-blue-50 rounded-2xl mb-4">
-                        <RefreshCcw className="w-8 h-8 text-blue-600" />
+                    <div className="inline-flex items-center justify-center p-3 bg-teal-50 rounded-2xl mb-4">
+                        <RefreshCcw className="w-8 h-8 text-teal-600" />
                     </div>
                     <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-4 tracking-tight">Returns & Refunds</h1>
-                    <p className="text-gray-500 max-w-2xl mx-auto text-lg">
+                    <p className="text-slate-500 max-w-2xl mx-auto text-lg">
                         We want you to love your purchase. If you're not satisfied, we're here to help.
                     </p>
                 </div>
@@ -27,27 +77,27 @@ export default function Returns() {
 
                     {/* Policy Highlights */}
                     <div className="grid md:grid-cols-3 gap-6">
-                        <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100 text-center">
+                        <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 text-center">
                             <Truck className="w-8 h-8 text-slate-700 mx-auto mb-3" />
                             <h3 className="font-bold text-slate-900 mb-1">14-Day Window</h3>
-                            <p className="text-sm text-gray-500">Easy returns within 14 days of delivery.</p>
+                            <p className="text-sm text-slate-500">Easy returns within 14 days of delivery.</p>
                         </div>
-                        <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100 text-center">
+                        <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 text-center">
                             <CreditCard className="w-8 h-8 text-slate-700 mx-auto mb-3" />
                             <h3 className="font-bold text-slate-900 mb-1">Fast Refunds</h3>
-                            <p className="text-sm text-gray-500">Processed within 5-7 business days.</p>
+                            <p className="text-sm text-slate-500">Processed within 5-7 business days.</p>
                         </div>
-                        <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100 text-center">
+                        <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 text-center">
                             <Truck className="w-8 h-8 text-slate-700 mx-auto mb-3" />
                             <h3 className="font-bold text-slate-900 mb-1">Free Pickup</h3>
-                            <p className="text-sm text-gray-500">We handle the return logistics.</p>
+                            <p className="text-sm text-slate-500">We handle the return logistics.</p>
                         </div>
                     </div>
 
                     <div className="prose prose-slate max-w-none space-y-8">
                         <section>
                             <h2 className="text-2xl font-bold text-slate-900 mb-4">Return Eligibility</h2>
-                            <p className="text-gray-600 mb-4">To be eligible for a return, your item must meet the following criteria:</p>
+                            <p className="text-slate-600 mb-4">To be eligible for a return, your item must meet the following criteria:</p>
                             <ul className="space-y-3">
                                 {[
                                     "The return request is initiated within 14 days of delivery.",
@@ -56,7 +106,7 @@ export default function Returns() {
                                     "The device has not been tampered with or opened.",
                                     "The warranty seal is intact."
                                 ].map((item, i) => (
-                                    <li key={i} className="flex items-start gap-3 text-gray-700">
+                                    <li key={i} className="flex items-start gap-3 text-slate-700">
                                         <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
                                         <span>{item}</span>
                                     </li>
@@ -66,10 +116,10 @@ export default function Returns() {
 
                         <section>
                             <h2 className="text-2xl font-bold text-slate-900 mb-4">Refund Process</h2>
-                            <p className="text-gray-600">
+                            <p className="text-slate-600">
                                 Once your return is received and inspected by our technical team (usually within 48 hours of pickup), we will notify you of the approval or rejection of your refund.
                             </p>
-                            <ul className="list-disc pl-5 mt-4 space-y-2 text-gray-600">
+                            <ul className="list-disc pl-5 mt-4 space-y-2 text-slate-600">
                                 <li><strong>Approved:</strong> Your refund will be processed, and a credit will automatically be applied to your original method of payment within 5-7 business days.</li>
                                 <li><strong>Rejected:</strong> If the device is found to be damaged by the user or parts are missing, we may reject the return or apply a restocking fee of up to 20%.</li>
                             </ul>
@@ -87,7 +137,7 @@ export default function Returns() {
 
                         <section>
                             <h2 className="text-2xl font-bold text-slate-900 mb-4">Cancellation Policy</h2>
-                            <p className="text-gray-600">
+                            <p className="text-slate-600">
                                 You can cancel your order for a full refund before it has been shipped. Once shipped, the order falls under the Return Policy.
                             </p>
                         </section>

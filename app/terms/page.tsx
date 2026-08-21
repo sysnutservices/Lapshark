@@ -5,6 +5,9 @@ import { Metadata } from 'next';
 export const metadata: Metadata = {
     title: "Terms of Service - LAPSHARK",
     description: "Read our terms and conditions regarding the use of our website and purchase of refurbished products.",
+    alternates: {
+        canonical: "https://lapshark.com/terms",
+    },
 };
 
 export default function Terms() {
@@ -13,16 +16,16 @@ export default function Terms() {
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
 
                 <div className="text-center mb-16">
-                    <div className="inline-flex items-center justify-center p-3 bg-gray-100 rounded-2xl mb-4">
-                        <FileText className="w-8 h-8 text-gray-700" />
+                    <div className="inline-flex items-center justify-center p-3 bg-slate-100 rounded-2xl mb-4">
+                        <FileText className="w-8 h-8 text-slate-700" />
                     </div>
                     <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-4 tracking-tight">Terms of Service</h1>
-                    <p className="text-gray-500 max-w-2xl mx-auto">
+                    <p className="text-slate-500 max-w-2xl mx-auto">
                         Please read these terms carefully before using our services.
                     </p>
                 </div>
 
-                <div className="prose prose-slate max-w-none text-gray-600 space-y-8">
+                <div className="prose prose-slate max-w-none text-slate-600 space-y-8">
 
                     <section>
                         <h3 className="text-xl font-bold text-slate-900">1. Acceptance of Terms</h3>

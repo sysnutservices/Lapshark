@@ -1,4 +1,4 @@
-export const RAZORPAY_KEY = "rzp_test_RmHbBlaw4870PQ"
+
 export interface Review {
     id: string;
     productId: string;

@@ -22,7 +22,10 @@ export default function AdminLogin() {
         setError('');
         setLoading(true);
         try {
-            await login(email, password);
+            const success = await login(email, password);
+            if (!success) {
+                setError('Invalid email or password');
+            }
             // Redirect handled by useEffect
         } catch (err: any) {
             setError('Invalid email or password');
@@ -50,7 +53,7 @@ export default function AdminLogin() {
                         <label className="block text-sm font-bold text-gray-700 mb-2">Email Address</label>
                         <input
                             type="email"
-                            placeholder="admin@techmart.com"
+                            placeholder="admin@example.com"
                             className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}

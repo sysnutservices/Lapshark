@@ -3,8 +3,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useStore } from '@/context/StoreContext';
 import { Product, Category } from '@/types';
-import { Edit, Trash2, Plus, X, AlertCircle, Check, Search, Upload, Image as ImageIcon, Cpu, HardDrive, Monitor, Zap, Settings } from 'lucide-react';
-import { API_URL, API_URL2 } from '@/api/api';
+import { Edit, Trash2, Plus, X, AlertCircle, Check, Search, Upload, Image as ImageIcon, Cpu, HardDrive, Monitor, Zap, Settings, Loader2, RefreshCw, Sparkles } from 'lucide-react';
+import { API_URL } from '@/api/api';
+import router from 'next/router';
+import dynamic from 'next/dynamic';
+const MDEditor = dynamic(
+    () => import('@uiw/react-md-editor'),
+    { ssr: false }
+);
+
+// Status of the automatic PhotoRoom background-removal + studio-compositing
+// step that runs the instant an image is picked in the Media & Details
+// section, before the product itself is saved.
+type ImgStatus = 'idle' | 'processing' | 'done' | 'error';
 
 interface IConfigOption {
     label: string;
@@ -16,6 +27,7 @@ interface IConfigOptions {
     ram: IConfigOption[];
     storage: IConfigOption[];
     warranty: IConfigOption[];
+    condition: IConfigOption[];
 }
 
 const DEFAULT_CONFIG_OPTIONS: IConfigOptions = {
@@ -34,6 +46,10 @@ const DEFAULT_CONFIG_OPTIONS: IConfigOptions = {
         { label: "2 Year Coverage", value: "2 Year", price: 2499 },
         { label: "3 Year Premium", value: "3 Year", price: 4499 },
     ],
+    condition: [
+        { label: "Good", value: "Good", price: 0 },
+        { label: "Excellent", value: "Excellent", price: 2499 },
+    ],
 };
 
 export default function ProductsPage() {
@@ -50,6 +66,19 @@ export default function ProductsPage() {
     const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
     const [existingGalleryImages, setExistingGalleryImages] = useState<string[]>([]);
     const [isSaving, setIsSaving] = useState(false);
+
+    // Auto background-removal state. mainImageProcessedUrl / galleryFileProcessedUrl
+    // hold the already-hosted ImageKit URL once PhotoRoom + compositing succeeds
+    // for a given picked file, so handleSave can send it as imageUrl/imageUrls
+    // instead of re-uploading the raw file.
+    const [mainImageStatus, setMainImageStatus] = useState<ImgStatus>('idle');
+    const [mainImageError, setMainImageError] = useState('');
+    const [mainImageProcessedUrl, setMainImageProcessedUrl] = useState('');
+    const [mainImageReprocessing, setMainImageReprocessing] = useState(false);
+    const [galleryFileStatus, setGalleryFileStatus] = useState<ImgStatus[]>([]); // parallel to galleryFiles
+    const [galleryFileError, setGalleryFileError] = useState<(string | null)[]>([]);
+    const [galleryFileProcessedUrl, setGalleryFileProcessedUrl] = useState<(string | null)[]>([]);
+    const [existingImageStatus, setExistingImageStatus] = useState<Record<number, ImgStatus>>({}); // keyed by index into existingGalleryImages
 
     // Specs states
     const [specs, setSpecs] = useState({
@@ -76,12 +105,20 @@ export default function ProductsPage() {
             setExistingGalleryImages([]);
             setSpecs({ processor: '', ram: '', storage: '', display: '', graphics: '' });
             setConfigOptions(DEFAULT_CONFIG_OPTIONS);
+            setMainImageStatus('idle');
+            setMainImageError('');
+            setMainImageProcessedUrl('');
+            setMainImageReprocessing(false);
+            setGalleryFileStatus([]);
+            setGalleryFileError([]);
+            setGalleryFileProcessedUrl([]);
+            setExistingImageStatus({});
         } else if (editingProduct._id) {  // ✅ Changed from editingProduct.id
             if (editingProduct.image) {
-                setMainImagePreview(`${API_URL2}${editingProduct.image}`);
+                setMainImagePreview(`${editingProduct.image}`);
             }
             if (editingProduct.images && editingProduct.images.length > 0) {
-                const existingImages = editingProduct.images.map(img => `${API_URL2}${img}`);
+                const existingImages = editingProduct.images.map(img => `${img}`);
                 setExistingGalleryImages(editingProduct.images);
                 setGalleryPreviews(existingImages);
             }
@@ -175,31 +212,134 @@ export default function ProductsPage() {
         }));
     };
 
+    // Uploads a picked file to the backend, which runs it through PhotoRoom
+    // background removal + white-studio compositing and hosts the result on
+    // ImageKit. Returns that hosted URL — handleSave sends it as imageUrl/
+    // imageUrls instead of re-uploading the raw file.
+    const processImageFile = async (file: File): Promise<{ url: string; width: number; height: number }> => {
+        const fd = new FormData();
+        fd.append('image', file);
+        const res = await fetch(`${API_URL}/products/process-image`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+            body: fd,
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.message || 'Processing failed');
+        }
+        return res.json();
+    };
+
+    // Same processing, for an image that's already hosted (an existing
+    // product photo) — used by the "Reprocess" affordance.
+    const processImageUrl = async (url: string): Promise<{ url: string; width: number; height: number }> => {
+        const res = await fetch(`${API_URL}/products/process-image`, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem('token')}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ imageUrl: url }),
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.message || 'Processing failed');
+        }
+        return res.json();
+    };
+
+    const processMainImage = async (file: File) => {
+        setMainImageStatus('processing');
+        setMainImageError('');
+        try {
+            const result = await processImageFile(file);
+            setMainImageProcessedUrl(result.url);
+            setMainImagePreview(result.url);
+            setMainImageStatus('done');
+        } catch (err) {
+            setMainImageStatus('error');
+            setMainImageError(err instanceof Error ? err.message : 'Processing failed');
+        }
+    };
+
     const handleMainImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
             setMainImageFile(file);
+            setMainImageProcessedUrl('');
             const reader = new FileReader();
             reader.onloadend = () => {
                 setMainImagePreview(reader.result as string);
             };
             reader.readAsDataURL(file);
             setErrors(prev => ({ ...prev, image: '' }));
+            processMainImage(file);
+        }
+    };
+
+    const reprocessMainImage = async () => {
+        if (!editingProduct.image) return;
+        setMainImageReprocessing(true);
+        try {
+            const result = await processImageUrl(editingProduct.image);
+            setEditingProduct(prev => ({ ...prev, image: result.url }));
+            setMainImagePreview(result.url);
+        } catch (err) {
+            alert(`Reprocess failed: ${err instanceof Error ? err.message : 'unknown error'}`);
+        } finally {
+            setMainImageReprocessing(false);
+        }
+    };
+
+    const processGalleryFile = async (file: File, idx: number) => {
+        setGalleryFileStatus(prev => { const n = [...prev]; n[idx] = 'processing'; return n; });
+        setGalleryFileError(prev => { const n = [...prev]; n[idx] = null; return n; });
+        try {
+            const result = await processImageFile(file);
+            setGalleryFileProcessedUrl(prev => { const n = [...prev]; n[idx] = result.url; return n; });
+            setGalleryFileStatus(prev => { const n = [...prev]; n[idx] = 'done'; return n; });
+            setGalleryPreviews(prev => {
+                const n = [...prev];
+                n[existingGalleryImages.length + idx] = result.url; // swap raw preview -> processed URL
+                return n;
+            });
+        } catch (err) {
+            setGalleryFileStatus(prev => { const n = [...prev]; n[idx] = 'error'; return n; });
+            setGalleryFileError(prev => { const n = [...prev]; n[idx] = err instanceof Error ? err.message : 'Processing failed'; return n; });
         }
     };
 
     const handleGalleryImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
         if (files.length > 0) {
+            const startIdx = galleryFiles.length;
             setGalleryFiles(prev => [...prev, ...files]);
+            setGalleryFileStatus(prev => [...prev, ...files.map(() => 'idle' as ImgStatus)]);
+            setGalleryFileError(prev => [...prev, ...files.map(() => null)]);
+            setGalleryFileProcessedUrl(prev => [...prev, ...files.map(() => null)]);
 
-            files.forEach(file => {
+            files.forEach((file, i) => {
                 const reader = new FileReader();
                 reader.onloadend = () => {
                     setGalleryPreviews(prev => [...prev, reader.result as string]);
                 };
                 reader.readAsDataURL(file as File);
+                processGalleryFile(file, startIdx + i);
             });
+        }
+    };
+
+    const reprocessExistingGalleryImage = async (idx: number) => {
+        setExistingImageStatus(prev => ({ ...prev, [idx]: 'processing' }));
+        try {
+            const result = await processImageUrl(existingGalleryImages[idx]);
+            setExistingGalleryImages(prev => { const n = [...prev]; n[idx] = result.url; return n; });
+            setGalleryPreviews(prev => { const n = [...prev]; n[idx] = result.url; return n; });
+            setExistingImageStatus(prev => ({ ...prev, [idx]: 'done' }));
+        } catch (err) {
+            setExistingImageStatus(prev => ({ ...prev, [idx]: 'error' }));
+            alert(`Reprocess failed: ${err instanceof Error ? err.message : 'unknown error'}`);
         }
     };
 
@@ -209,10 +349,21 @@ export default function ProductsPage() {
         if (index < totalExisting) {
             setExistingGalleryImages(prev => prev.filter((_, i) => i !== index));
             setGalleryPreviews(prev => prev.filter((_, i) => i !== index));
+            setExistingImageStatus(prev => {
+                const n: Record<number, ImgStatus> = {};
+                Object.entries(prev).forEach(([k, v]) => {
+                    const i = Number(k);
+                    if (i < index) n[i] = v; else if (i > index) n[i - 1] = v;
+                });
+                return n;
+            });
         } else {
             const newFileIndex = index - totalExisting;
             setGalleryFiles(prev => prev.filter((_, i) => i !== newFileIndex));
             setGalleryPreviews(prev => prev.filter((_, i) => i !== index));
+            setGalleryFileStatus(prev => prev.filter((_, i) => i !== newFileIndex));
+            setGalleryFileError(prev => prev.filter((_, i) => i !== newFileIndex));
+            setGalleryFileProcessedUrl(prev => prev.filter((_, i) => i !== newFileIndex));
         }
     };
 
@@ -233,6 +384,7 @@ export default function ProductsPage() {
 
                 deleteProduct(mongoId);  // ✅ Pass MongoDB _id
                 alert('Product deleted successfully!');
+
             } catch (error) {
                 console.error('Error deleting product:', error);
                 alert('Failed to delete product. Please try again.');
@@ -279,7 +431,12 @@ export default function ProductsPage() {
             formData.append('isTrending', String(editingProduct.isTrending || false));
             formData.append('isBestDeal', String(editingProduct.isBestDeal || false));
 
-            if (mainImageFile) {
+            // Prefer the already-processed (background-removed, studio-composited)
+            // hosted URL over the raw file — the raw file is only sent as a
+            // fallback if processing failed or never finished before Save.
+            if (mainImageProcessedUrl) {
+                formData.append('imageUrl', mainImageProcessedUrl);
+            } else if (mainImageFile) {
                 formData.append('image', mainImageFile);
             }
 
@@ -287,8 +444,16 @@ export default function ProductsPage() {
                 formData.append('existingImages', JSON.stringify(existingGalleryImages));
             }
 
-            galleryFiles.forEach(file => {
-                formData.append('images', file);
+            const processedNewGalleryUrls = galleryFiles
+                .map((_, i) => galleryFileProcessedUrl[i])
+                .filter((u): u is string => !!u);
+            if (processedNewGalleryUrls.length > 0) {
+                formData.append('imageUrls', JSON.stringify(processedNewGalleryUrls));
+            }
+            galleryFiles.forEach((file, i) => {
+                if (!galleryFileProcessedUrl[i]) {
+                    formData.append('images', file); // fallback for files that never finished processing
+                }
             });
 
             // ✅ FIXED: Use MongoDB _id for updates
@@ -305,8 +470,13 @@ export default function ProductsPage() {
                 url
             });
 
+            // Product writes are admin-only. No Content-Type here on purpose:
+            // FormData must set its own multipart boundary.
             const response = await fetch(url, {
                 method,
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem('token')}`,
+                },
                 body: formData,
             });
 
@@ -363,6 +533,14 @@ export default function ProductsPage() {
         setExistingGalleryImages([]);
         setSpecs({ processor: '', ram: '', storage: '', display: '', graphics: '' });
         setConfigOptions(DEFAULT_CONFIG_OPTIONS);
+        setMainImageStatus('idle');
+        setMainImageError('');
+        setMainImageProcessedUrl('');
+        setMainImageReprocessing(false);
+        setGalleryFileStatus([]);
+        setGalleryFileError([]);
+        setGalleryFileProcessedUrl([]);
+        setExistingImageStatus({});
 
         if (product) {
             console.log('📝 Editing product:', {
@@ -400,6 +578,13 @@ export default function ProductsPage() {
         p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         p.brand.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    // Blocks Save while any image is mid-flight through the background-removal
+    // endpoint, so a save can't race a still-processing image.
+    const anyImageProcessing = mainImageStatus === 'processing'
+        || mainImageReprocessing
+        || galleryFileStatus.includes('processing')
+        || Object.values(existingImageStatus).includes('processing');
 
     return (
         <div className="space-y-6">
@@ -450,7 +635,7 @@ export default function ProductsPage() {
                                         <div className="flex items-center">
                                             <div className="w-10 h-10 rounded bg-gray-100 mr-3 overflow-hidden border border-gray-200">
                                                 <img
-                                                    src={`${API_URL2}${product.image}`}
+                                                    src={product.image}
                                                     className="w-full h-full object-cover"
                                                     alt={product.title}
                                                 />
@@ -758,6 +943,52 @@ export default function ProductsPage() {
                                     {/* RAM Options */}
                                     <div>
                                         <div className="flex justify-between items-center mb-3">
+                                            <label className="text-sm font-semibold text-gray-700">Condition Options</label>
+                                            <button
+                                                type="button"
+                                                onClick={() => addConfigOption('condition')}
+                                                className="text-xs bg-blue-100 text-blue-600 px-3 py-1 rounded-lg hover:bg-blue-200 transition-colors flex items-center"
+                                            >
+                                                <Plus className="w-3 h-3 mr-1" /> Add Option
+                                            </button>
+                                        </div>
+                                        <div className="space-y-2">
+                                            {configOptions?.condition?.map((option, index) => (
+                                                <div key={index} className="flex gap-2 items-center">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Label (e.g. Good)"
+                                                        className="flex-1 p-2 border border-gray-300 rounded-lg text-sm"
+                                                        value={option.label}
+                                                        onChange={(e) => updateConfigOption('condition', index, 'label', e.target.value)}
+                                                    />
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Value (e.g. Good)"
+                                                        className="w-32 p-2 border border-gray-300 rounded-lg text-sm"
+                                                        value={option.value}
+                                                        onChange={(e) => updateConfigOption('condition', index, 'value', e.target.value)}
+                                                    />
+                                                    <input
+                                                        type="number"
+                                                        placeholder="Price ₹"
+                                                        className="w-28 p-2 border border-gray-300 rounded-lg text-sm"
+                                                        value={option.price}
+                                                        onChange={(e) => updateConfigOption('condition', index, 'price', Number(e.target.value))}
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeConfigOption('condition', index)}
+                                                        className="text-red-500 hover:text-red-700 p-2"
+                                                    >
+                                                        <X className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div className="flex justify-between items-center mb-3">
                                             <label className="text-sm font-semibold text-gray-700">RAM Options</label>
                                             <button
                                                 type="button"
@@ -941,21 +1172,50 @@ export default function ProductsPage() {
                                             {mainImagePreview && (
                                                 <div className="w-24 h-24 rounded-lg border-2 border-gray-200 overflow-hidden flex-shrink-0 relative group">
                                                     <img src={mainImagePreview} className="w-full h-full object-cover" alt="Main preview" />
+                                                    {(mainImageStatus === 'processing' || mainImageReprocessing) && (
+                                                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                                            <Loader2 className="w-6 h-6 text-white animate-spin" />
+                                                        </div>
+                                                    )}
                                                     <button
                                                         type="button"
                                                         onClick={() => {
                                                             setMainImageFile(null);
                                                             setMainImagePreview('');
+                                                            setMainImageProcessedUrl('');
+                                                            setMainImageStatus('idle');
                                                             setEditingProduct(prev => ({ ...prev, image: '' }));
                                                         }}
                                                         className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
                                                     >
                                                         <X className="w-6 h-6 text-white" />
                                                     </button>
+                                                    {mainImageStatus !== 'processing' && !mainImageReprocessing && editingProduct.image && !mainImageFile && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={reprocessMainImage}
+                                                            title="Remove background / re-apply studio background"
+                                                            className="absolute bottom-1 right-1 bg-blue-600 hover:bg-blue-700 text-white p-1 rounded-full transition-colors"
+                                                        >
+                                                            <Sparkles className="w-3 h-3" />
+                                                        </button>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
+                                        {mainImageStatus === 'processing' && (
+                                            <p className="text-xs text-blue-600 mt-1 flex items-center"><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Removing background & applying studio background...</p>
+                                        )}
+                                        {mainImageStatus === 'error' && (
+                                            <p className="text-xs text-amber-600 mt-1 flex items-center">
+                                                <AlertCircle className="w-3 h-3 mr-1" /> {mainImageError} — saved as-is if you continue.
+                                                <button type="button" onClick={() => mainImageFile && processMainImage(mainImageFile)} className="ml-2 underline flex items-center">
+                                                    <RefreshCw className="w-3 h-3 mr-1" /> Retry
+                                                </button>
+                                            </p>
+                                        )}
                                         {errors.image && <p className="text-xs text-red-500 mt-1 flex items-center"><AlertCircle className="w-3 h-3 mr-1" /> {errors.image}</p>}
+                                        <p className="text-xs text-gray-500 mt-1">Background is removed and a white studio background applied automatically.</p>
                                     </div>
 
                                     {/* Gallery Images Upload */}
@@ -983,20 +1243,57 @@ export default function ProductsPage() {
                                         {/* Gallery Preview */}
                                         {galleryPreviews.length > 0 && (
                                             <div className="grid grid-cols-6 gap-3 mt-4">
-                                                {galleryPreviews.map((preview, idx) => (
-                                                    <div key={idx} className="aspect-square rounded-lg border-2 border-gray-200 overflow-hidden relative group">
-                                                        <img src={preview} className="w-full h-full object-cover" alt={`Gallery ${idx + 1}`} />
-                                                        <div className="absolute top-1 right-1">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => removeGalleryPreview(idx)}
-                                                                className="bg-red-500 hover:bg-red-600 text-white p-1 rounded-full transition-colors"
-                                                            >
-                                                                <X className="w-4 h-4" />
-                                                            </button>
+                                                {galleryPreviews.map((preview, idx) => {
+                                                    const isExisting = idx < existingGalleryImages.length;
+                                                    const status: ImgStatus = isExisting
+                                                        ? (existingImageStatus[idx] || 'idle')
+                                                        : (galleryFileStatus[idx - existingGalleryImages.length] || 'idle');
+                                                    const error = isExisting ? null : galleryFileError[idx - existingGalleryImages.length];
+                                                    return (
+                                                        <div key={idx} className="aspect-square rounded-lg border-2 border-gray-200 overflow-hidden relative group">
+                                                            <img src={preview} className="w-full h-full object-cover" alt={`Gallery ${idx + 1}`} />
+                                                            {status === 'processing' && (
+                                                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                                                    <Loader2 className="w-5 h-5 text-white animate-spin" />
+                                                                </div>
+                                                            )}
+                                                            {status === 'error' && (
+                                                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center" title={error || 'Processing failed'}>
+                                                                    <AlertCircle className="w-5 h-5 text-amber-300" />
+                                                                </div>
+                                                            )}
+                                                            <div className="absolute top-1 right-1 flex gap-1">
+                                                                {status === 'error' && !isExisting && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => processGalleryFile(galleryFiles[idx - existingGalleryImages.length], idx - existingGalleryImages.length)}
+                                                                        title="Retry processing"
+                                                                        className="bg-blue-600 hover:bg-blue-700 text-white p-1 rounded-full transition-colors"
+                                                                    >
+                                                                        <RefreshCw className="w-4 h-4" />
+                                                                    </button>
+                                                                )}
+                                                                {isExisting && status !== 'processing' && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => reprocessExistingGalleryImage(idx)}
+                                                                        title="Remove background / re-apply studio background"
+                                                                        className="bg-blue-600 hover:bg-blue-700 text-white p-1 rounded-full transition-colors"
+                                                                    >
+                                                                        <Sparkles className="w-4 h-4" />
+                                                                    </button>
+                                                                )}
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => removeGalleryPreview(idx)}
+                                                                    className="bg-red-500 hover:bg-red-600 text-white p-1 rounded-full transition-colors"
+                                                                >
+                                                                    <X className="w-4 h-4" />
+                                                                </button>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                ))}
+                                                    );
+                                                })}
                                             </div>
                                         )}
                                         <p className="text-xs text-gray-500 mt-2">Upload multiple images for product gallery (max 10 images, 5MB each)</p>
@@ -1004,14 +1301,18 @@ export default function ProductsPage() {
 
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">Description *</label>
-                                        <textarea
-                                            name="description"
-                                            className={`w-full p-3 border rounded-lg outline-none ${errors.description ? 'border-red-500' : 'border-gray-300'}`}
-                                            rows={5}
+                                        <MDEditor
                                             value={editingProduct.description || ''}
-                                            onChange={handleChange}
-                                            placeholder="Enter detailed product description..."
+                                            onChange={(value) =>
+                                                setEditingProduct(prev => ({
+                                                    ...prev,
+                                                    description: value || '',
+                                                }))
+                                            }
+                                            height={500}
+                                            preview="edit"
                                         />
+
                                         {errors.description && <p className="text-xs text-red-500 mt-1">{errors.description}</p>}
                                     </div>
                                 </div>
@@ -1087,13 +1388,18 @@ export default function ProductsPage() {
                                     </button>
                                     <button
                                         type="submit"
-                                        disabled={isSaving}
+                                        disabled={isSaving || anyImageProcessing}
                                         className="px-8 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow-lg flex items-center transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         {isSaving ? (
                                             <>
                                                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
                                                 Saving...
+                                            </>
+                                        ) : anyImageProcessing ? (
+                                            <>
+                                                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                                                Processing images...
                                             </>
                                         ) : (
                                             <>

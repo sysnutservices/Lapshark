@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { useStore } from '@/context/StoreContext';
 import { Order } from '@/types';
 import { Eye, Search, Filter, ChevronDown, Check, X, Clock, Truck, Package } from 'lucide-react';
-import { API_URL2 } from '@/api/api';
 
 export default function OrderManager() {
     const { orders, updateOrderStatus } = useStore();
@@ -190,7 +189,7 @@ export default function OrderManager() {
                                                 <tr key={idx}>
                                                     <td className="px-4 py-3">
                                                         <div className="flex items-center gap-3">
-                                                            <img src={API_URL2 + item.image} className="w-8 h-8 rounded object-cover    " alt="" />
+                                                            <img src={item.image} className="w-8 h-8 rounded object-cover    " alt="" />
                                                             <span className="font-medium text-gray-900">{item.title}</span>
                                                         </div>
                                                     </td>

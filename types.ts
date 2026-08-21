@@ -39,12 +39,13 @@ export interface Product {
   isNew?: boolean;
   isTrending?: boolean;
   isBestDeal?: boolean;
-  condition?: 'Like New' | 'Excellent' | 'Good' | 'New';
+  condition?: string;
   configOptions?: any;
 }
 
 export interface CartItem extends Product {
   quantity: number;
+  selectedConfig?: any;
 }
 
 export interface User {
@@ -89,7 +90,16 @@ export interface Address {
   phone: string;
   type: 'Home' | 'Work' | 'Other';
 }
-
+export interface BlogPost {
+  _id: string;
+  title: string;
+  slug: string;
+  excerpt: string;
+  date: string;
+  image: string;
+  updatedAt?: string;
+  content?: string; // Markdown content
+}
 export interface Coupon {
   id: string;
   code: string;
@@ -124,6 +134,7 @@ export interface SiteConfig {
     bg: string;
     accent: string;
   }>;
+  blogs?: BlogPost[]; // Add blogs array
   sections: {
     hero: boolean;
     brands: boolean;

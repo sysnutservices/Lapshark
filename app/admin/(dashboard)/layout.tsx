@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Package, ShoppingCart, Users, Monitor, Settings, Ticket, LogOut, Globe, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingCart, Users, Monitor, Settings, Ticket, LogOut, Globe, Menu, X, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { WHATSAPP_URL } from '@/api/api';
 
 export default function AdminDashboardLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -13,23 +14,29 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     useEffect(() => {
-        // Simple protection: if not admin, redirect to login
-        // In a real app, you might want a loading state while checking auth
         const token = localStorage.getItem('token');
         if (!token) {
             router.push('/admin/login');
             return;
         }
 
-        // If we have user data but not admin, redirect
         if (user && !isAdmin) {
             router.push('/');
         }
     }, [user, isAdmin, router]);
 
-    // If not admin (and not loading), show nothing (or loading spinner)
-    // We rely on the useEffect to redirect.
-    // Ideally useAuth should provide a 'loading' state.
+    // Declared BEFORE the early return below. It used to sit after it, so the
+    // first render (auth not resolved yet) ran 7 hooks and the next render ran
+    // 8 — React threw "change in the order of Hooks", the error boundary caught
+    // it, and the whole admin panel showed "Application error: a client-side
+    // exception". Every hook must run on every render.
+    const openWhatsApp = useCallback(() => {
+        const token = localStorage.getItem("token");
+        if (!token) return alert("Please login first!");
+
+        window.open(`${WHATSAPP_URL}/auth/redirect?token=${token}`, "_blank");
+    }, []);
+
     if (!user || !isAdmin) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -37,13 +44,14 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
             </div>
         );
     }
-
+    const token = localStorage.getItem('token');
     const menuItems = [
         { icon: LayoutDashboard, label: 'Dashboard', path: '/admin/dashboard' },
         { icon: Package, label: 'Products', path: '/admin/products' },
         { icon: ShoppingCart, label: 'Orders', path: '/admin/orders' },
         { icon: Users, label: 'Customers', path: '/admin/users' },
         { icon: Ticket, label: 'Coupons', path: '/admin/coupons' },
+        { icon: MessageCircle, label: 'Whatsapp', path: 'whatsapp-auth' },
         { icon: Monitor, label: 'Site Editor', path: '/admin/editor' },
         { icon: Settings, label: 'Settings', path: '/admin/settings' },
     ];
@@ -52,7 +60,6 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
         logout();
         router.push('/');
     };
-
     return (
         <div className="flex h-screen bg-gray-100 font-sans">
             {/* Sidebar (Desktop) */}
@@ -64,17 +71,36 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
 
                 <nav className="flex-1 px-4 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700">
                     {menuItems.map((item) => {
-                        const isActive = pathname.startsWith(item.path);
+                        const isActive = pathname.startsWith(item.path ?? "");
+
+                        // 🚨 if the item is Whatsapp → use button instead of Link
+                        if (item.path === "whatsapp-auth") {
+                            return (
+                                <button
+                                    key={item.label}
+                                    onClick={openWhatsApp}
+                                    className={`flex w-full items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${isActive
+                                        ? "bg-blue-600 text-white shadow-lg shadow-blue-900/50"
+                                        : "text-gray-400 hover:bg-slate-800 hover:text-white"
+                                        }`}
+                                >
+                                    <item.icon className="w-5 h-5 mr-3 text-gray-500" />
+                                    {item.label}
+                                </button>
+                            );
+                        }
+
+                        // 🟢 default internal navigation
                         return (
                             <Link
                                 key={item.path}
                                 href={item.path}
                                 className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${isActive
-                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50'
-                                    : 'text-gray-400 hover:bg-slate-800 hover:text-white'
+                                    ? "bg-blue-600 text-white shadow-lg shadow-blue-900/50"
+                                    : "text-gray-400 hover:bg-slate-800 hover:text-white"
                                     }`}
                             >
-                                <item.icon className={`w-5 h-5 mr-3 ${isActive ? 'text-white' : 'text-gray-500'}`} />
+                                <item.icon className={`w-5 h-5 mr-3 ${isActive ? "text-white" : "text-gray-500"}`} />
                                 {item.label}
                             </Link>
                         );

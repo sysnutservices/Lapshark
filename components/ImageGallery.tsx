@@ -2,60 +2,78 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { X, Upload, Check, Trash2, Image as ImageIcon, Loader2 } from 'lucide-react';
-import { API_URL, API_URL2 } from '@/api/api';
+import { API_URL } from '@/api/api';
 
 interface ImageGalleryPopupProps {
     isOpen: boolean;
     onClose: () => void;
     onSelect: (imageUrl: string) => void;
     currentImage?: string;
-    uploadEndpoint?: string; // Add this prop
+}
+
+export interface GalleryImage {
+    fileId: string;
+    name: string;
+    url: string;
+    thumbnail?: string;
+    size: number;
+    width?: number;
+    height?: number;
+    createdAt: string;
 }
 
 export default function ImageGalleryPopup({
     isOpen,
     onClose,
     onSelect,
-    currentImage,
-    uploadEndpoint = 'http://localhost:5000/api/gallery/upload' // Default endpoint
+    currentImage
 }: ImageGalleryPopupProps) {
-    const [images, setImages] = useState<string[]>([]);
+    const [images, setImages] = useState<GalleryImage[]>([]);
     const [selectedImage, setSelectedImage] = useState<string | null>(currentImage || null);
     const [isDragging, setIsDragging] = useState(false);
-    const [isUploading, setIsUploading] = useState(false); // Add loading state
-    const [uploadProgress, setUploadProgress] = useState(0); // Add progress state
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (isOpen) {
+            fetchImages();
+        }
+    }, [isOpen]);
+
+    const fetchImages = async () => {
+        try {
+            const response = await fetch(`${API_URL}/gallery/images`, {
+                headers: {
+                    "Authorization": `Bearer ${localStorage.getItem("token")}`,
+                },
+            });
+            const data = await response.json();
+
+            if (data.success && data.images) {
+                setImages(data.images);
+            }
+        } catch (error) {
+            console.error('Failed to fetch images:', error);
+        }
+    };
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
         handleFiles(files);
     };
 
-    useEffect(() => {
-        const fetchImages = async () => {
-            try {
-                const response = await fetch(`${API_URL}/gallery/images`);
-                const data = await response.json();
-                setImages(data.images);
-            } catch (error) {
-                console.error('Failed to fetch images:', error);
-            }
-        };
-
-        fetchImages();
-
-    }, [images]);
     const handleFiles = async (files: File[]) => {
         setIsUploading(true);
+        const totalFiles = files.length;
+        let completed = 0;
 
         for (const file of files) {
             if (file.type.startsWith('image/')) {
                 try {
-                    // Upload to backend
-                    const imageUrl = await uploadToBackend(file);
-
-                    // Add uploaded URL to gallery
-                    setImages(prev => [...prev, imageUrl]);
+                    await uploadToBackend(file);
+                    completed++;
+                    setUploadProgress(Math.round((completed / totalFiles) * 100));
                 } catch (error) {
                     console.error('Upload failed:', error);
                     alert(`Failed to upload ${file.name}`);
@@ -65,16 +83,19 @@ export default function ImageGalleryPopup({
 
         setIsUploading(false);
         setUploadProgress(0);
+        fetchImages();
     };
 
-    // New function to upload to backend
     const uploadToBackend = async (file: File): Promise<string> => {
         const formData = new FormData();
         formData.append("image", file);
 
-        const res = await fetch(uploadEndpoint, {
+        const res = await fetch(`${API_URL}/gallery/upload`, {
             method: "POST",
             body: formData,
+            headers: {
+                "Authorization": `Bearer ${localStorage.getItem("token")}`,
+            },
         });
 
         if (!res.ok) {
@@ -87,10 +108,7 @@ export default function ImageGalleryPopup({
             throw new Error(data.error || "Upload failed");
         }
 
-        // Handle absolute/relative URL
-        return data.url.startsWith("http")
-            ? data.url
-            : `${uploadEndpoint.replace("/api/upload", "")}${data.url}`;
+        return data.url;
     };
 
     const handleDragOver = (e: React.DragEvent) => {
@@ -114,11 +132,33 @@ export default function ImageGalleryPopup({
         setSelectedImage(image);
     };
 
-    const handleDeleteImage = (index: number, e: React.MouseEvent) => {
+    const handleDeleteImage = async (fileId: string, url: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        setImages(prev => prev.filter((_, i) => i !== index));
-        if (selectedImage === images[index]) {
-            setSelectedImage(null);
+
+        if (!confirm('Are you sure you want to delete this image?')) return;
+
+        try {
+            const res = await fetch(`${API_URL}/gallery/delete-image`, {
+                method: "DELETE",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${localStorage.getItem("token")}`,
+                },
+                body: JSON.stringify({ fileId, url })
+            });
+
+            if (!res.ok) {
+                throw new Error('Delete failed');
+            }
+
+            setImages(prev => prev.filter(img => img.fileId !== fileId));
+
+            if (selectedImage === url) {
+                setSelectedImage(null);
+            }
+        } catch (error) {
+            console.error('Failed to delete image:', error);
+            alert('Failed to delete image');
         }
     };
 
@@ -186,23 +226,23 @@ export default function ImageGalleryPopup({
                     if (e.target === e.currentTarget) onClose();
                 }}
             >
-                <div className="gallery-modal-content bg-white rounded-3xl w-full max-w-5xl max-h-[90vh] overflow-hidden shadow-2xl border border-gray-100 flex flex-col">
+                <div className="gallery-modal-content bg-white rounded-3xl w-full max-w-5xl max-h-[90vh] overflow-hidden shadow-2xl border border-slate-100 flex flex-col">
                     {/* Header */}
-                    <div className="px-8 py-6 border-b border-gray-100 bg-gradient-to-r from-blue-50/50 to-indigo-50/50">
+                    <div className="px-8 py-6 border-b border-slate-100 bg-gradient-to-r from-teal-50/50 to-teal-100/50">
                         <div className="flex items-center justify-between">
                             <div>
-                                <h2 className="text-2xl font-bold text-gray-900 mb-1">
+                                <h2 className="text-2xl font-bold text-slate-900 mb-1">
                                     Select Image
                                 </h2>
-                                <p className="text-sm text-gray-500">
+                                <p className="text-sm text-slate-500">
                                     Choose from gallery or upload new images
                                 </p>
                             </div>
                             <button
                                 onClick={onClose}
-                                className="w-10 h-10 rounded-xl bg-white hover:bg-gray-100 border border-gray-200 flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95"
+                                className="w-10 h-10 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95"
                             >
-                                <X className="w-5 h-5 text-gray-600" />
+                                <X className="w-5 h-5 text-slate-600" />
                             </button>
                         </div>
                     </div>
@@ -220,8 +260,8 @@ export default function ImageGalleryPopup({
                                 transition-all duration-300 mb-8
                                 ${isUploading ? 'opacity-60 cursor-not-allowed' : ''}
                                 ${isDragging
-                                    ? 'border-blue-500 bg-blue-50 scale-[1.02]'
-                                    : 'border-gray-300 bg-gray-50/50 hover:border-gray-400 hover:bg-gray-100/50'
+                                    ? 'border-teal-500 bg-teal-50 scale-[1.02]'
+                                    : 'border-slate-300 bg-slate-50/50 hover:border-slate-400 hover:bg-slate-100/50'
                                 }
                             `}
                         >
@@ -235,32 +275,32 @@ export default function ImageGalleryPopup({
                                 disabled={isUploading}
                             />
 
-                            <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 transition-all duration-300 ${isDragging ? 'bg-blue-100 scale-110' : 'bg-white border-2 border-gray-200'
+                            <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 transition-all duration-300 ${isDragging ? 'bg-teal-100 scale-110' : 'bg-white border-2 border-slate-200'
                                 }`}>
                                 {isUploading ? (
-                                    <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+                                    <Loader2 className="w-8 h-8 text-teal-600 animate-spin" />
                                 ) : (
-                                    <Upload className={`w-8 h-8 transition-colors ${isDragging ? 'text-blue-600' : 'text-gray-400'}`} />
+                                    <Upload className={`w-8 h-8 transition-colors ${isDragging ? 'text-teal-600' : 'text-slate-400'}`} />
                                 )}
                             </div>
 
-                            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                            <h3 className="text-lg font-semibold text-slate-900 mb-2">
                                 {isUploading ? 'Uploading...' : isDragging ? 'Drop images here' : 'Upload Images'}
                             </h3>
-                            <p className="text-sm text-gray-500 mb-4">
+                            <p className="text-sm text-slate-500 mb-4">
                                 {isUploading ? 'Please wait' : 'Drag and drop or click to browse'}
                             </p>
 
                             {/* Progress Bar */}
                             {isUploading && uploadProgress > 0 && (
                                 <div className="max-w-xs mx-auto mt-4">
-                                    <div className="flex justify-between text-xs text-gray-600 mb-1">
+                                    <div className="flex justify-between text-xs text-slate-600 mb-1">
                                         <span>Uploading...</span>
                                         <span>{uploadProgress}%</span>
                                     </div>
-                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                    <div className="w-full bg-slate-200 rounded-full h-2">
                                         <div
-                                            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                                            className="bg-teal-600 h-2 rounded-full transition-all duration-300"
                                             style={{ width: `${uploadProgress}%` }}
                                         />
                                     </div>
@@ -268,7 +308,7 @@ export default function ImageGalleryPopup({
                             )}
 
                             {!isUploading && (
-                                <div className="inline-flex items-center gap-2 text-xs text-gray-400">
+                                <div className="inline-flex items-center gap-2 text-xs text-slate-400">
                                     <ImageIcon className="w-4 h-4" />
                                     <span>JPG, PNG, GIF up to 10MB</span>
                                 </div>
@@ -279,10 +319,10 @@ export default function ImageGalleryPopup({
                         {images.length > 0 && (
                             <div>
                                 <div className="flex items-center justify-between mb-6">
-                                    <h3 className="text-lg font-semibold text-gray-900">
+                                    <h3 className="text-lg font-semibold text-slate-900">
                                         Gallery ({images.length})
                                     </h3>
-                                    <div className="text-sm text-gray-500">
+                                    <div className="text-sm text-slate-500">
                                         {selectedImage ? '1 selected' : 'Select an image'}
                                     </div>
                                 </div>
@@ -290,24 +330,24 @@ export default function ImageGalleryPopup({
                                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                                     {images.map((image, index) => (
                                         <div
-                                            key={index}
-                                            onClick={() => handleImageSelect(image)}
-                                            className="gallery-image-item group relative aspect-square rounded-xl overflow-hidden cursor-pointer bg-gray-100 border-2 transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
+                                            key={image.fileId}
+                                            onClick={() => handleImageSelect(image.url)}
+                                            className="gallery-image-item group relative aspect-square rounded-xl overflow-hidden cursor-pointer bg-slate-100 border-2 transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
                                             style={{
                                                 animationDelay: `${index * 0.03}s`,
-                                                borderColor: selectedImage === image ? '#3B82F6' : '#E5E7EB',
+                                                borderColor: selectedImage === image.url ? '#3B82F6' : '#E5E7EB',
                                             }}
                                         >
                                             <img
-                                                src={API_URL2 + image}
-                                                alt={`Gallery ${index + 1}`}
+                                                src={image.url}
+                                                alt={image.name}
                                                 className="w-full h-full object-cover"
                                             />
 
                                             {/* Overlay */}
                                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                                                 <button
-                                                    onClick={(e) => handleDeleteImage(index, e)}
+                                                    onClick={(e) => handleDeleteImage(image.fileId, image.url, e)}
                                                     className="absolute bottom-3 right-3 w-8 h-8 rounded-lg bg-red-500 hover:bg-red-600 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
                                                 >
                                                     <Trash2 className="w-4 h-4 text-white" />
@@ -315,8 +355,8 @@ export default function ImageGalleryPopup({
                                             </div>
 
                                             {/* Selection Indicator */}
-                                            {selectedImage === image && (
-                                                <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center shadow-lg ring-4 ring-white">
+                                            {selectedImage === image.url && (
+                                                <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-teal-500 flex items-center justify-center shadow-lg ring-4 ring-white">
                                                     <Check className="w-5 h-5 text-white" strokeWidth={3} />
                                                 </div>
                                             )}
@@ -328,37 +368,37 @@ export default function ImageGalleryPopup({
 
                         {images.length === 0 && (
                             <div className="text-center py-16">
-                                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-100 mb-4">
-                                    <ImageIcon className="w-10 h-10 text-gray-400" />
+                                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-slate-100 mb-4">
+                                    <ImageIcon className="w-10 h-10 text-slate-400" />
                                 </div>
-                                <h3 className="text-lg font-semibold text-gray-900 mb-2">No images yet</h3>
-                                <p className="text-sm text-gray-500">Upload your first image to get started</p>
+                                <h3 className="text-lg font-semibold text-slate-900 mb-2">No images yet</h3>
+                                <p className="text-sm text-slate-500">Upload your first image to get started</p>
                             </div>
                         )}
                     </div>
 
                     {/* Footer */}
                     {selectedImage && (
-                        <div className="px-8 py-5 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                        <div className="px-8 py-5 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 rounded-lg overflow-hidden border-2 border-blue-500">
-                                    <img src={API_URL2 + selectedImage} alt="Selected" className="w-full h-full object-cover" />
+                                <div className="w-12 h-12 rounded-lg overflow-hidden border-2 border-teal-500">
+                                    <img src={selectedImage} alt="Selected" className="w-full h-full object-cover" />
                                 </div>
                                 <div>
-                                    <p className="text-sm font-medium text-gray-900">Image selected</p>
-                                    <p className="text-xs text-gray-500">Ready to use</p>
+                                    <p className="text-sm font-medium text-slate-900">Image selected</p>
+                                    <p className="text-xs text-slate-500">Ready to use</p>
                                 </div>
                             </div>
                             <div className="flex gap-3">
                                 <button
                                     onClick={onClose}
-                                    className="px-5 py-2.5 rounded-xl border-2 border-gray-300 text-gray-700 font-medium hover:bg-gray-100 transition-all duration-200 hover:scale-105 active:scale-95"
+                                    className="px-5 py-2.5 rounded-xl border-2 border-slate-300 text-slate-700 font-medium hover:bg-slate-100 transition-all duration-200 hover:scale-105 active:scale-95"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={handleConfirm}
-                                    className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg shadow-blue-500/30"
+                                    className="px-6 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-medium transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg shadow-teal-500/30"
                                 >
                                     Use This Image
                                 </button>

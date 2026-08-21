@@ -1,164 +1,206 @@
 "use client";
 
-import React, { useMemo } from 'react';
-import { ArrowRight, Truck, ShieldCheck, Cpu, Recycle, CheckCircle, Percent, Monitor, Battery, Keyboard, CreditCard, ChevronRight } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { ArrowRight, Truck, ShieldCheck, Cpu, Recycle, Monitor, Battery, Keyboard, CreditCard, ChevronRight, Search, PackageCheck, Smile, Phone, MessageCircle, Briefcase, Gamepad2, Laptop, ServerCog, GraduationCap, Headphones } from 'lucide-react';
 import Link from 'next/link';
 import { ProductCard } from '@/components/ProductCard';
 import { useStore } from '@/context/StoreContext';
 import { useUserFeatures } from '@/context/UserFeatureContext';
 import { Category } from '@/types';
-import { API_URL2 } from '@/api/api';
-import Image from 'next/image';
-import hero_banner_desktop from '@/assets/hero_banner.png';
-import hero_banner_tablet from '@/assets/hero_banner_tab.png';
-import hero_banner_mobile from '@/assets/hero_banner_mobile.png';
+import { CheckoutLogin } from '@/components/LoginComponent';
+import { useRouter } from 'next/navigation';
+import { api } from '@/api/api';
+import { LoanEnquiryAlreadySuccess, LoanEnquirySuccess } from '@/components/Enquiry';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import { Reveal } from '@/components/Reveal';
+import { AnimatedCounter } from '@/components/AnimatedCounter';
+import { HomeSkeleton } from '@/components/HomeSkeleton';
+import * as motion from 'motion/react-m';
+import appleLogo from '@/assets/brands/apple.svg';
+import dellLogo from '@/assets/brands/dell.svg';
+import lenovoLogo from '@/assets/brands/lenovo.svg';
+import hpLogo from '@/assets/brands/hp.svg';
+import asusLogo from '@/assets/brands/asus.svg';
+import microsoftLogo from '@/assets/brands/microsoft.svg';
+import {
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+} from '@/components/ui/accordion';
+import {
+    Carousel,
+    CarouselContent,
+    CarouselItem,
+    CarouselNext,
+    CarouselPrevious,
+} from '@/components/ui/carousel';
 
+function SectionHeader({
+    title,
+    subtitle,
+    eyebrow,
+    href,
+    dark = false,
+}: {
+    title: string;
+    subtitle?: string;
+    eyebrow?: string;
+    href: string;
+    dark?: boolean;
+}) {
+    return (
+        <div className="flex items-end justify-between mb-6 md:mb-10">
+            <div>
+                {eyebrow && (
+                    <span className="text-teal-400 font-bold tracking-widest uppercase text-xs mb-2 block">{eyebrow}</span>
+                )}
+                <h2 className={`text-2xl md:text-3xl font-bold tracking-tight ${dark ? "text-white" : "text-slate-900"}`}>{title}</h2>
+                {subtitle && (
+                    <p className={`mt-1 md:mt-2 text-sm md:text-base ${dark ? "text-slate-400" : "text-slate-500"}`}>{subtitle}</p>
+                )}
+            </div>
+            <Link
+                href={href}
+                className={cn(
+                    buttonVariants({ variant: "link" }),
+                    "hidden sm:inline-flex h-auto p-0 text-sm md:text-base font-bold",
+                    dark ? "text-teal-400 hover:text-teal-300" : "text-teal-600 hover:text-teal-700"
+                )}
+            >
+                View All <ArrowRight className="w-4 h-4 ml-2" />
+            </Link>
+        </div>
+    );
+}
 
-const BLOG_POSTS = [
-    {
-        id: 1,
-        title: "Refurbished Laptops: A Smart Choice for Sustainable Tech Growth",
-        excerpt: "Here’s why investing in refurbished laptops is the eco-friendly move for the future.",
-        date: "Mar 3, 2025",
-        image: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=800&q=80"
-    },
-    {
-        id: 2,
-        title: "How Refurbished Laptops Can Level the Playing Field: Affordable Tech",
-        excerpt: "If you're looking for affordable, high-performance tech for education and work, look no further.",
-        date: "Mar 3, 2025",
-        image: "https://images.unsplash.com/photo-1593642702821-c8da6771f0c6?auto=format&fit=crop&w=800&q=80"
-    },
-    {
-        id: 3,
-        title: "How to Maximize the Lifespan of Your Refurbished Laptop: Tips and Tricks",
-        excerpt: "In this blog post, we'll walk you through essential maintenance tips for longevity.",
-        date: "Mar 3, 2025",
-        image: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=800&q=80"
-    }
-];
-
-export default function Home() {
-    const { products, siteConfig, loading } = useStore();
+export default function Home({
+    initialProducts = [],
+    initialSiteConfig = null,
+}: { initialProducts?: any[]; initialSiteConfig?: any }) {
+    const router = useRouter();
+    const { products: storeProducts, siteConfig: storeSiteConfig, loading, blogs } = useStore();
+    const siteConfig = storeSiteConfig ?? initialSiteConfig;
+    // Server-rendered products until the store hydrates, so the homepage grids
+    // are present in the initial HTML for crawlers.
+    const products = storeProducts.length ? storeProducts : initialProducts;
     const { recentlyViewed } = useUserFeatures();
+    const [showLogin, setShowLogin] = useState(false);
+    const [showEnquiry, setShowEnquiry] = useState(false);
+    const [showEnquirySubmitted, setShowEnquirySubmitted] = useState(false);
+    const handleLoginSuccess = async () => {
+        setShowLogin(false);
+    };
 
     // Memoize filters to prevent re-renders
     const trendingProducts = useMemo(() => products.filter(p => p.isTrending).slice(0, 4), [products]);
     const exploreProducts = useMemo(() => products.filter(p => !p.isTrending && p.category !== Category.ACCESSORIES).slice(0, 8), [products]);
     const bestDeals = useMemo(() => products.filter(p => p.isBestDeal), [products]);
 
-    if (loading || !siteConfig) {
-        return (
-            <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-50">
-                <div className="w-12 h-12 border-4 border-gray-300 border-t-black rounded-full animate-spin"></div>
-            </div>
-        );
+    // Only show the skeleton when we genuinely have nothing to render; with
+    // server-supplied config + products the real markup ships in the HTML.
+    if (!siteConfig || (loading && products.length === 0)) {
+        return <HomeSkeleton />;
     }
-    const hero_banner = {
-        mobile: hero_banner_mobile,
-        tablet: hero_banner_tablet,
-        desktop: hero_banner_desktop,
+
+    const handleSubmit = async () => {
+        const token = localStorage.getItem("token");
+        const userStr = localStorage.getItem("user");
+        const user = userStr ? JSON.parse(userStr) : null;
+        const mobile = user?.mobile;
+
+        if (!token) {
+            setShowLogin(true);
+            return;
+        }
+
+        if (!mobile) {
+            console.error("Mobile missing");
+            return;
+        }
+
+        try {
+            const response = await api.post(
+                "/loan/enquiry",
+                { phone: `91${mobile}` },
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+
+            // ✅ Fresh submission (200)
+            if (response.data.success) {
+                setShowEnquiry(true);
+            }
+        } catch (error: any) {
+            const status = error.response?.status;
+
+            // ✅ Already submitted (409)
+            if (status === 409) {
+                setShowEnquirySubmitted(true);
+                return;
+            }
+
+            // ❌ Real error
+            console.error("Loan enquiry error:", error);
+        }
     };
 
 
-    const { hero, banners, sections } = siteConfig;
+    const { banners, sections } = siteConfig;
 
     return (
-        <div className="space-y-16 md:space-y-24 pb-24 bg-gray-50/50">
-
-            {/* 
-            {sections?.hero && (
-                <section className="relative bg-white overflow-hidden">
-                    <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px] opacity-40"></div>
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-                        <div className="flex flex-col lg:flex-row items-center pt-8 pb-12 lg:pt-32 lg:pb-32">
-                            <div className="lg:w-1/2 space-y-6 md:space-y-8 z-10 text-center lg:text-left">
-                                <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-sm border border-green-100 shadow-sm rounded-full px-3 py-1 md:px-4 md:py-1.5 mb-2 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                                    <span className="text-green-700 font-bold text-[10px] md:text-xs uppercase tracking-widest">Certified Sustainable Tech</span>
-                                </div>
-                                <div className="bg-white/60 backdrop-blur-md rounded-3xl p-6 md:p-8 border border-white/50 shadow-xl shadow-gray-100/50">
-                                    <h1 className="text-4xl md:text-5xl lg:text-7xl font-extrabold leading-[1.1] text-slate-900 tracking-tight mb-4 whitespace-pre-line">
-                                        {hero.title}
-                                    </h1>
-                                    <p className="text-gray-500 text-base md:text-lg lg:text-xl max-w-xl mx-auto lg:mx-0 leading-relaxed font-medium">
-                                        {hero.subtitle}
-                                    </p>
-                                </div>
-                                <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 md:gap-4 pt-2 w-full px-4 lg:px-0">
-                                    <Link href="/products" className="w-full sm:w-auto bg-slate-900 hover:bg-blue-600 text-white px-8 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold transition-all shadow-xl shadow-slate-200 hover:shadow-blue-200 flex items-center justify-center group text-sm md:text-base">
-                                        Shop Collection <ArrowRight className="ml-2 w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-1 transition-transform" />
-                                    </Link>
-                                    <Link href="/products?category=Business" className="w-full sm:w-auto bg-white text-slate-900 px-8 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold transition-all border border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-sm md:text-base flex items-center justify-center">
-                                        Business Deals
-                                    </Link>
-                                </div>
-                            </div>
-
-                            <div className="lg:w-1/2 mt-12 md:mt-16 lg:mt-0 relative flex justify-center w-full">
-                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[100%] h-[100%] md:w-[120%] md:h-[120%] bg-gradient-to-tr from-blue-500/10 to-purple-500/10 rounded-full blur-[60px] md:blur-[100px]"></div>
-                                <div className="relative z-10 animate-[slide-up_1s_ease-out] w-full max-w-[320px] md:max-w-[600px]">
-                                    <Image
-                                        src={hero_banner.desktop}
-                                        alt="Hero Laptop"
-                                        loading="eager"
-                                        className="w-full drop-shadow-[0_20px_20px_rgba(0,0,0,0.15)] md:drop-shadow-[0_35px_35px_rgba(0,0,0,0.15)] transform hover:scale-105 transition-transform duration-700"
-                                    />
-
-                                    {/* Floating Badge */}
-            {/* <div className="absolute -bottom-4 -left-2 md:-bottom-6 md:-left-6 bg-white/80 backdrop-blur-md border border-white/50 p-3 md:p-4 rounded-xl md:rounded-2xl shadow-xl flex items-center gap-3 md:gap-4 animate-bounce duration-[3000ms]">
-                                        <div className="bg-emerald-100 p-2 md:p-2.5 rounded-lg md:rounded-xl text-emerald-600">
-                                            <CheckCircle className="w-5 h-5 md:w-6 md:h-6" />
-                                        </div>
-                                        <div>
-                                            <p className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase tracking-wider">Quality Check</p>
-                                            <p className="font-bold text-slate-900 text-xs md:text-base">{hero.badgeText}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-            )} */}
+        <div className="space-y-12 md:space-y-16 pb-16 bg-slate-50/50">
 
             {/* Services Grid */}
             {sections?.services && (
-                <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
-                        {[
-                            { icon: Truck, title: "Free Delivery", desc: "On orders above ₹10,000", color: "text-blue-600 bg-blue-50" },
-                            { icon: ShieldCheck, title: "1-Year Warranty", desc: "Comprehensive coverage", color: "text-green-600 bg-green-50" },
-                            { icon: Recycle, title: "Eco-Conscious", desc: "100% Sustainable packaging", color: "text-emerald-600 bg-emerald-50" },
-                            { icon: Cpu, title: "Expert Support", desc: "Lifetime tech assistance", color: "text-purple-600 bg-purple-50" },
-                        ].map((f, i) => (
-                            <div key={i} className="group p-6 rounded-3xl bg-white border border-gray-100 hover:border-transparent hover:shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-all duration-300 hover:-translate-y-1">
-                                <div className={`w-14 h-14 ${f.color} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
-                                    <f.icon className="w-7 h-7" />
+                <Reveal className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <Card className="gap-0 rounded-3xl p-0 ring-slate-100 overflow-hidden">
+                        <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-slate-100">
+                            {[
+                                { icon: Truck, title: "Free Delivery", desc: "On orders above ₹10,000" },
+                                { icon: ShieldCheck, title: "1-Year Warranty", desc: "Comprehensive coverage" },
+                                { icon: Recycle, title: "Eco-Conscious", desc: "100% Sustainable packaging" },
+                                { icon: Cpu, title: "Expert Support", desc: "Lifetime tech assistance" },
+                            ].map((f, i) => (
+                                <div
+                                    key={i}
+                                    className="group flex flex-col md:flex-row items-center md:items-start gap-3 md:gap-4 p-5 md:p-7 text-center md:text-left hover:bg-teal-50/40 transition-colors duration-300"
+                                >
+                                    <div className="w-11 h-11 md:w-12 md:h-12 flex-shrink-0 bg-teal-50 text-teal-600 rounded-xl md:rounded-2xl flex items-center justify-center group-hover:bg-teal-600 group-hover:text-white transition-colors duration-300">
+                                        <f.icon className="w-5 h-5 md:w-6 md:h-6" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-sm md:text-base font-bold text-slate-900 mb-0.5 md:mb-1">{f.title}</h3>
+                                        <p className="text-xs md:text-sm text-slate-500 leading-relaxed">{f.desc}</p>
+                                    </div>
                                 </div>
-                                <h3 className="text-lg font-bold text-slate-900 mb-2">{f.title}</h3>
-                                <p className="text-sm text-gray-500 leading-relaxed">{f.desc}</p>
-                            </div>
-                        ))}
-                    </div>
-                </section>
+                            ))}
+                        </div>
+                    </Card>
+                </Reveal>
             )}
             {/* Brand Logos Strip */}
             {sections?.brands && (
-                <div className="border-y border-gray-100 bg-white/50 py-8 md:py-12">
+                <Reveal className="border-y border-slate-100 bg-white/50 py-8 md:py-12">
                     <div className="max-w-7xl mx-auto px-4 overflow-hidden">
-                        <div className="grid grid-cols-3 md:flex md:justify-between items-center gap-8 md:gap-12 opacity-60 hover:opacity-100 transition-opacity duration-500 grayscale hover:grayscale-0 place-items-center">
+                        <div className="grid grid-cols-3 md:flex md:justify-between items-center gap-8 md:gap-12 place-items-center">
                             {[
-                                { name: 'Apple', url: 'https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg' },
-                                { name: 'Dell', url: 'https://upload.wikimedia.org/wikipedia/commons/4/48/Dell_Logo.svg' },
-                                { name: 'Lenovo', url: 'https://upload.wikimedia.org/wikipedia/commons/b/b8/Lenovo_logo_2015.svg' },
-                                { name: 'HP', url: 'https://upload.wikimedia.org/wikipedia/commons/a/ad/HP_logo_2012.svg' },
-                                { name: 'Asus', url: 'https://upload.wikimedia.org/wikipedia/commons/2/2e/ASUS_Logo.svg' },
-                                { name: 'Microsoft', url: 'https://upload.wikimedia.org/wikipedia/commons/9/96/Microsoft_logo_%282012%29.svg' },
+                                { name: 'Apple', src: appleLogo.src },
+                                { name: 'Dell', src: dellLogo.src },
+                                { name: 'Lenovo', src: lenovoLogo.src },
+                                { name: 'HP', src: hpLogo.src },
+                                { name: 'Asus', src: asusLogo.src },
+                                { name: 'Microsoft', src: microsoftLogo.src },
                             ].map(brand => (
                                 <img
                                     key={brand.name}
-                                    src={brand.url}
+                                    src={brand.src}
                                     alt={brand.name}
                                     loading="lazy"
                                     className="h-6 md:h-10 w-auto object-contain flex-shrink-0"
@@ -166,32 +208,99 @@ export default function Home() {
                             ))}
                         </div>
                     </div>
-                </div>
+                </Reveal>
             )}
+
+            {/* Trust Stats Band */}
+            <Reveal className="bg-slate-900 py-12 md:py-16">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-8 text-center divide-x divide-slate-800">
+                        {[
+                            { value: 1, suffix: "-Year", label: "Official Warranty" },
+                            { value: 40, suffix: "+", label: "Point Quality Check" },
+                            { value: 14, suffix: "-Day", label: "Easy Returns" },
+                            { value: 100, suffix: "%", label: "COD Available" },
+                        ].map((stat, i) => (
+                            <div key={i}>
+                                <AnimatedCounter
+                                    value={stat.value}
+                                    suffix={stat.suffix}
+                                    className="block text-3xl md:text-5xl font-extrabold tracking-tight text-teal-400"
+                                />
+                                <p className="mt-2 text-xs md:text-sm font-semibold text-slate-400 uppercase tracking-wide">
+                                    {stat.label}
+                                </p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </Reveal>
+
+            {/* Shop by Category */}
+            <Reveal className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="mb-6 md:mb-10">
+                    <h2 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Shop by Category</h2>
+                    <p className="mt-1 md:mt-2 text-sm md:text-base text-slate-500">Find the right laptop for exactly what you need.</p>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-5">
+                    {[
+                        { icon: Briefcase, label: Category.BUSINESS, from: "from-teal-500", to: "to-emerald-600", tint: "bg-teal-50", ring: "ring-teal-100", text: "text-teal-600" },
+                        { icon: Gamepad2, label: Category.GAMING, from: "from-violet-500", to: "to-fuchsia-600", tint: "bg-violet-50", ring: "ring-violet-100", text: "text-violet-600" },
+                        { icon: Laptop, label: Category.ULTRABOOKS, from: "from-sky-500", to: "to-blue-600", tint: "bg-sky-50", ring: "ring-sky-100", text: "text-sky-600" },
+                        { icon: ServerCog, label: Category.WORKSTATIONS, from: "from-slate-600", to: "to-slate-800", tint: "bg-slate-100", ring: "ring-slate-200", text: "text-slate-700" },
+                        { icon: GraduationCap, label: Category.STUDENT, from: "from-amber-500", to: "to-orange-600", tint: "bg-amber-50", ring: "ring-amber-100", text: "text-amber-600" },
+                        { icon: Headphones, label: Category.ACCESSORIES, from: "from-rose-500", to: "to-pink-600", tint: "bg-rose-50", ring: "ring-rose-100", text: "text-rose-600" },
+                    ].map((cat, i) => (
+                        <Link
+                            key={i}
+                            href={`/products?category=${encodeURIComponent(cat.label)}`}
+                            className="group relative flex flex-col items-center gap-3 overflow-hidden rounded-2xl border border-slate-100 bg-white p-5 md:p-6 text-center transition-all duration-300 hover:-translate-y-1 hover:border-transparent hover:shadow-[0_16px_40px_-8px_rgba(0,0,0,0.12)]"
+                        >
+                            <div className={cn("pointer-events-none absolute -top-8 -right-8 h-24 w-24 rounded-full opacity-0 blur-2xl transition-opacity duration-300 group-hover:opacity-25 bg-gradient-to-br", cat.from, cat.to)} />
+                            <div className={cn("relative flex h-12 w-12 md:h-14 md:w-14 items-center justify-center rounded-2xl ring-1 transition-all duration-300", cat.tint, cat.ring, "group-hover:ring-0 group-hover:bg-gradient-to-br", cat.from, cat.to)}>
+                                <cat.icon className={cn("h-6 w-6 md:h-7 md:w-7 transition-colors duration-300 group-hover:text-white", cat.text)} />
+                            </div>
+                            <span className="relative text-xs md:text-sm font-bold text-slate-900 leading-tight">{cat.label}</span>
+                        </Link>
+                    ))}
+                </div>
+            </Reveal>
 
             {/* Explore Products Grid */}
             {sections?.explore && (
-                <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-end mb-6 md:mb-10">
-                        <div>
-                            <h2 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Explore Products</h2>
-                            <p className="text-gray-500 mt-1 md:mt-2 text-sm md:text-base">Discover our full range of certified tech.</p>
-                        </div>
-                        <Link href="/products" className="flex items-center text-blue-600 font-bold hover:text-blue-700 transition-colors text-sm md:text-base">
-                            View All <ArrowRight className="w-4 h-4 ml-2" />
-                        </Link>
-                    </div>
+                <Reveal className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <SectionHeader
+                        title="Explore Products"
+                        subtitle="Discover our full range of certified tech."
+                        href="/products"
+                    />
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-8">
-                        {exploreProducts.map(p => <ProductCard key={p.productId} product={p} />)}
+                        {exploreProducts.map((p, i) => (
+                            <motion.div
+                                key={p.productId}
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true, margin: "-40px" }}
+                                transition={{ duration: 0.4, delay: Math.min(i * 0.06, 0.3), ease: "easeOut" }}
+                            >
+                                <ProductCard product={p} />
+                            </motion.div>
+                        ))}
                     </div>
-                </section>
+                </Reveal>
             )}
 
             {/* Dynamic Grid Banners */}
-            <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <Reveal className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
                     {banners?.map((banner, i) => (
-                        <div key={i} className="group relative h-[250px] md:h-[360px] rounded-2xl md:rounded-[2rem] overflow-hidden shadow-xl cursor-pointer">
+                        <motion.div
+                            key={i}
+                            initial={{ opacity: 0, y: 24 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true, margin: "-40px" }}
+                            transition={{ duration: 0.5, delay: i * 0.1, ease: "easeOut" }}
+                            className="group relative h-[250px] md:h-[360px] rounded-2xl md:rounded-[2rem] overflow-hidden shadow-xl cursor-pointer">
                             <img
                                 src={banner.image}
                                 alt={banner.title}
@@ -203,149 +312,244 @@ export default function Home() {
 
                             <div className="absolute bottom-0 left-0 p-6 md:p-10 w-full">
                                 <h3 className="text-xl md:text-3xl font-bold text-white mb-1 md:mb-2 tracking-tight">{banner.title}</h3>
-                                <p className="text-gray-300 mb-4 md:mb-8 font-medium text-xs md:text-base">{banner.desc}</p>
+                                <p className="text-slate-300 mb-4 md:mb-8 font-medium text-xs md:text-base">{banner.desc}</p>
                                 <Link
                                     href={banner.link}
-                                    className="inline-flex items-center bg-white text-slate-900 px-4 py-2 md:px-6 md:py-3 rounded-lg md:rounded-xl font-bold text-xs md:text-sm hover:bg-gray-100 transition-all group-hover:gap-3"
+                                    className={cn(
+                                        buttonVariants(),
+                                        "h-auto rounded-lg md:rounded-xl px-4 py-2 md:px-6 md:py-3 text-xs md:text-sm bg-white text-slate-900 hover:bg-slate-100 group-hover:gap-3"
+                                    )}
                                 >
                                     Shop Now <ArrowRight className="ml-2 w-3 h-3 md:w-4 md:h-4" />
                                 </Link>
                             </div>
+                        </motion.div>
+                    ))}
+                </div>
+            </Reveal>
+
+            {/* How It Works */}
+            <Reveal className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="text-center mb-10 md:mb-14">
+                    <h2 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">How It Works</h2>
+                    <p className="mt-2 text-sm md:text-base text-slate-500">From browsing to your doorstep, in three simple steps.</p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 relative">
+                    <div className="hidden md:block absolute top-8 left-[16.5%] right-[16.5%] h-0.5 border-t-2 border-dashed border-teal-200" />
+                    {[
+                        { icon: Search, step: "01", title: "Browse & Select", desc: "Filter by budget, brand, or specs to find the laptop that fits your needs." },
+                        { icon: PackageCheck, step: "02", title: "Verified & Delivered", desc: "Every unit passes a 40+ point inspection before it ships to your door." },
+                        { icon: Smile, step: "03", title: "Use with Confidence", desc: "Backed by a 1-year warranty and 14-day easy returns, no questions asked." },
+                    ].map((s, i) => (
+                        <div key={i} className="relative flex flex-col items-center text-center">
+                            <div className="relative z-10 w-16 h-16 rounded-2xl bg-teal-600 text-white flex items-center justify-center shadow-lg shadow-teal-200">
+                                <s.icon className="w-7 h-7" />
+                            </div>
+                            <span className="mt-4 text-xs font-bold text-teal-600 tracking-widest">STEP {s.step}</span>
+                            <h3 className="mt-1 text-lg font-bold text-slate-900">{s.title}</h3>
+                            <p className="mt-2 text-sm text-slate-500 max-w-xs leading-relaxed">{s.desc}</p>
                         </div>
                     ))}
                 </div>
-            </section>
+            </Reveal>
 
             {/* EMI Banner */}
             {sections?.emi && (
-                <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <Reveal className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="bg-[#0B0F19] rounded-2xl md:rounded-[2.5rem] overflow-hidden relative shadow-2xl">
-                        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-indigo-600/20 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+                        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-teal-600/20 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-2 items-center relative z-10 p-8 md:p-12 lg:p-20 gap-8 lg:gap-12">
                             <div className="space-y-6 md:space-y-8 text-center lg:text-left">
-                                <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-1.5 backdrop-blur-md">
-                                    <Percent className="w-4 h-4 text-yellow-400" />
-                                    <span className="text-yellow-400 font-bold text-xs uppercase tracking-widest">Zero Cost EMI</span>
-                                </div>
+                                <Badge className="h-auto gap-2 rounded-full border border-teal-500/30 bg-teal-500/10 px-4 py-1.5 text-teal-400 backdrop-blur-md hover:bg-teal-500/10">
+                                    <CreditCard className="w-4 h-4" />
+                                    <span className="font-bold text-xs uppercase tracking-widest">Bajaj Finserv EMI</span>
+                                </Badge>
 
                                 <h2 className="text-4xl lg:text-6xl font-extrabold text-white leading-[1.1] tracking-tight">
-                                    Own it now.<br />
-                                    <span className="text-indigo-400">Pay later.</span>
+                                    Buy Now.<br />
+                                    <span className="text-teal-400">Pay Easy EMIs.</span>
                                 </h2>
 
                                 <p className="text-slate-400 text-base md:text-lg max-w-md mx-auto lg:mx-0 leading-relaxed">
-                                    Upgrade without the upfront cost. Flexible monthly plans starting at just <span className="text-white font-bold">₹2,500/mo</span> with no hidden fees.
+                                    Shop with Bajaj Finserv EMI Card. Get instant approval with flexible tenure options from <span className="text-white font-bold">3 to 24 months</span> at attractive interest rates.
                                 </p>
 
-                                <div className="flex flex-col sm:flex-row gap-4 pt-4 justify-center lg:justify-start">
-                                    <Link href="/products" className="bg-white text-slate-900 px-8 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold hover:bg-gray-100 transition-colors shadow-lg flex items-center justify-center gap-2">
-                                        Check Eligibility
-                                    </Link>
+                                <div className="grid grid-cols-2 gap-4 max-w-md mx-auto lg:mx-0">
+                                    <div className="bg-white/5 border border-white/10 rounded-xl p-4 backdrop-blur-sm">
+                                        <p className="text-2xl font-bold text-white">No Cost</p>
+                                        <p className="text-xs text-slate-400 mt-1">EMI Available</p>
+                                    </div>
+                                    <div className="bg-white/5 border border-white/10 rounded-xl p-4 backdrop-blur-sm">
+                                        <p className="text-2xl font-bold text-white">Instant</p>
+                                        <p className="text-xs text-slate-400 mt-1">Approval</p>
+                                    </div>
                                 </div>
+
+                                <div className="flex flex-col sm:flex-row gap-4 pt-4 justify-center lg:justify-start">
+                                    <Button
+                                        onClick={() => handleSubmit()}
+                                        className="h-auto rounded-xl md:rounded-2xl px-8 py-3.5 md:py-4 bg-teal-600 hover:bg-teal-700 shadow-lg"
+                                    >
+                                        Check Eligibility
+                                    </Button>
+                                </div>
+                                {showLogin && (
+                                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                                        {/* Centered Login Card */}
+                                        <div className="w-full max-w-md mx-4">
+                                            <CheckoutLogin onLoginSuccess={handleLoginSuccess} closeLogin={() => { setShowLogin(false) }} />
+                                        </div>
+                                    </div>
+                                )}
+                                {showEnquiry && (
+                                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                                        {/* Centered Login Card */}
+                                        <div className="w-full max-w-md mx-4">
+                                            <LoanEnquirySuccess closeEnquiry={() => setShowEnquiry(false)} />
+                                        </div>
+                                    </div>
+                                )}
+                                {showEnquirySubmitted && (
+                                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                                        {/* Centered Login Card */}
+                                        <div className="w-full max-w-md mx-4">
+                                            <LoanEnquiryAlreadySuccess closeEnquiry={() => setShowEnquirySubmitted(false)} />
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="hidden lg:flex justify-end relative">
-                                {/* Glassmorphism Card */}
-                                <div className="w-96 h-60 bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-8 shadow-2xl transform rotate-6 hover:rotate-3 transition-transform duration-500 relative z-10">
+                                {/* Bajaj Finserv Card */}
+                                <div className="w-96 h-60 bg-gradient-to-br from-teal-600/20 to-teal-800/20 backdrop-blur-xl border border-teal-500/30 rounded-3xl p-8 shadow-2xl transform rotate-6 hover:rotate-3 transition-transform duration-500 relative z-10">
                                     <div className="flex justify-between items-start mb-8">
-                                        <CreditCard className="w-10 h-10 text-white/80" />
-                                        <span className="text-white/60 font-mono tracking-widest text-sm">PREMIUM</span>
+                                        <div>
+                                            <p className="text-white font-bold text-lg">Bajaj Finserv</p>
+                                            <p className="text-teal-300 text-xs font-medium">EMI CARD</p>
+                                        </div>
+                                        <CreditCard className="w-10 h-10 text-teal-400" />
                                     </div>
                                     <div className="mt-8">
-                                        <p className="text-white font-mono text-2xl tracking-widest opacity-90">•••• •••• •••• 4242</p>
+                                        <p className="text-white font-mono text-2xl tracking-widest opacity-90">•••• •••• •••• 8888</p>
                                     </div>
                                     <div className="flex justify-between items-end mt-8">
                                         <div>
-                                            <p className="text-[10px] text-white/60 uppercase tracking-wider mb-1">Card Holder</p>
-                                            <p className="text-sm text-white font-bold tracking-wide">LAPSHARK MEMBER</p>
+                                            <p className="text-[10px] text-white/60 uppercase tracking-wider mb-1">Card Member</p>
+                                            <p className="text-sm text-white font-bold tracking-wide">LAPSHARK CUSTOMER</p>
                                         </div>
-                                        <div className="w-8 h-8 rounded-full bg-yellow-500/80"></div>
+                                        <div className="flex gap-1">
+                                            <div className="w-8 h-8 rounded-full bg-red-600/80"></div>
+                                            <div className="w-8 h-8 rounded-full bg-yellow-600/80 -ml-4"></div>
+                                        </div>
                                     </div>
                                 </div>
 
                                 {/* Decorative Elements */}
-                                <div className="absolute top-10 right-10 w-20 h-20 bg-blue-500 rounded-full blur-xl opacity-50"></div>
-                                <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-purple-500 rounded-full blur-2xl opacity-30"></div>
+                                <div className="absolute top-10 right-10 w-20 h-20 bg-teal-500 rounded-full blur-xl opacity-50"></div>
+                                <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-teal-600 rounded-full blur-2xl opacity-30"></div>
                             </div>
                         </div>
                     </div>
-                </section>
+                </Reveal>
             )}
 
             {/* Trending Products Grid */}
             {sections?.trending && (
-                <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-end mb-6 md:mb-10">
-                        <div>
-                            <h2 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Trending Now</h2>
-                            <p className="text-gray-500 mt-1 md:mt-2 text-sm md:text-base">The most sought-after tech this week.</p>
-                        </div>
-                        <Link href="/products" className="flex items-center text-blue-600 font-bold hover:text-blue-700 transition-colors text-sm md:text-base">
-                            View All <ArrowRight className="w-4 h-4 ml-2" />
-                        </Link>
-                    </div>
+                <Reveal className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <SectionHeader
+                        title="Trending Now"
+                        subtitle="The most sought-after tech this week."
+                        href="/products"
+                    />
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-8">
-                        {trendingProducts.map(p => <ProductCard key={p.productId} product={p} />)}
+                        {trendingProducts.map((p, i) => (
+                            <motion.div
+                                key={p.productId}
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true, margin: "-40px" }}
+                                transition={{ duration: 0.4, delay: Math.min(i * 0.06, 0.3), ease: "easeOut" }}
+                            >
+                                <ProductCard product={p} />
+                            </motion.div>
+                        ))}
                     </div>
-                </section>
+                </Reveal>
             )}
 
             {/* Flash Sale */}
             {sections?.flashSale && (
-                <section className="bg-slate-900 text-white py-12 md:py-24 overflow-hidden relative">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-                        <div className="flex items-end justify-between mb-8 md:mb-12">
-                            <div>
-                                <span className="text-blue-400 font-bold tracking-widest uppercase text-xs mb-2 block">Exclusive Offers</span>
-                                <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight">Flash Sale</h2>
-                            </div>
-                            <Link href="/products" className="hidden md:flex items-center text-sm font-bold text-gray-400 hover:text-white transition-colors">
-                                View All <ArrowRight className="ml-2 w-4 h-4" />
-                            </Link>
-                        </div>
+                <Reveal className="bg-slate-900 text-white py-12 md:py-24 overflow-hidden relative">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+                        <SectionHeader
+                            eyebrow="Exclusive Offers"
+                            title="Flash Sale"
+                            href="/products"
+                            dark
+                        />
 
-                        <div className="flex overflow-x-auto snap-x gap-4 pb-4 -mx-4 px-4 md:mx-0 md:px-0 md:grid md:grid-cols-3 md:gap-8 scrollbar-hide md:overflow-visible">
-                            {bestDeals.slice(0, 6).map((product) => (
-                                <div key={product.productId} className="min-w-[280px] snap-center bg-slate-800/50 backdrop-blur-sm rounded-2xl md:rounded-3xl p-5 md:p-6 border border-slate-700 hover:border-slate-500 transition-all duration-300 group">
-                                    <div className="flex justify-between items-start mb-6">
-                                        <span className="bg-rose-500 text-white text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wide">Save {product.discountPercent}%</span>
-                                    </div>
+                        <Carousel opts={{ align: "start", dragFree: true }} className="md:static">
+                            <CarouselContent className="md:mx-0">
+                                {bestDeals.slice(0, 6).map((product) => (
+                                    <CarouselItem key={product.productId} className="basis-[280px] md:basis-1/3">
+                                        <Card className="h-full gap-0 rounded-2xl md:rounded-3xl bg-slate-800/50 p-5 md:p-6 ring-slate-700 backdrop-blur-sm hover:ring-slate-500 transition-all duration-300 group">
+                                            <div className="flex justify-between items-start mb-6">
+                                                <Badge className="rounded-md bg-rose-500 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white hover:bg-rose-500">
+                                                    Save {product.discountPercent}%
+                                                </Badge>
+                                            </div>
 
-                                    <div className="h-40 md:h-48 mb-6 md:mb-8 flex items-center justify-center">
-                                        <img src={API_URL2 + product.image} alt={product.title} loading="lazy" className="max-h-full max-w-full object-contain drop-shadow-2xl group-hover:scale-110 transition-transform duration-500" />
-                                    </div>
+                                            <div className="h-40 md:h-48 mb-6 md:mb-8 flex items-center justify-center">
+                                                <img src={product.image} alt={product.title} loading="lazy" className="max-h-full max-w-full object-contain drop-shadow-2xl group-hover:scale-110 transition-transform duration-500" />
+                                            </div>
 
-                                    <h3 className="text-base md:text-lg font-bold mb-2 line-clamp-1">{product.title}</h3>
-                                    <div className="flex items-baseline gap-3 mb-6">
-                                        <span className="text-xl md:text-2xl font-bold text-white">₹{product.finalPrice.toLocaleString('en-IN')}</span>
-                                        <span className="text-xs md:text-sm text-slate-500 line-through">₹{product.price.toLocaleString('en-IN')}</span>
-                                    </div>
+                                            <h3 className="text-base md:text-lg font-bold mb-2 line-clamp-1 text-white">{product.title}</h3>
+                                            <div className="flex items-baseline gap-3 mb-6">
+                                                <span className="text-xl md:text-2xl font-bold text-white">₹{product.finalPrice.toLocaleString('en-IN')}</span>
+                                                <span className="text-xs md:text-sm text-slate-500 line-through">₹{product.price.toLocaleString('en-IN')}</span>
+                                            </div>
 
-                                    <Link href={`/products/${product.productId}`} className="w-full block text-center bg-white text-slate-900 font-bold py-3 rounded-xl hover:bg-blue-50 transition-colors text-sm md:text-base">
-                                        View Details
-                                    </Link>
-                                </div>
-                            ))}
-                        </div>
-                        <Link href="/products" className="md:hidden flex items-center justify-center text-sm font-bold text-gray-400 mt-4">
+                                            <Link
+                                                href={`/products/${product.slug}`}
+                                                className={cn(
+                                                    buttonVariants(),
+                                                    "w-full h-auto rounded-xl bg-white py-3 text-sm md:text-base text-slate-900 hover:bg-teal-50"
+                                                )}
+                                            >
+                                                View Details
+                                            </Link>
+                                        </Card>
+                                    </CarouselItem>
+                                ))}
+                            </CarouselContent>
+                            <CarouselPrevious className="hidden md:flex -left-4 border-slate-700 bg-slate-800 text-white hover:bg-slate-700" />
+                            <CarouselNext className="hidden md:flex -right-4 border-slate-700 bg-slate-800 text-white hover:bg-slate-700" />
+                        </Carousel>
+                        <Link
+                            href="/products"
+                            className={cn(
+                                buttonVariants({ variant: "link" }),
+                                "md:hidden h-auto w-full justify-center p-0 mt-4 text-sm font-bold text-slate-400"
+                            )}
+                        >
                             View All Deals <ArrowRight className="ml-2 w-4 h-4" />
                         </Link>
                     </div>
-                </section>
+                </Reveal>
             )}
 
             {/* Quality Comparison */}
             {sections?.comparison && (
-                <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="grid grid-cols-1 md:grid-cols-2 rounded-3xl md:rounded-[3rem] overflow-hidden shadow-2xl border border-gray-100">
+                <Reveal className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 rounded-3xl md:rounded-[3rem] overflow-hidden shadow-2xl border border-slate-100">
                         <div className="bg-slate-950 text-white p-8 md:p-12 lg:p-20 flex flex-col justify-center relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-64 h-64 bg-green-500/10 rounded-full blur-3xl translate-x-1/2 -translate-y-1/2"></div>
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl translate-x-1/2 -translate-y-1/2"></div>
 
                             <div className="relative z-10">
                                 <h3 className="text-3xl md:text-4xl font-extrabold mb-8 md:mb-12 tracking-tight">
                                     The Lapshark<br />
-                                    <span className="text-green-500">Standard.</span>
+                                    <span className="text-emerald-500">Standard.</span>
                                 </h3>
 
                                 <div className="grid grid-cols-2 gap-6 md:gap-10">
@@ -356,7 +560,7 @@ export default function Home() {
                                         { icon: Keyboard, title: "Clean Keys", desc: "Sanitized & tested" }
                                     ].map((item, i) => (
                                         <div key={i} className="space-y-3">
-                                            <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-green-500">
+                                            <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-emerald-500">
                                                 <item.icon className="w-5 h-5 md:w-6 md:h-6" />
                                             </div>
                                             <div>
@@ -369,10 +573,10 @@ export default function Home() {
                             </div>
                         </div>
 
-                        <div className="bg-gray-100 p-8 md:p-12 lg:p-20 flex flex-col items-center justify-center relative">
+                        <div className="bg-slate-100 p-8 md:p-12 lg:p-20 flex flex-col items-center justify-center relative">
                             <div className="text-center z-10 mb-6 md:mb-10">
                                 <h3 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">Others</h3>
-                                <p className="text-gray-500">Risky. Unverified. Dirty.</p>
+                                <p className="text-slate-500">Risky. Unverified. Dirty.</p>
                             </div>
 
                             <div className="relative w-full max-w-[200px] md:max-w-sm mx-auto grayscale opacity-70">
@@ -382,57 +586,135 @@ export default function Home() {
                                     loading="lazy"
                                     className="w-full h-auto object-contain mix-blend-multiply"
                                 />
-                                <div className="absolute top-1/4 right-1/4 bg-red-500 text-white text-[10px] md:text-xs font-bold px-2 py-0.5 md:px-3 md:py-1 rounded-full animate-pulse shadow-lg">
+                                <Badge className="absolute top-1/4 right-1/4 animate-pulse rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-lg md:px-3 md:py-1 md:text-xs hover:bg-red-500">
                                     Risk!
-                                </div>
+                                </Badge>
                             </div>
                         </div>
                     </div>
-                </section>
+                </Reveal>
             )}
 
-
+            {/* FAQ */}
+            <Reveal className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="text-center mb-8 md:mb-12">
+                    <h2 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Frequently Asked Questions</h2>
+                    <p className="mt-2 text-sm md:text-base text-slate-500">Everything you need to know before you buy.</p>
+                </div>
+                <Accordion multiple className="rounded-2xl border border-slate-100 bg-white px-4 md:px-6 shadow-sm">
+                    {[
+                        { q: "Do you offer a warranty on refurbished laptops?", a: "Yes, every laptop comes with a 1-year official warranty covering the motherboard, screen, RAM, HDD/SSD, and original accessories." },
+                        { q: "How thoroughly are the laptops tested?", a: "Each unit goes through a 40+ point quality inspection covering the screen, battery health, keyboard, ports, and body condition before it's listed for sale." },
+                        { q: "Can I return a laptop if I don't like it?", a: "Yes, we offer 14-day easy returns on all laptops, no questions asked." },
+                        { q: "Is Cash on Delivery (COD) available?", a: "Yes, COD is available nationwide, along with no-cost EMI options at checkout." },
+                    ].map((item, i) => (
+                        <AccordionItem key={i} value={`faq-${i}`}>
+                            <AccordionTrigger className="text-left text-sm md:text-base font-bold text-slate-900">
+                                {item.q}
+                            </AccordionTrigger>
+                            <AccordionContent className="text-sm text-slate-500 leading-relaxed">
+                                {item.a}
+                            </AccordionContent>
+                        </AccordionItem>
+                    ))}
+                </Accordion>
+            </Reveal>
 
             {/* Blogs */}
             {sections?.blogs && (
-                <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex flex-col items-center text-center mb-8 md:mb-16">
-                        <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-2 md:mb-4 tracking-tight">Latest Insights</h2>
-                        <p className="text-gray-500 max-w-2xl text-sm md:text-base">Expert advice on getting the most out of your tech.</p>
+                <Reveal className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex justify-between items-start mb-6 md:mb-10">
+                        <div>
+                            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-2 md:mb-4 tracking-tight">Latest Insights</h2>
+                            <p className="text-slate-500 max-w-2xl text-sm md:text-base">Expert advice on getting the most out of your tech.</p>
+                        </div>
+                        <Link
+                            href="/blog"
+                            className={cn(
+                                buttonVariants({ variant: "link" }),
+                                "hidden sm:inline-flex h-auto p-0 text-sm md:text-base font-bold text-teal-600 hover:text-teal-700"
+                            )}
+                        >
+                            View All <ArrowRight className="w-4 h-4 ml-2" />
+                        </Link>
                     </div>
 
-                    <div className="flex overflow-x-auto snap-x gap-4 pb-4 md:grid md:grid-cols-3 md:gap-8 scrollbar-hide md:overflow-visible">
-                        {BLOG_POSTS.map(post => (
-                            <div key={post.id} className="min-w-[280px] snap-center group cursor-pointer">
-                                <div className="overflow-hidden rounded-2xl md:rounded-3xl mb-4 md:mb-6 relative aspect-[4/3]">
-                                    <img
-                                        src={post.image}
-                                        alt={post.title}
-                                        loading="lazy"
-                                        className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
-                                    />
-                                    <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors"></div>
-                                </div>
-                                <div className="space-y-2 md:space-y-3">
-                                    <span className="text-xs font-bold text-blue-600 uppercase tracking-widest">{post.date}</span>
-                                    <h3 className="font-bold text-lg md:text-xl text-slate-900 leading-tight group-hover:text-blue-600 transition-colors line-clamp-2">
-                                        {post.title}
-                                    </h3>
-                                    <p className="text-gray-500 text-xs md:text-sm line-clamp-2 leading-relaxed">
-                                        {post.excerpt}
-                                    </p>
-                                    <div className="pt-2">
-                                        <span className="inline-flex items-center text-sm font-bold text-slate-900 group-hover:underline">
-                                            Read Article <ChevronRight className="w-4 h-4 ml-1" />
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </section>
+                    <Carousel opts={{ align: "start", dragFree: true }}>
+                        <CarouselContent>
+                            {blogs.map(post => (
+                                <CarouselItem key={post._id} className="basis-[280px] md:basis-1/3">
+                                    <Link href={`/blog/${post.slug}`} className="group cursor-pointer block h-full">
+                                        <div className="overflow-hidden rounded-2xl md:rounded-3xl mb-4 md:mb-6 relative aspect-[4/3]">
+                                            <img
+                                                src={post.image}
+                                                alt={post.title}
+                                                loading="lazy"
+                                                className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
+                                            />
+                                        </div>
+                                        <div className="space-y-2 md:space-y-3">
+                                            <span className="text-xs font-bold text-teal-600 uppercase tracking-widest">{new Date(post.date).toLocaleDateString('en-US', {
+                                                year: 'numeric',
+                                                month: 'short',
+                                                day: 'numeric'
+                                            })}</span>
+                                            <h3 className="font-bold text-lg md:text-xl text-slate-900 leading-tight group-hover:text-teal-600 transition-colors line-clamp-2">
+                                                {post.title}
+                                            </h3>
+                                            <p className="text-slate-500 text-xs md:text-sm line-clamp-2 leading-relaxed">
+                                                {post.excerpt}
+                                            </p>
+                                            <div className="pt-2">
+                                                <span className="inline-flex items-center text-sm font-bold text-slate-900 group-hover:underline">
+                                                    Read Article <ChevronRight className="w-4 h-4 ml-1" />
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </Link>
+                                </CarouselItem>
+                            ))}
+                        </CarouselContent>
+                        <CarouselPrevious className="hidden md:flex -left-4" />
+                        <CarouselNext className="hidden md:flex -right-4" />
+                    </Carousel>
+                </Reveal>
             )}
 
+            {/* Closing CTA */}
+            <Reveal className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="relative overflow-hidden rounded-3xl md:rounded-[2.5rem] bg-teal-600 px-6 py-12 md:px-16 md:py-16 text-center">
+                    <div className="pointer-events-none absolute -top-16 -right-16 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+                    <div className="pointer-events-none absolute -bottom-16 -left-16 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+                    <div className="relative">
+                        <h2 className="text-2xl md:text-4xl font-extrabold text-white tracking-tight">
+                            Still deciding? Talk to an expert.
+                        </h2>
+                        <p className="mt-3 text-sm md:text-base text-teal-100 max-w-xl mx-auto">
+                            Our team can help you pick the right laptop for your budget and needs.
+                        </p>
+                        <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+                            <a
+                                href="tel:+918971319555"
+                                className={cn(
+                                    buttonVariants(),
+                                    "h-auto w-full sm:w-auto rounded-xl bg-white px-8 py-3.5 text-sm font-bold text-teal-700 hover:bg-teal-50"
+                                )}
+                            >
+                                <Phone className="w-4 h-4 mr-2" /> +91 897 131 9555
+                            </a>
+                            <Link
+                                href="/contact"
+                                className={cn(
+                                    buttonVariants({ variant: "outline" }),
+                                    "h-auto w-full sm:w-auto rounded-xl border-white/40 bg-transparent px-8 py-3.5 text-sm font-bold text-white hover:bg-white/10"
+                                )}
+                            >
+                                <MessageCircle className="w-4 h-4 mr-2" /> Contact Us
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            </Reveal>
 
         </div>
     );

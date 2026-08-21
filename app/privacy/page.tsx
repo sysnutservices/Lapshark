@@ -5,6 +5,9 @@ import { Metadata } from 'next';
 export const metadata: Metadata = {
     title: "Privacy Policy - LAPSHARK",
     description: "We value your privacy. Learn how we collect, use, and protect your personal information.",
+    alternates: {
+        canonical: "https://lapshark.com/privacy",
+    },
 };
 
 export default function Privacy() {
@@ -13,11 +16,11 @@ export default function Privacy() {
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
 
                 <div className="text-center mb-16">
-                    <div className="inline-flex items-center justify-center p-3 bg-purple-50 rounded-2xl mb-4">
-                        <Lock className="w-8 h-8 text-purple-600" />
+                    <div className="inline-flex items-center justify-center p-3 bg-teal-50 rounded-2xl mb-4">
+                        <Lock className="w-8 h-8 text-teal-600" />
                     </div>
                     <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-4 tracking-tight">Privacy Policy</h1>
-                    <p className="text-gray-500 max-w-2xl mx-auto">
+                    <p className="text-slate-500 max-w-2xl mx-auto">
                         We value your trust and are committed to protecting your personal information.
                     </p>
                 </div>
@@ -29,15 +32,15 @@ export default function Privacy() {
                         { icon: Eye, title: "Transparency", desc: "We do not sell, trade, or rent your personal identification information to others." },
                         { icon: Globe, title: "Cookies", desc: "We use cookies to enhance site navigation and analyze usage." },
                     ].map((item, i) => (
-                        <div key={i} className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
+                        <div key={i} className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
                             <item.icon className="w-6 h-6 text-slate-800 mb-3" />
                             <h3 className="font-bold text-slate-900 mb-2">{item.title}</h3>
-                            <p className="text-sm text-gray-500">{item.desc}</p>
+                            <p className="text-sm text-slate-500">{item.desc}</p>
                         </div>
                     ))}
                 </div>
 
-                <div className="prose prose-slate max-w-none text-gray-600 space-y-8">
+                <div className="prose prose-slate max-w-none text-slate-600 space-y-8">
 
                     <section>
                         <h3 className="text-xl font-bold text-slate-900">1. Information We Collect</h3>

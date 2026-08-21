@@ -8,8 +8,8 @@ import React, {
   ReactNode,
 } from "react";
 
-import { Product, Order, Coupon, User, SiteConfig } from "../types";
-import { api } from "../api/api";  // <-- axios instance
+import { Product, Order, Coupon, User, SiteConfig, BlogPost } from "../types";
+import { api } from "../api/api";
 
 interface StoreContextType {
   products: Product[];
@@ -17,14 +17,34 @@ interface StoreContextType {
   coupons: Coupon[];
   customers: User[];
   siteConfig: SiteConfig | null;
+  blogs: BlogPost[];
 
   // Product Actions
   addProduct: (product: Product) => Promise<void>;
+
+  // Blog Actions
+  addBlog: (blogData: {
+    title?: string;
+    excerpt?: string;
+    content?: string;
+    image?: string;
+    slug?: string;
+  }) => Promise<void>;
+  updateBlog: (id: string, blogData: {
+    title?: string;
+    excerpt?: string;
+    content?: string;
+    image?: string;
+    slug?: string;
+  }) => Promise<void>;
+  deleteBlog: (id: string) => Promise<void>;
+
   updateProduct: (product: Product) => Promise<void>;
   deleteProduct: (id: string) => Promise<void>;
   validateCoupon: (code: string, cartTotal: number) => Promise<Coupon | null>;
   fetchCustomerOrders: () => Promise<void>;
   customerOrders: Order[];
+
   // Orders
   placeOrder: (order: Order) => Promise<void>;
   updateOrderStatus: (id: string, status: Order["status"]) => Promise<void>;
@@ -61,31 +81,42 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const [customers, setCustomers] = useState<User[]>([]);
   const [siteConfig, setSiteConfig] = useState<SiteConfig | null>(null);
   const [loading, setLoading] = useState(true);
+  const [blogs, setBlogs] = useState<BlogPost[]>([]);
 
-  // Initial Load from API 
+  // Initial Load from API
   useEffect(() => {
     const fetchAll = async () => {
       try {
-        setLoading(true); // Explicitly set loading to true at start
+        setLoading(true);
 
-        // Get token inside useEffect to avoid SSR issues
         const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
+        const isAdminRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
 
-        const productsRes = await api.get("/products").catch(() => ({ data: [] }));
-        const ordersRes = await api.get("/orders").catch(() => ({ data: [] }));
-        const customerOrdersRes = token
-          ? await api.get("/orders/mine", {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }).catch(() => ({ data: { orders: [] } }))
-          : { data: { orders: [] } };
-        const couponsRes = await api.get("/coupons").catch(() => ({ data: [] }));
-        const usersRes = await api.get("/users", { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: [] }));
-        const siteRes = await api.get("/site-config").catch(() => ({ data: null }));
+        const customerOrdersPromise = token
+          ? api.get("/orders/mine", { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { orders: [] } }))
+          : Promise.resolve({ data: { orders: [] } });
+
+        // Admin-only data (orders, coupons, users) is never consumed by the
+        // storefront — skip it there so customer pages aren't blocked on it.
+        const [productsRes, blogsRes, siteRes, customerOrdersRes, ordersRes, couponsRes, usersRes] = await Promise.all([
+          api.get("/products").catch(() => ({ data: [] })),
+          // In the admin panel, pull the draft-inclusive feed so unpublished
+          // posts are editable; the storefront gets the cached public one.
+          isAdminRoute && token
+            ? api
+                .get("/blogs/all", { headers: { Authorization: `Bearer ${token}` } })
+                .catch(() => api.get("/blogs").catch(() => ({ data: [] })))
+            : api.get("/blogs").catch(() => ({ data: [] })),
+          api.get("/site-config").catch(() => ({ data: null })),
+          customerOrdersPromise,
+          isAdminRoute ? api.get("/orders").catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+          isAdminRoute ? api.get("/coupons").catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+          isAdminRoute ? api.get("/users", { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+        ]);
 
         setCustomerOrders(customerOrdersRes.data.orders || []);
         setProducts(productsRes.data);
+        setBlogs(blogsRes.data);
         setOrders(ordersRes.data.orders || ordersRes.data);
         setCoupons(couponsRes.data);
         setCustomers(usersRes.data);
@@ -94,7 +125,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       } catch (err) {
         console.error("Failed to load data:", err);
       } finally {
-        setLoading(false); // Always set loading to false
+        setLoading(false);
       }
     };
 
@@ -104,21 +135,72 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   // ------------------------
   // PRODUCT ACTIONS
   // ------------------------
+  // Product and blog writes are admin-only on the server, so they must send the
+  // token. Without it these calls come back 401.
+  const authHeaders = () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
+    return {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+  };
+
+  // Local state only. The admin panel already persists the product itself via a
+  // multipart request (images have to be uploaded as files), then calls these
+  // with the saved document. Re-sending it here fired a second write that could
+  // not succeed — the JSON body carries no file, so the server rejected it for a
+  // missing image and the UI reported failure on a product that had saved fine.
   const addProduct = async (product: Product) => {
-    const res = await api.post("/products", product);
-    setProducts((prev) => [res.data, ...prev]);
+    setProducts((prev) => [product, ...prev]);
   };
 
   const updateProduct = async (product: Product) => {
-    const res = await api.put(`/products/${product.productId}`, product);
     setProducts((prev) =>
-      prev.map((p) => (p.productId === product.productId ? res.data : p))
+      prev.map((p) => (p.productId === product.productId ? product : p))
     );
   };
 
   const deleteProduct = async (id: string) => {
-    await api.delete(`/products/${id}`);
-    setProducts((prev) => prev.filter((p) => p.id !== id));
+    await api.delete(`/products/${id}`, { headers: authHeaders() });
+    // The admin panel passes the Mongo _id, but this filtered on `p.id`, which
+    // these documents don't have — so the row never disappeared even though the
+    // server had deleted it. Match on any of the three identifiers the API
+    // returns so the caller can pass whichever it holds.
+    setProducts((prev) =>
+      prev.filter((p: any) => p._id !== id && p.productId !== id && p.id !== id)
+    );
+  };
+
+  // ------------------------
+  // BLOG ACTIONS
+  // ------------------------
+  // In StoreContext
+  const addBlog = async (blogData: any) => {
+    const res = await api.post('/blogs', blogData, { headers: authHeaders() });
+    setBlogs((prev) => [...prev, res.data]);
+  };
+
+  const updateBlog = async (
+    id: string,
+    blogData: {
+      title?: string;
+      excerpt?: string;
+      content?: string;
+      image?: string;
+      slug?: string;
+    }
+  ) => {
+    const res = await api.put(`/blogs/${id}`, blogData, { headers: authHeaders() });
+
+    setBlogs((prev) =>
+      prev.map((b) => (b._id === id ? res.data : b))
+    );
+  };
+
+
+  const deleteBlog = async (id: string) => {
+    await api.delete(`/blogs/${id}`, { headers: authHeaders() });
+    setBlogs((prev) => prev.filter((b) => b._id !== id));
   };
 
   // ------------------------
@@ -130,17 +212,14 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const updateOrderStatus = async (orderId: string, status: Order["status"]) => {
-    // ⭐ Optimistically update UI FIRST
     setOrders(prev =>
       prev.map(o =>
         o.orderId === orderId ? { ...o, status } : o
       )
     );
 
-    // ⭐ THEN update backend
     const res = await api.put(`/orders/${orderId}/status`, { status });
 
-    // ⭐ OPTIONAL: Replace with API response
     setOrders(prev =>
       prev.map(o =>
         o.orderId === orderId ? res.data.order : o
@@ -155,7 +234,6 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     const res = await api.post("/coupons/validate", { code, cartTotal });
     return res.data;
   };
-
 
   const addCoupon = async (coupon: Coupon) => {
     const res = await api.post("/coupons", coupon);
@@ -188,7 +266,13 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   // SITE CONFIG
   // ------------------------
   const updateSiteConfig = async (config: SiteConfig) => {
-    const res = await api.put("/admin/site-config", config);
+    const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
+    if (!token) return;
+    const res = await api.put("/admin/site-config", config, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
     setSiteConfig(res.data);
   };
 
@@ -221,6 +305,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         orders,
         coupons,
         customers,
+        blogs,
         siteConfig,
         addProduct,
         updateProduct,
@@ -230,6 +315,9 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         addCoupon,
         updateCoupon,
         validateCoupon,
+        addBlog,
+        updateBlog,
+        deleteBlog,
         deleteCoupon,
         fetchCustomerOrders,
         blockCustomer,
@@ -244,7 +332,6 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-// Custom hook
 export const useStore = () => {
   const ctx = useContext(StoreContext);
   if (!ctx) throw new Error("useStore must be used inside StoreProvider");

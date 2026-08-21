@@ -1,23 +1,38 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useStore } from "@/context/StoreContext";
 import { useUserFeatures } from "@/context/UserFeatureContext";
 import { ProductCard } from "@/components/ProductCard";
 import { Category } from "@/types";
-import {
-    Filter,
-    ChevronDown,
-    ChevronUp,
-    X,
-    Check,
-    Search,
-    SlidersHorizontal,
-    RotateCcw,
-} from "lucide-react";
+import { Filter, RotateCcw, Search, SlidersHorizontal } from "lucide-react";
 import { useRouter } from "next/navigation";
-import MenuItem from "@mui/material/MenuItem";
-import Select from "@mui/material/Select";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Slider } from "@/components/ui/slider";
+import {
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import {
+    Sheet,
+    SheetContent,
+    SheetFooter,
+    SheetHeader,
+    SheetTitle,
+    SheetTrigger,
+} from "@/components/ui/sheet";
 
 const FILTER_OPTIONS = {
     brands: [
@@ -46,206 +61,135 @@ const FILTER_OPTIONS = {
     display: ["13-inch", "14-inch", "15-inch", "16-inch", "17-inch", "18-inch"],
 };
 
-const CheckboxItem: React.FC<{
+const MAX_PRICE = 300000;
+
+function CheckboxRow({
+    label,
+    checked,
+    onCheckedChange,
+}: {
     label: string;
-    selected: boolean;
-    onChange: () => void;
-}> = ({ label, selected, onChange }) => (
-    <label className="flex items-center space-x-3 cursor-pointer group py-2 hover:bg-gray-50 px-2 rounded-lg -mx-2 transition-all">
-        <div
-            className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all duration-200 ${selected
-                ? "bg-blue-600 border-blue-600 shadow-sm scale-105"
-                : "border-gray-300 bg-white group-hover:border-blue-400"
-                }`}
-        >
-            {selected && <Check className="w-3.5 h-3.5 text-white stroke-3" />}
-        </div>
-        <input
-            type="checkbox"
-            className="hidden"
-            checked={selected}
-            onChange={onChange}
-        />
-        <span
-            className={`text-sm ${selected
-                ? "text-gray-900 font-bold"
-                : "text-gray-600 group-hover:text-gray-900 font-medium"
-                }`}
-        >
-            {label}
-        </span>
-    </label>
-);
-
-const FilterAccordion: React.FC<{
-    title: string;
-    activeCount?: number;
-    children: React.ReactNode;
-    onClear?: () => void;
-    isOpen: boolean;
-    onToggle: () => void;
-}> = ({ title, activeCount, children, onClear, isOpen, onToggle }) => {
+    checked: boolean;
+    onCheckedChange: () => void;
+}) {
     return (
-        <div className="border-b border-gray-100 last:border-0 py-4">
-            <button
-                onClick={onToggle}
-                className="flex items-center justify-between w-full group select-none"
-            >
-                <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-bold text-gray-900 group-hover:text-blue-700 transition-colors">
-                        {title}
-                    </h3>
-                    {activeCount && activeCount > 0 ? (
-                        <span className="bg-blue-100 text-blue-700 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
-                            {activeCount}
-                        </span>
-                    ) : null}
-                </div>
-                <div className="flex items-center gap-2">
-                    {activeCount && activeCount > 0 && onClear && (
-                        <span
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onClear();
-                            }}
-                            className="text-[10px] text-gray-400 hover:text-red-500 font-bold uppercase tracking-wide mr-1 cursor-pointer"
-                        >
-                            Reset
-                        </span>
-                    )}
-                    <div
-                        className={`p-1 rounded-full transition-all ${isOpen ? "bg-gray-100 text-gray-900" : "text-gray-400"
-                            }`}
-                    >
-                        {isOpen ? (
-                            <ChevronUp className="w-3.5 h-3.5" />
-                        ) : (
-                            <ChevronDown className="w-3.5 h-3.5" />
-                        )}
-                    </div>
-                </div>
-            </button>
-
-            <div
-                className={`overflow-hidden transition-all duration-300 ease-in-out ${isOpen ? "max-h-[500px] opacity-100 mt-3" : "max-h-0 opacity-0"
+        <label className="flex items-center gap-3 cursor-pointer group py-1.5 hover:bg-slate-50 px-2 -mx-2 rounded-lg transition-colors">
+            <Checkbox checked={checked} onCheckedChange={onCheckedChange} />
+            <span
+                className={`text-sm ${checked ? "text-slate-900 font-bold" : "text-slate-600 group-hover:text-slate-900 font-medium"
                     }`}
             >
-                {children}
-            </div>
-        </div>
+                {label}
+            </span>
+        </label>
     );
-};
+}
+
+function FilterSectionLabel({ title, count }: { title: string; count?: number }) {
+    return (
+        <span className="flex items-center gap-2">
+            {title}
+            {!!count && (
+                <Badge className="rounded-full bg-teal-100 px-1.5 text-[10px] font-extrabold text-teal-700 hover:bg-teal-100">
+                    {count}
+                </Badge>
+            )}
+        </span>
+    );
+}
 
 export default function ShopClient({
     initialCategory,
+    initialPriceRange,
+    initialProducts = [],
 }: {
     initialCategory: string;
+    initialPriceRange: number;
+    initialProducts?: any[];
 }) {
-    const { products } = useStore();
-    const { compareList } = useUserFeatures();
+    const { products: storeProducts } = useStore();
+    // Server-rendered catalogue until the store hydrates, so the grid is never
+    // empty in the initial HTML.
+    const products = storeProducts.length ? storeProducts : initialProducts;
+
+    // Quoted in the intro copy; derived so it never goes stale as stock changes.
+    const lowestPrice = products.reduce(
+        (min: number, p: any) => (p?.finalPrice > 0 && p.finalPrice < min ? p.finalPrice : min),
+        Infinity
+    );
     const router = useRouter();
 
     // State
     const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory);
-    const [priceRange, setPriceRange] = useState<number>(300000);
+    const [priceRange, setPriceRange] = useState<[number, number]>([0, initialPriceRange]);
     const [sortBy, setSortBy] = useState<string>("featured");
     const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
-    const [expandedSections, setExpandedSections] = useState<
-        Record<string, boolean>
-    >({
-        Category: true,
-        "Price Range": true,
-        "Laptop Brand": true,
-        "RAM Size": false,
-        Processor: false,
-        Storage: false,
-        "Display Size": false,
-    });
 
-    // New Filters State
+    // Filters state
     const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
     const [selectedRam, setSelectedRam] = useState<string[]>([]);
     const [selectedProcessor, setSelectedProcessor] = useState<string[]>([]);
     const [selectedStorage, setSelectedStorage] = useState<string[]>([]);
     const [selectedDisplay, setSelectedDisplay] = useState<string[]>([]);
 
-    // Update category when prop changes
     useEffect(() => {
         setSelectedCategory(initialCategory);
     }, [initialCategory]);
 
-    // Toggle Helper
+    useEffect(() => {
+        setPriceRange([0, initialPriceRange]);
+    }, [initialPriceRange]);
+
     const toggleFilter = (
         list: string[],
         setList: React.Dispatch<React.SetStateAction<string[]>>,
         value: string
     ) => {
-        if (list.includes(value)) {
-            setList(list.filter((item) => item !== value));
-        } else {
-            setList([...list, value]);
-        }
-    };
-
-    const toggleSection = (section: string) => {
-        setExpandedSections((prev) => ({
-            ...prev,
-            [section]: !prev[section],
-        }));
+        setList(list.includes(value) ? list.filter((item) => item !== value) : [...list, value]);
     };
 
     // Filter Logic
     const filteredProducts = products
         .filter((product) => {
-            // 1. Category
             const matchCategory =
                 selectedCategory === "All" || product.category === selectedCategory;
 
-            // 2. Price
-            const matchPrice = product.finalPrice <= priceRange;
+            const matchPrice =
+                product.finalPrice >= priceRange[0] && product.finalPrice <= priceRange[1];
 
-            // 3. Brand
             const matchBrand =
                 selectedBrands.length === 0 || selectedBrands.includes(product.brand);
 
-            // 4. Specs Matching (Partial text match for flexibility)
             const matchRam =
                 selectedRam.length === 0 ||
                 selectedRam.some((r) => product?.specs?.ram?.includes(r));
-
 
             // Normalize processor matching (e.g. "i7" matches "Intel Core i7-1365U")
             const matchProcessor =
                 selectedProcessor.length === 0 ||
                 selectedProcessor.some((p) => {
                     const processor = product?.specs?.processor?.toLowerCase() || "";
-
-                    if (!processor) return false; // product doesn't have processor field
+                    if (!processor) return false;
 
                     const normalized = p.toLowerCase();
 
                     if (normalized.includes("intel")) {
-                        const key = normalized.split(" ")[2]?.toLowerCase(); // "i5", "i7", ...
+                        const key = normalized.split(" ")[2]?.toLowerCase();
                         return key ? processor.includes(key) : false;
                     }
-
                     if (normalized.includes("apple")) {
                         return processor.includes("m1") || processor.includes("m2") || processor.includes("m3");
                     }
-
                     if (normalized.includes("amd")) {
-                        const key = normalized.split(" ")[2]?.toLowerCase(); // "5", "7", ...
+                        const key = normalized.split(" ")[2]?.toLowerCase();
                         return key ? processor.includes(key) : false;
                     }
-
                     return false;
                 });
-
 
             const matchStorage =
                 selectedStorage.length === 0 ||
                 selectedStorage.some((s) => product?.specs?.storage?.includes(s));
-
 
             const matchDisplay =
                 selectedDisplay.length === 0 ||
@@ -254,7 +198,6 @@ export default function ShopClient({
                     const productSize = parseFloat(product?.specs?.display || "0");
                     return productSize >= size && productSize < size + 1;
                 });
-
 
             return (
                 matchCategory &&
@@ -270,12 +213,12 @@ export default function ShopClient({
             if (sortBy === "price_asc") return a.finalPrice - b.finalPrice;
             if (sortBy === "price_desc") return b.finalPrice - a.finalPrice;
             if (sortBy === "rating") return b.rating - a.rating;
-            return 0; // featured (default)
+            return 0;
         });
 
     const clearAllFilters = () => {
         setSelectedCategory("All");
-        setPriceRange(300000);
+        setPriceRange([0, MAX_PRICE]);
         setSelectedBrands([]);
         setSelectedRam([]);
         setSelectedProcessor([]);
@@ -288,410 +231,282 @@ export default function ShopClient({
         selectedRam.length +
         selectedProcessor.length +
         selectedStorage.length +
-        selectedDisplay.length;
+        selectedDisplay.length +
+        (priceRange[1] < MAX_PRICE || priceRange[0] > 0 ? 1 : 0);
+
+    const FilterPanel = (
+        <>
+            <div className="flex justify-between items-center mb-4 pb-4 border-b border-slate-100">
+                <span className="text-sm font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+                    <Filter className="w-4 h-4 text-slate-900" /> Filters
+                </span>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearAllFilters}
+                    className="h-auto gap-1 rounded-md bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-600 hover:bg-red-50 hover:text-red-600"
+                >
+                    <RotateCcw className="w-3 h-3" /> Clear All
+                </Button>
+            </div>
+
+            <Accordion
+                multiple
+                defaultValue={["category", "price", "brand"]}
+                className="space-y-0"
+            >
+                <AccordionItem value="category">
+                    <AccordionTrigger>Category</AccordionTrigger>
+                    <AccordionContent>
+                        <RadioGroup value={selectedCategory} onValueChange={setSelectedCategory}>
+                            <label className="flex items-center gap-3 cursor-pointer py-1.5">
+                                <RadioGroupItem value="All" />
+                                <span className={`text-sm ${selectedCategory === "All" ? "text-slate-900 font-bold" : "text-slate-600 font-medium"}`}>
+                                    All Categories
+                                </span>
+                            </label>
+                            {Object.values(Category).map((cat) => (
+                                <label key={cat} className="flex items-center gap-3 cursor-pointer py-1.5">
+                                    <RadioGroupItem value={cat} />
+                                    <span className={`text-sm ${selectedCategory === cat ? "text-slate-900 font-bold" : "text-slate-600 font-medium"}`}>
+                                        {cat}
+                                    </span>
+                                </label>
+                            ))}
+                        </RadioGroup>
+                    </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="price">
+                    <AccordionTrigger>Price Range</AccordionTrigger>
+                    <AccordionContent>
+                        <div className="pt-1 pb-3">
+                            <div className="flex items-center justify-between mb-5 gap-3">
+                                <div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 w-1/2">
+                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-0.5">Min</span>
+                                    <span className="text-sm font-bold text-slate-900">₹{priceRange[0].toLocaleString('en-IN')}</span>
+                                </div>
+                                <div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 w-1/2">
+                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-0.5">Max</span>
+                                    <span className="text-sm font-bold text-slate-900">₹{priceRange[1].toLocaleString('en-IN')}</span>
+                                </div>
+                            </div>
+                            <Slider
+                                min={0}
+                                max={MAX_PRICE}
+                                step={5000}
+                                value={priceRange}
+                                onValueChange={(v) => setPriceRange(v as [number, number])}
+                                className="px-1"
+                            />
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="brand">
+                    <AccordionTrigger>
+                        <FilterSectionLabel title="Laptop Brand" count={selectedBrands.length} />
+                    </AccordionTrigger>
+                    <AccordionContent>
+                        <div className="space-y-0.5">
+                            {FILTER_OPTIONS.brands.map((brand) => (
+                                <CheckboxRow
+                                    key={brand}
+                                    label={brand}
+                                    checked={selectedBrands.includes(brand)}
+                                    onCheckedChange={() => toggleFilter(selectedBrands, setSelectedBrands, brand)}
+                                />
+                            ))}
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="processor">
+                    <AccordionTrigger>
+                        <FilterSectionLabel title="Processor" count={selectedProcessor.length} />
+                    </AccordionTrigger>
+                    <AccordionContent>
+                        <div className="space-y-0.5">
+                            {FILTER_OPTIONS.processors.map((proc) => (
+                                <CheckboxRow
+                                    key={proc}
+                                    label={proc}
+                                    checked={selectedProcessor.includes(proc)}
+                                    onCheckedChange={() => toggleFilter(selectedProcessor, setSelectedProcessor, proc)}
+                                />
+                            ))}
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="ram">
+                    <AccordionTrigger>
+                        <FilterSectionLabel title="RAM Size" count={selectedRam.length} />
+                    </AccordionTrigger>
+                    <AccordionContent>
+                        <div className="space-y-0.5">
+                            {FILTER_OPTIONS.ram.map((ram) => (
+                                <CheckboxRow
+                                    key={ram}
+                                    label={ram}
+                                    checked={selectedRam.includes(ram)}
+                                    onCheckedChange={() => toggleFilter(selectedRam, setSelectedRam, ram)}
+                                />
+                            ))}
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="storage">
+                    <AccordionTrigger>
+                        <FilterSectionLabel title="Storage" count={selectedStorage.length} />
+                    </AccordionTrigger>
+                    <AccordionContent>
+                        <div className="space-y-0.5">
+                            {FILTER_OPTIONS.storage.map((storage) => (
+                                <CheckboxRow
+                                    key={storage}
+                                    label={storage}
+                                    checked={selectedStorage.includes(storage)}
+                                    onCheckedChange={() => toggleFilter(selectedStorage, setSelectedStorage, storage)}
+                                />
+                            ))}
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="display">
+                    <AccordionTrigger>
+                        <FilterSectionLabel title="Display Size" count={selectedDisplay.length} />
+                    </AccordionTrigger>
+                    <AccordionContent>
+                        <div className="space-y-0.5">
+                            {FILTER_OPTIONS.display.map((display) => (
+                                <CheckboxRow
+                                    key={display}
+                                    label={display}
+                                    checked={selectedDisplay.includes(display)}
+                                    onCheckedChange={() => toggleFilter(selectedDisplay, setSelectedDisplay, display)}
+                                />
+                            ))}
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
+        </>
+    );
 
     return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-gray-50 min-h-screen">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-slate-50 min-h-screen">
             {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 pb-6 border-b border-gray-200 gap-4">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 pb-6 border-b border-slate-200 gap-4">
                 <div>
-                    <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+                    <div className="flex items-center gap-2 text-sm text-slate-500 mb-2">
                         <span
                             onClick={() => router.push("/")}
-                            className="hover:text-gray-900 cursor-pointer transition-colors"
+                            className="hover:text-slate-900 cursor-pointer transition-colors"
                         >
                             Home
                         </span>
-                        <span className="text-gray-300">/</span>
-                        <span className="text-gray-900 font-bold">Laptops</span>
+                        <span className="text-slate-300">/</span>
+                        <span className="text-slate-900 font-bold">Laptops</span>
                     </div>
                     <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-                        Shop Premium Laptops
+                        Refurbished &amp; Second Hand Laptops in India
                     </h1>
+                    {/* Crawlable prose: the grid alone gives Google and AI engines
+                        nothing to quote. Names both terms buyers actually search,
+                        and explains the difference rather than just stuffing them. */}
+                    <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
+                        Every machine here is ex-corporate stock from Dell, HP and Lenovo —
+                        business-grade laptops built for daily use, then quality-checked
+                        through our 40-point inspection.
+                        {Number.isFinite(lowestPrice) &&
+                            ` Prices start at ₹${lowestPrice.toLocaleString("en-IN")}.`}{" "}
+                        All come with a 1-year warranty, doorstep delivery across India, and
+                        a 14-day return window with free pickup.
+                    </p>
                 </div>
                 <div className="flex items-center w-full md:w-auto gap-3">
-
-                    {/* Mobile Filters Button */}
-                    <button
-                        className="md:hidden flex-1 flex items-center justify-center px-4 py-2 border border-gray-200 rounded-xl text-gray-700 bg-white font-bold hover:bg-gray-50 active:scale-95 transition-all"
-                        onClick={() => setIsMobileFiltersOpen(true)}
-                    >
-                        <SlidersHorizontal className="w-4 h-4 mr-2" /> <span className="text-sm">Filters</span>
-                        {totalActiveFilters > 0 && (
-                            <span className="ml-2 bg-gray-900 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                                {totalActiveFilters}
-                            </span>
-                        )}
-                    </button>
+                    {/* Mobile Filters Trigger */}
+                    <Sheet open={isMobileFiltersOpen} onOpenChange={setIsMobileFiltersOpen}>
+                        <SheetTrigger
+                            render={
+                                <Button
+                                    variant="outline"
+                                    className="md:hidden h-auto flex-1 justify-center gap-2 rounded-xl border-slate-200 bg-white px-4 py-2 font-bold text-slate-700"
+                                />
+                            }
+                        >
+                            <SlidersHorizontal className="w-4 h-4" /> Filters
+                            {totalActiveFilters > 0 && (
+                                <Badge className="rounded-full bg-slate-900 px-1.5 text-[10px] font-bold hover:bg-slate-900">
+                                    {totalActiveFilters}
+                                </Badge>
+                            )}
+                        </SheetTrigger>
+                        <SheetContent side="left" className="w-[85%] p-0">
+                            <SheetHeader className="border-b border-slate-100">
+                                <SheetTitle className="flex items-center gap-2 text-lg">
+                                    <SlidersHorizontal className="w-5 h-5" /> Filters
+                                </SheetTitle>
+                            </SheetHeader>
+                            <div className="flex-1 overflow-y-auto px-4">{FilterPanel}</div>
+                            <SheetFooter className="border-t border-slate-100">
+                                <Button
+                                    onClick={() => setIsMobileFiltersOpen(false)}
+                                    className="h-auto w-full rounded-xl bg-teal-600 py-3.5 font-bold text-white shadow-lg shadow-teal-200 hover:bg-teal-700"
+                                >
+                                    Show {filteredProducts.length} Results
+                                </Button>
+                            </SheetFooter>
+                        </SheetContent>
+                    </Sheet>
 
                     {/* Sort Dropdown */}
-                    <div className="w-full md:w-[200px]">
-                        <Select
-                            value={sortBy}
-                            onChange={(e) => setSortBy(e.target.value)}
-                            displayEmpty
-                            fullWidth
-                            sx={{
-                                background: "white",
-                                borderRadius: "12px",
-                                fontWeight: 600,
-                                fontSize: "14px",
-                                color: "#374151",
-                                height: "44px",
-                                "& .MuiSelect-select": {
-                                    display: "flex",
-                                    alignItems: "center",
-                                    padding: "0 14px",
-                                    height: "44px",
-                                },
-                                "& fieldset": {
-                                    borderColor: "#e5e7eb",
-                                },
-                                "&:hover fieldset": {
-                                    borderColor: "#d1d5db",
-                                },
-                                "&.Mui-focused fieldset": {
-                                    borderColor: "#3b82f6",
-                                    borderWidth: "2px",
-                                },
-                            }}
-                        >
-                            <MenuItem value={"featured"}>Recommended</MenuItem>
-                            <MenuItem value={"price_asc"}>Price: Low to High</MenuItem>
-                            <MenuItem value={"price_desc"}>Price: High to Low</MenuItem>
-                            <MenuItem value={"rating"}>Top Rated</MenuItem>
-                        </Select>
-                    </div>
+                    <Select value={sortBy} onValueChange={(v) => v && setSortBy(v)}>
+                        <SelectTrigger className="h-auto w-full min-w-[180px] rounded-xl border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-700 md:w-[200px]">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="featured">Recommended</SelectItem>
+                            <SelectItem value="price_asc">Price: Low to High</SelectItem>
+                            <SelectItem value="price_desc">Price: High to Low</SelectItem>
+                            <SelectItem value="rating">Top Rated</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
-
             </div>
 
-            <div className="flex flex-col md:flex-row gap-8 relative items-start">
-                {/* Mobile Overlay - CRITICAL FOR MOBILE */}
-                <div
-                    className={`
-            fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity duration-300 md:hidden
-            ${isMobileFiltersOpen
-                            ? "opacity-100 pointer-events-auto"
-                            : "opacity-0 pointer-events-none"
-                        }
-          `}
-                    onClick={() => setIsMobileFiltersOpen(false)}
-                />
-
-                {/* Sidebar Filters */}
-                <aside
-                    className={`
-            fixed inset-y-0 left-0 z-50 w-80 bg-white shadow-2xl 
-            transition-transform duration-300 ease-in-out 
-            md:sticky md:top-24 md:w-72 md:bg-transparent md:shadow-none 
-            flex flex-col md:z-10
-            ${isMobileFiltersOpen ? "translate-x-0" : "-translate-x-full"}
-            md:translate-x-0
-          `}
-                    style={{
-                        height:
-                            typeof window !== "undefined" && window.innerWidth >= 768
-                                ? `calc(100vh - 8rem)`
-                                : "100%",
-                        overflowY: "auto",
-                    }}
-                >
-                    {/* Desktop Container Wrapper */}
-                    <div className="md:bg-white md:rounded-2xl md:border md:border-gray-200 md:shadow-sm h-full flex flex-col overflow-hidden">
-                        {/* Mobile Header */}
-                        <div className="flex justify-between items-center p-5 border-b md:hidden bg-white">
-                            <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                                <SlidersHorizontal className="w-5 h-5" /> Filters
-                            </h2>
-                            <button
-                                onClick={() => setIsMobileFiltersOpen(false)}
-                                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                            >
-                                <X className="w-5 h-5 text-gray-500" />
-                            </button>
-                        </div>
-
-                        {/* Scrollable Content */}
-                        <div className="flex-1 overflow-y-auto custom-scrollbar p-5 md:p-6">
-                            <div className="flex justify-between items-center mb-6 pb-2 border-b border-gray-100">
-                                <span className="text-sm font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-                                    <Filter className="w-4 h-4 text-gray-900" /> Filters
-                                </span>
-                                <button
-                                    onClick={clearAllFilters}
-                                    className="text-[11px] bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-600 font-bold px-2 py-1 rounded-md transition-colors flex items-center gap-1"
-                                >
-                                    <RotateCcw className="w-3 h-3" /> Clear All
-                                </button>
-                            </div>
-
-                            <div className="space-y-1">
-                                {/* Categories - Radio Style */}
-                                <FilterAccordion
-                                    title="Category"
-                                    isOpen={expandedSections["Category"]}
-                                    onToggle={() => toggleSection("Category")}
-                                >
-                                    <div className="space-y-1">
-                                        <label className="flex items-center space-x-3 cursor-pointer group py-2 hover:bg-gray-50 px-2 rounded-lg -mx-2 transition-all">
-                                            <div
-                                                className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${selectedCategory === "All"
-                                                    ? "border-gray-900 bg-white"
-                                                    : "border-gray-300 bg-gray-50"
-                                                    }`}
-                                            >
-                                                {selectedCategory === "All" && (
-                                                    <div className="w-2 h-2 rounded-full bg-gray-900" />
-                                                )}
-                                            </div>
-                                            <input
-                                                type="radio"
-                                                name="category"
-                                                checked={selectedCategory === "All"}
-                                                onChange={() => setSelectedCategory("All")}
-                                                className="hidden"
-                                            />
-                                            <span
-                                                className={`text-sm ${selectedCategory === "All"
-                                                    ? "text-gray-900 font-bold"
-                                                    : "text-gray-600 font-medium"
-                                                    }`}
-                                            >
-                                                All Categories
-                                            </span>
-                                        </label>
-                                        {Object.values(Category).map((cat) => (
-                                            <label
-                                                key={cat}
-                                                className="flex items-center space-x-3 cursor-pointer group py-2 hover:bg-gray-50 px-2 rounded-lg -mx-2 transition-all"
-                                            >
-                                                <div
-                                                    className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${selectedCategory === cat
-                                                        ? "border-blue-600 bg-white"
-                                                        : "border-gray-300 bg-gray-50"
-                                                        }`}
-                                                >
-                                                    {selectedCategory === cat && (
-                                                        <div className="w-2 h-2 rounded-full bg-blue-600" />
-                                                    )}
-                                                </div>
-                                                <input
-                                                    type="radio"
-                                                    name="category"
-                                                    checked={selectedCategory === cat}
-                                                    onChange={() => setSelectedCategory(cat)}
-                                                    className="hidden"
-                                                />
-                                                <span
-                                                    className={`text-sm ${selectedCategory === cat
-                                                        ? "text-gray-900 font-bold"
-                                                        : "text-gray-600 font-medium"
-                                                        }`}
-                                                >
-                                                    {cat}
-                                                </span>
-                                            </label>
-                                        ))}
-                                    </div>
-                                </FilterAccordion>
-
-                                {/* Price Range */}
-                                <FilterAccordion
-                                    title="Price Range"
-                                    isOpen={expandedSections["Price Range"]}
-                                    onToggle={() => toggleSection("Price Range")}
-                                >
-                                    <div className="px-1 pt-2 pb-4">
-                                        <div className="flex items-center justify-between mb-4 gap-3">
-                                            <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 w-1/2">
-                                                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-0.5">
-                                                    Min
-                                                </span>
-                                                <span className="text-sm font-bold text-gray-900">
-                                                    ₹0
-                                                </span>
-                                            </div>
-                                            <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 w-1/2">
-                                                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-0.5">
-                                                    Max
-                                                </span>
-                                                <span className="text-sm font-bold text-gray-900">
-                                                    ₹{priceRange.toLocaleString("en-IN")}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <input
-                                            type="range"
-                                            min="0"
-                                            max="300000"
-                                            step="5000"
-                                            value={priceRange}
-                                            onChange={(e) => setPriceRange(Number(e.target.value))}
-                                            className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-gray-900 hover:accent-gray-900"
-                                        />
-                                    </div>
-                                </FilterAccordion>
-
-                                {/* Brand */}
-                                <FilterAccordion
-                                    title="Laptop Brand"
-                                    activeCount={selectedBrands.length}
-                                    onClear={() => setSelectedBrands([])}
-                                    isOpen={expandedSections["Laptop Brand"]}
-                                    onToggle={() => toggleSection("Laptop Brand")}
-                                >
-                                    <div className="space-y-0.5">
-                                        {FILTER_OPTIONS.brands.map((brand) => (
-                                            <CheckboxItem
-                                                key={brand}
-                                                label={brand}
-                                                selected={selectedBrands.includes(brand)}
-                                                onChange={() =>
-                                                    toggleFilter(selectedBrands, setSelectedBrands, brand)
-                                                }
-                                            />
-                                        ))}
-                                    </div>
-                                </FilterAccordion>
-
-                                {/* Processor */}
-                                <FilterAccordion
-                                    title="Processor"
-                                    activeCount={selectedProcessor.length}
-                                    onClear={() => setSelectedProcessor([])}
-                                    isOpen={expandedSections["Processor"]}
-                                    onToggle={() => toggleSection("Processor")}
-                                >
-                                    <div className="space-y-0.5">
-                                        {FILTER_OPTIONS.processors.map((proc) => (
-                                            <CheckboxItem
-                                                key={proc}
-                                                label={proc}
-                                                selected={selectedProcessor.includes(proc)}
-                                                onChange={() =>
-                                                    toggleFilter(
-                                                        selectedProcessor,
-                                                        setSelectedProcessor,
-                                                        proc
-                                                    )
-                                                }
-                                            />
-                                        ))}
-                                    </div>
-                                </FilterAccordion>
-
-                                {/* RAM */}
-                                <FilterAccordion
-                                    title="RAM Size"
-                                    activeCount={selectedRam.length}
-                                    onClear={() => setSelectedRam([])}
-                                    isOpen={expandedSections["RAM Size"]}
-                                    onToggle={() => toggleSection("RAM Size")}
-                                >
-                                    <div className="space-y-0.5">
-                                        {FILTER_OPTIONS.ram.map((ram) => (
-                                            <CheckboxItem
-                                                key={ram}
-                                                label={ram}
-                                                selected={selectedRam.includes(ram)}
-                                                onChange={() =>
-                                                    toggleFilter(selectedRam, setSelectedRam, ram)
-                                                }
-                                            />
-                                        ))}
-                                    </div>
-                                </FilterAccordion>
-
-                                {/* Storage */}
-                                <FilterAccordion
-                                    title="Storage"
-                                    activeCount={selectedStorage.length}
-                                    onClear={() => setSelectedStorage([])}
-                                    isOpen={expandedSections["Storage"]}
-                                    onToggle={() => toggleSection("Storage")}
-                                >
-                                    <div className="space-y-0.5">
-                                        {FILTER_OPTIONS.storage.map((storage) => (
-                                            <CheckboxItem
-                                                key={storage}
-                                                label={storage}
-                                                selected={selectedStorage.includes(storage)}
-                                                onChange={() =>
-                                                    toggleFilter(
-                                                        selectedStorage,
-                                                        setSelectedStorage,
-                                                        storage
-                                                    )
-                                                }
-                                            />
-                                        ))}
-                                    </div>
-                                </FilterAccordion>
-
-                                {/* Display */}
-                                <FilterAccordion
-                                    title="Display Size"
-                                    activeCount={selectedDisplay.length}
-                                    onClear={() => setSelectedDisplay([])}
-                                    isOpen={expandedSections["Display Size"]}
-                                    onToggle={() => toggleSection("Display Size")}
-                                >
-                                    <div className="space-y-0.5">
-                                        {FILTER_OPTIONS.display.map((display) => (
-                                            <CheckboxItem
-                                                key={display}
-                                                label={display}
-                                                selected={selectedDisplay.includes(display)}
-                                                onChange={() =>
-                                                    toggleFilter(
-                                                        selectedDisplay,
-                                                        setSelectedDisplay,
-                                                        display
-                                                    )
-                                                }
-                                            />
-                                        ))}
-                                    </div>
-                                </FilterAccordion>
-
-                                {/* Bottom spacer for sticky bar */}
-                                <div className="h-10"></div>
-                            </div>
-                        </div>
-
-                        {/* Mobile Footer Actions */}
-                        <div className="p-4 border-t bg-white md:hidden sticky bottom-0">
-                            <button
-                                onClick={() => setIsMobileFiltersOpen(false)}
-                                className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-bold shadow-lg shadow-blue-200 active:scale-95 transition-transform"
-                            >
-                                Show {filteredProducts.length} Results
-                            </button>
-                        </div>
+            <div className="flex flex-col md:flex-row gap-8 items-start">
+                {/* Desktop Sidebar */}
+                <aside className="hidden md:block md:sticky md:top-24 md:w-72 flex-shrink-0">
+                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 max-h-[calc(100vh-8rem)] overflow-y-auto">
+                        {FilterPanel}
                     </div>
                 </aside>
 
                 {/* Product Grid */}
                 <div className="flex-1 w-full">
                     {filteredProducts.length === 0 ? (
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center h-96 flex flex-col items-center justify-center">
-                            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-50 mb-6 animate-pulse">
-                                <Search className="w-8 h-8 text-gray-400" />
+                        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-12 text-center h-96 flex flex-col items-center justify-center">
+                            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-slate-50 mb-6">
+                                <Search className="w-8 h-8 text-slate-400" />
                             </div>
-                            <h3 className="text-xl font-bold text-gray-900 mb-2">
+                            <h3 className="text-xl font-bold text-slate-900 mb-2">
                                 No matching laptops found
                             </h3>
-                            <p className="text-gray-500 mb-8 max-w-sm mx-auto">
+                            <p className="text-slate-500 mb-8 max-w-sm mx-auto">
                                 We couldn't find any products matching your current filters. Try
                                 adjusting your price range or categories.
                             </p>
-                            <button
+                            <Button
                                 onClick={clearAllFilters}
-                                className="inline-flex items-center justify-center px-6 py-3 border border-transparent rounded-xl text-sm font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors"
+                                variant="secondary"
+                                className="h-auto rounded-xl bg-teal-50 px-6 py-3 text-sm font-bold text-teal-700 hover:bg-teal-100"
                             >
                                 Clear All Filters
-                            </button>
+                            </Button>
                         </div>
                     ) : (
                         <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-3 md:gap-6">
@@ -700,12 +515,21 @@ export default function ShopClient({
                                     key={p.id || p._id || p.productId || Math.random()}
                                     product={p}
                                 />
-
                             ))}
                         </div>
                     )}
                 </div>
             </div>
+
+            {/* Crawlable, out of the primary viewport: still same-page prose for
+                "second hand laptops" (outsearches "refurbished" 49.5k vs 40.5k/mo
+                in India), just moved below the grid instead of pushing it down. */}
+            <p className="mt-10 max-w-2xl text-sm leading-relaxed text-slate-500">
+                People often call these second hand laptops, and the stock is the
+                same — the difference is what happens before it reaches you. A used
+                laptop is resold as-is. Ours is tested, repaired where needed, and
+                sold with a warranty behind it.
+            </p>
         </div>
     );
 }
