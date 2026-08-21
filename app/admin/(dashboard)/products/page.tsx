@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useStore } from '@/context/StoreContext';
 import { Product, Category } from '@/types';
-import { Edit, Trash2, Plus, X, AlertCircle, Check, Search, Upload, Image as ImageIcon, Cpu, HardDrive, Monitor, Zap, Settings, Loader2, RefreshCw, Sparkles } from 'lucide-react';
+import { Edit, Trash2, Plus, X, AlertCircle, Check, Search, Upload, Image as ImageIcon, Cpu, HardDrive, Monitor, Zap, Settings, Loader2, RefreshCw, Sparkles, Camera } from 'lucide-react';
 import { API_URL } from '@/api/api';
 import router from 'next/router';
 import dynamic from 'next/dynamic';
@@ -93,7 +93,9 @@ export default function ProductsPage() {
     const [configOptions, setConfigOptions] = useState<IConfigOptions>(DEFAULT_CONFIG_OPTIONS);
 
     const mainImageRef = useRef<HTMLInputElement>(null);
+    const mainCameraRef = useRef<HTMLInputElement>(null);
     const galleryImagesRef = useRef<HTMLInputElement>(null);
+    const galleryCameraRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (!isModalOpen) {
@@ -276,6 +278,7 @@ export default function ProductsPage() {
             setErrors(prev => ({ ...prev, image: '' }));
             processMainImage(file);
         }
+        e.target.value = ''; // allow re-picking the same file/photo again (camera retakes reuse names)
     };
 
     const reprocessMainImage = async () => {
@@ -328,6 +331,7 @@ export default function ProductsPage() {
                 processGalleryFile(file, startIdx + i);
             });
         }
+        e.target.value = ''; // allow re-picking the same file/photo again (camera retakes reuse names)
     };
 
     const reprocessExistingGalleryImage = async (idx: number) => {
@@ -594,7 +598,7 @@ export default function ProductsPage() {
                     <h1 className="text-2xl font-bold text-gray-800">Product Management</h1>
                     <p className="text-gray-500 text-sm">Manage inventory, prices, and specifications</p>
                 </div>
-                <div className="flex gap-3 w-full md:w-auto">
+                <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
                     <div className="relative flex-1 md:w-64">
                         <input
                             type="text"
@@ -607,15 +611,65 @@ export default function ProductsPage() {
                     </div>
                     <button
                         onClick={() => openModal()}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-blue-700 transition-colors whitespace-nowrap"
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center justify-center hover:bg-blue-700 transition-colors whitespace-nowrap"
                     >
                         <Plus className="w-5 h-5 mr-2" /> Add Product
                     </button>
                 </div>
             </div>
 
-            {/* Products Table */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            {/* Products List — cards on mobile, table from md up */}
+            <div className="md:hidden space-y-3">
+                {filteredProducts.map(product => (
+                    <div key={product._id || product.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex gap-3">
+                        <div className="w-16 h-16 rounded bg-gray-100 flex-shrink-0 overflow-hidden border border-gray-200">
+                            <img src={product.image} className="w-full h-full object-cover" alt={product.title} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <div className="font-medium text-gray-900 truncate">{product.title}</div>
+                            <div className="text-gray-500 text-xs">{product.brand} • {product.category}</div>
+                            <div className="flex flex-wrap items-center gap-2 mt-2">
+                                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${product.stock > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                    {product.stock > 0 ? 'In Stock' : 'Out of Stock'}
+                                </span>
+                                <span className="text-gray-600 bg-gray-100 px-2 py-0.5 rounded text-xs">
+                                    {product.condition || 'N/A'}
+                                </span>
+                            </div>
+                            <div className="flex items-center justify-between mt-2">
+                                <div>
+                                    <span className="font-bold text-blue-600">₹{product.finalPrice.toLocaleString('en-IN')}</span>
+                                    {product.discountPercent > 0 && (
+                                        <span className="text-xs text-red-500 line-through ml-2">₹{product.price.toLocaleString('en-IN')}</span>
+                                    )}
+                                    <span className="text-xs text-gray-500 ml-2">Stock: {product.stock}</span>
+                                </div>
+                                <div className="flex gap-1">
+                                    <button
+                                        onClick={() => openModal(product)}
+                                        className="text-blue-600 hover:text-blue-800 p-2 hover:bg-blue-50 rounded transition-colors"
+                                    >
+                                        <Edit className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                        onClick={() => handleDelete(product._id?.toString() || product.id?.toString() || '')}
+                                        className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded transition-colors"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+                {filteredProducts.length === 0 && (
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 px-6 py-8 text-center text-gray-500">
+                        {searchTerm ? `No products found matching "${searchTerm}"` : 'No products available'}
+                    </div>
+                )}
+            </div>
+
+            <div className="hidden md:block bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm">
                         <thead className="bg-gray-50 text-gray-700 font-bold border-b">
@@ -695,18 +749,18 @@ export default function ProductsPage() {
             {isModalOpen && (
                 <div className="fixed inset-0 z-50 bg-white overflow-hidden">
                     <div className="sticky top-0 z-20 bg-white border-b shadow-sm">
-                        <div className="max-w-5xl mx-auto px-6 py-4 flex justify-between items-center">
-                            <div>
-                                <h2 className="text-2xl font-bold text-gray-900">
+                        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center gap-3">
+                            <div className="min-w-0">
+                                <h2 className="text-lg sm:text-2xl font-bold text-gray-900 truncate">
                                     {editingProduct._id ? 'Edit Product' : 'Add New Product'}  {/* ✅ Changed check */}
                                 </h2>
-                                <p className="text-sm text-gray-500 mt-1">
+                                <p className="hidden sm:block text-sm text-gray-500 mt-1">
                                     Fill in the details below. All fields marked * are required.
                                 </p>
                             </div>
                             <button
                                 onClick={() => setIsModalOpen(false)}
-                                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                                className="p-2 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0"
                                 type="button"
                             >
                                 <X className="w-6 h-6 text-gray-600" />
@@ -715,12 +769,12 @@ export default function ProductsPage() {
                     </div>
 
                     {/* Scrollable Content */}
-                    <div className="h-[calc(100vh-80px)] overflow-y-auto bg-gray-50">
-                        <div className="max-w-5xl mx-auto px-6 py-8">
+                    <div className="h-[calc(100vh-64px)] sm:h-[calc(100vh-80px)] overflow-y-auto bg-gray-50">
+                        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
                             <form onSubmit={handleSave} className="space-y-6">
 
                                 {/* Section 1: Basic Information */}
-                                <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5 shadow-sm">
+                                <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6 space-y-5 shadow-sm">
                                     <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider border-b pb-3 flex items-center">
                                         <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
                                             <span className="text-blue-600 font-bold">1</span>
@@ -801,7 +855,7 @@ export default function ProductsPage() {
                                 </div>
 
                                 {/* Section 2: Pricing & Inventory */}
-                                <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5 shadow-sm">
+                                <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6 space-y-5 shadow-sm">
                                     <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider border-b pb-3 flex items-center">
                                         <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
                                             <span className="text-blue-600 font-bold">2</span>
@@ -859,7 +913,7 @@ export default function ProductsPage() {
                                 </div>
 
                                 {/* Section 3: Technical Specifications */}
-                                <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5 shadow-sm">
+                                <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6 space-y-5 shadow-sm">
                                     <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider border-b pb-3 flex items-center">
                                         <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
                                             <span className="text-blue-600 font-bold">3</span>
@@ -932,7 +986,7 @@ export default function ProductsPage() {
                                 </div>
 
                                 {/* Section 4: Customization Options */}
-                                <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5 shadow-sm">
+                                <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6 space-y-5 shadow-sm">
                                     <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider border-b pb-3 flex items-center">
                                         <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
                                             <span className="text-blue-600 font-bold">4</span>
@@ -954,7 +1008,7 @@ export default function ProductsPage() {
                                         </div>
                                         <div className="space-y-2">
                                             {configOptions?.condition?.map((option, index) => (
-                                                <div key={index} className="flex gap-2 items-center">
+                                                <div key={index} className="flex flex-col sm:flex-row gap-2 sm:items-center border border-gray-100 rounded-lg p-2 sm:border-0 sm:p-0">
                                                     <input
                                                         type="text"
                                                         placeholder="Label (e.g. Good)"
@@ -965,21 +1019,21 @@ export default function ProductsPage() {
                                                     <input
                                                         type="text"
                                                         placeholder="Value (e.g. Good)"
-                                                        className="w-32 p-2 border border-gray-300 rounded-lg text-sm"
+                                                        className="w-full sm:w-32 p-2 border border-gray-300 rounded-lg text-sm"
                                                         value={option.value}
                                                         onChange={(e) => updateConfigOption('condition', index, 'value', e.target.value)}
                                                     />
                                                     <input
                                                         type="number"
                                                         placeholder="Price ₹"
-                                                        className="w-28 p-2 border border-gray-300 rounded-lg text-sm"
+                                                        className="w-full sm:w-28 p-2 border border-gray-300 rounded-lg text-sm"
                                                         value={option.price}
                                                         onChange={(e) => updateConfigOption('condition', index, 'price', Number(e.target.value))}
                                                     />
                                                     <button
                                                         type="button"
                                                         onClick={() => removeConfigOption('condition', index)}
-                                                        className="text-red-500 hover:text-red-700 p-2"
+                                                        className="text-red-500 hover:text-red-700 p-2 self-end sm:self-auto"
                                                     >
                                                         <X className="w-4 h-4" />
                                                     </button>
@@ -1000,7 +1054,7 @@ export default function ProductsPage() {
                                         </div>
                                         <div className="space-y-2">
                                             {configOptions.ram.map((option, index) => (
-                                                <div key={index} className="flex gap-2 items-center">
+                                                <div key={index} className="flex flex-col sm:flex-row gap-2 sm:items-center border border-gray-100 rounded-lg p-2 sm:border-0 sm:p-0">
                                                     <input
                                                         type="text"
                                                         placeholder="Label (e.g. 8GB Unified)"
@@ -1011,21 +1065,21 @@ export default function ProductsPage() {
                                                     <input
                                                         type="text"
                                                         placeholder="Value (e.g. 8GB)"
-                                                        className="w-32 p-2 border border-gray-300 rounded-lg text-sm"
+                                                        className="w-full sm:w-32 p-2 border border-gray-300 rounded-lg text-sm"
                                                         value={option.value}
                                                         onChange={(e) => updateConfigOption('ram', index, 'value', e.target.value)}
                                                     />
                                                     <input
                                                         type="number"
                                                         placeholder="Price ₹"
-                                                        className="w-28 p-2 border border-gray-300 rounded-lg text-sm"
+                                                        className="w-full sm:w-28 p-2 border border-gray-300 rounded-lg text-sm"
                                                         value={option.price}
                                                         onChange={(e) => updateConfigOption('ram', index, 'price', Number(e.target.value))}
                                                     />
                                                     <button
                                                         type="button"
                                                         onClick={() => removeConfigOption('ram', index)}
-                                                        className="text-red-500 hover:text-red-700 p-2"
+                                                        className="text-red-500 hover:text-red-700 p-2 self-end sm:self-auto"
                                                     >
                                                         <X className="w-4 h-4" />
                                                     </button>
@@ -1048,7 +1102,7 @@ export default function ProductsPage() {
                                         </div>
                                         <div className="space-y-2">
                                             {configOptions.storage.map((option, index) => (
-                                                <div key={index} className="flex gap-2 items-center">
+                                                <div key={index} className="flex flex-col sm:flex-row gap-2 sm:items-center border border-gray-100 rounded-lg p-2 sm:border-0 sm:p-0">
                                                     <input
                                                         type="text"
                                                         placeholder="Label (e.g. 256GB SSD)"
@@ -1059,21 +1113,21 @@ export default function ProductsPage() {
                                                     <input
                                                         type="text"
                                                         placeholder="Value (e.g. 256GB)"
-                                                        className="w-32 p-2 border border-gray-300 rounded-lg text-sm"
+                                                        className="w-full sm:w-32 p-2 border border-gray-300 rounded-lg text-sm"
                                                         value={option.value}
                                                         onChange={(e) => updateConfigOption('storage', index, 'value', e.target.value)}
                                                     />
                                                     <input
                                                         type="number"
                                                         placeholder="Price ₹"
-                                                        className="w-28 p-2 border border-gray-300 rounded-lg text-sm"
+                                                        className="w-full sm:w-28 p-2 border border-gray-300 rounded-lg text-sm"
                                                         value={option.price}
                                                         onChange={(e) => updateConfigOption('storage', index, 'price', Number(e.target.value))}
                                                     />
                                                     <button
                                                         type="button"
                                                         onClick={() => removeConfigOption('storage', index)}
-                                                        className="text-red-500 hover:text-red-700 p-2"
+                                                        className="text-red-500 hover:text-red-700 p-2 self-end sm:self-auto"
                                                     >
                                                         <X className="w-4 h-4" />
                                                     </button>
@@ -1096,7 +1150,7 @@ export default function ProductsPage() {
                                         </div>
                                         <div className="space-y-2">
                                             {configOptions.warranty.map((option, index) => (
-                                                <div key={index} className="flex gap-2 items-center">
+                                                <div key={index} className="flex flex-col sm:flex-row gap-2 sm:items-center border border-gray-100 rounded-lg p-2 sm:border-0 sm:p-0">
                                                     <input
                                                         type="text"
                                                         placeholder="Label (e.g. 1 Year Warranty)"
@@ -1107,21 +1161,21 @@ export default function ProductsPage() {
                                                     <input
                                                         type="text"
                                                         placeholder="Value (e.g. 1 Year)"
-                                                        className="w-32 p-2 border border-gray-300 rounded-lg text-sm"
+                                                        className="w-full sm:w-32 p-2 border border-gray-300 rounded-lg text-sm"
                                                         value={option.value}
                                                         onChange={(e) => updateConfigOption('warranty', index, 'value', e.target.value)}
                                                     />
                                                     <input
                                                         type="number"
                                                         placeholder="Price ₹"
-                                                        className="w-28 p-2 border border-gray-300 rounded-lg text-sm"
+                                                        className="w-full sm:w-28 p-2 border border-gray-300 rounded-lg text-sm"
                                                         value={option.price}
                                                         onChange={(e) => updateConfigOption('warranty', index, 'price', Number(e.target.value))}
                                                     />
                                                     <button
                                                         type="button"
                                                         onClick={() => removeConfigOption('warranty', index)}
-                                                        className="text-red-500 hover:text-red-700 p-2"
+                                                        className="text-red-500 hover:text-red-700 p-2 self-end sm:self-auto"
                                                     >
                                                         <X className="w-4 h-4" />
                                                     </button>
@@ -1137,7 +1191,7 @@ export default function ProductsPage() {
                                 </div>
 
                                 {/* Section 5: Media & Details */}
-                                <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5 shadow-sm">
+                                <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6 space-y-5 shadow-sm">
                                     <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider border-b pb-3 flex items-center">
                                         <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
                                             <span className="text-blue-600 font-bold">5</span>
@@ -1148,8 +1202,25 @@ export default function ProductsPage() {
                                     {/* Main Image Upload */}
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">Main Image *</label>
-                                        <div className="flex gap-4">
-                                            <div className="flex-1">
+                                        <div className="flex flex-col sm:flex-row gap-4">
+                                            <div className="flex-1 grid grid-cols-2 gap-2">
+                                                <input
+                                                    type="file"
+                                                    ref={mainCameraRef}
+                                                    accept="image/*"
+                                                    capture="environment"
+                                                    onChange={handleMainImageChange}
+                                                    className="hidden"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => mainCameraRef.current?.click()}
+                                                    className={`p-4 border-2 border-dashed rounded-lg flex flex-col items-center justify-center gap-1 transition-colors ${errors.image ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'
+                                                        } cursor-pointer`}
+                                                >
+                                                    <Camera className="w-6 h-6 text-gray-500" />
+                                                    <span className="text-xs text-gray-600 text-center">Take Photo</span>
+                                                </button>
                                                 <input
                                                     type="file"
                                                     ref={mainImageRef}
@@ -1160,17 +1231,15 @@ export default function ProductsPage() {
                                                 <button
                                                     type="button"
                                                     onClick={() => mainImageRef.current?.click()}
-                                                    className={`w-full p-4 border-2 border-dashed rounded-lg flex items-center justify-center gap-2 transition-colors ${errors.image ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'
+                                                    className={`p-4 border-2 border-dashed rounded-lg flex flex-col items-center justify-center gap-1 transition-colors ${errors.image ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'
                                                         } cursor-pointer`}
                                                 >
                                                     <Upload className="w-6 h-6 text-gray-500" />
-                                                    <span className="text-sm text-gray-600">
-                                                        {mainImageFile ? mainImageFile.name : (editingProduct.image ? 'Click to change image' : 'Click to upload main image')}
-                                                    </span>
+                                                    <span className="text-xs text-gray-600 text-center">Upload File</span>
                                                 </button>
                                             </div>
                                             {mainImagePreview && (
-                                                <div className="w-24 h-24 rounded-lg border-2 border-gray-200 overflow-hidden flex-shrink-0 relative group">
+                                                <div className="w-24 h-24 rounded-lg border-2 border-gray-200 overflow-hidden flex-shrink-0 relative group mx-auto sm:mx-0">
                                                     <img src={mainImagePreview} className="w-full h-full object-cover" alt="Main preview" />
                                                     {(mainImageStatus === 'processing' || mainImageReprocessing) && (
                                                         <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
@@ -1203,6 +1272,7 @@ export default function ProductsPage() {
                                                 </div>
                                             )}
                                         </div>
+                                        {mainImageFile && <p className="text-xs text-gray-500 mt-1 truncate">{mainImageFile.name}</p>}
                                         {mainImageStatus === 'processing' && (
                                             <p className="text-xs text-blue-600 mt-1 flex items-center"><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Removing background & applying studio background...</p>
                                         )}
@@ -1221,28 +1291,45 @@ export default function ProductsPage() {
                                     {/* Gallery Images Upload */}
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">Gallery Images (Optional)</label>
-                                        <input
-                                            type="file"
-                                            ref={galleryImagesRef}
-                                            accept="image/*"
-                                            multiple
-                                            onChange={handleGalleryImagesChange}
-                                            className="hidden"
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => galleryImagesRef.current?.click()}
-                                            className="w-full p-4 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center gap-2 hover:border-blue-400 hover:bg-blue-50 transition-colors cursor-pointer"
-                                        >
-                                            <ImageIcon className="w-6 h-6 text-gray-500" />
-                                            <span className="text-sm text-gray-600">
-                                                Click to add gallery images ({galleryFiles.length} new files selected)
-                                            </span>
-                                        </button>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <input
+                                                type="file"
+                                                ref={galleryCameraRef}
+                                                accept="image/*"
+                                                capture="environment"
+                                                onChange={handleGalleryImagesChange}
+                                                className="hidden"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => galleryCameraRef.current?.click()}
+                                                className="p-4 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center gap-1 hover:border-blue-400 hover:bg-blue-50 transition-colors cursor-pointer"
+                                            >
+                                                <Camera className="w-6 h-6 text-gray-500" />
+                                                <span className="text-xs text-gray-600 text-center">Take Photo</span>
+                                            </button>
+                                            <input
+                                                type="file"
+                                                ref={galleryImagesRef}
+                                                accept="image/*"
+                                                multiple
+                                                onChange={handleGalleryImagesChange}
+                                                className="hidden"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => galleryImagesRef.current?.click()}
+                                                className="p-4 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center gap-1 hover:border-blue-400 hover:bg-blue-50 transition-colors cursor-pointer"
+                                            >
+                                                <ImageIcon className="w-6 h-6 text-gray-500" />
+                                                <span className="text-xs text-gray-600 text-center">Upload Files</span>
+                                            </button>
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-2">{galleryFiles.length} new file{galleryFiles.length === 1 ? '' : 's'} selected</p>
 
                                         {/* Gallery Preview */}
                                         {galleryPreviews.length > 0 && (
-                                            <div className="grid grid-cols-6 gap-3 mt-4">
+                                            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 mt-4">
                                                 {galleryPreviews.map((preview, idx) => {
                                                     const isExisting = idx < existingGalleryImages.length;
                                                     const status: ImgStatus = isExisting
@@ -1318,7 +1405,7 @@ export default function ProductsPage() {
                                 </div>
 
                                 {/* Section 6: Product Flags */}
-                                <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5 shadow-sm">
+                                <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6 space-y-5 shadow-sm">
                                     <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider border-b pb-3 flex items-center">
                                         <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
                                             <span className="text-blue-600 font-bold">6</span>
@@ -1377,7 +1464,7 @@ export default function ProductsPage() {
                                 </div>
 
                                 {/* Sticky Footer with Action Buttons */}
-                                <div className="sticky bottom-0 bg-white border-t shadow-lg rounded-lg p-4 flex justify-between items-center">
+                                <div className="sticky bottom-0 bg-white border-t shadow-lg rounded-lg p-4 flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-3">
                                     <button
                                         type="button"
                                         onClick={() => setIsModalOpen(false)}
@@ -1389,7 +1476,7 @@ export default function ProductsPage() {
                                     <button
                                         type="submit"
                                         disabled={isSaving || anyImageProcessing}
-                                        className="px-8 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow-lg flex items-center transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="px-8 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow-lg flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         {isSaving ? (
                                             <>
