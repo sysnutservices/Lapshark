@@ -19,7 +19,7 @@ async function getProducts() {
 export const metadata: Metadata = {
     title: "Refurbished & Second Hand Laptops in India",
     description:
-        "Buy refurbished and second hand laptops online in India — Dell, HP and Lenovo business models, quality-checked, with a 1-year warranty and 14-day returns.",
+        "Buy refurbished and second hand laptops online in India — Dell, HP and Lenovo business models, quality-checked, with a 6-month warranty and 14-day returns.",
     alternates: {
         canonical: "https://lapshark.com/products",
     },

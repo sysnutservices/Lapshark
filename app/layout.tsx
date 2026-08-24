@@ -16,7 +16,7 @@ export const metadata: Metadata = {
         template: "%s | Lapshark",
     },
     description:
-        "Buy verified refurbished and second hand laptops at unbeatable prices with doorstep delivery, COD, no-cost EMI, and 1-year warranty across India.",
+        "Buy verified refurbished and second hand laptops at unbeatable prices with doorstep delivery, COD, no-cost EMI, and 6-month warranty across India.",
     keywords: [
         "refurbished laptops",
         "second hand laptop",
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
         siteName: "Lapshark",
         title: "Lapshark | Refurbished & Second Hand Laptops in India",
         description:
-            "Buy verified refurbished and second hand laptops at unbeatable prices with doorstep delivery, COD, no-cost EMI, and 1-year warranty across India.",
+            "Buy verified refurbished and second hand laptops at unbeatable prices with doorstep delivery, COD, no-cost EMI, and 6-month warranty across India.",
         url: SITE_URL,
         locale: "en_IN",
     },
@@ -55,7 +55,7 @@ export const metadata: Metadata = {
         card: "summary_large_image",
         title: "Lapshark | Refurbished & Second Hand Laptops in India",
         description:
-            "Buy verified refurbished and second hand laptops at unbeatable prices with doorstep delivery, COD, no-cost EMI, and 1-year warranty across India.",
+            "Buy verified refurbished and second hand laptops at unbeatable prices with doorstep delivery, COD, no-cost EMI, and 6-month warranty across India.",
     },
 };
 

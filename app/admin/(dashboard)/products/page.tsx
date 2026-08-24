@@ -42,9 +42,9 @@ const DEFAULT_CONFIG_OPTIONS: IConfigOptions = {
         { label: "1TB SSD", value: "1TB", price: 6000 },
     ],
     warranty: [
-        { label: "1 Year Warranty", value: "1 Year", price: 0 },
-        { label: "2 Year Coverage", value: "2 Year", price: 2499 },
-        { label: "3 Year Premium", value: "3 Year", price: 4499 },
+        { label: "6 Months Warranty", value: "6 Months", price: 0 },
+        { label: "1 Year Warranty", value: "1 Year", price: 1500 },
+        { label: "2 Year Warranty", value: "2 Year", price: 2999 },
     ],
     condition: [
         { label: "Good", value: "Good", price: 0 },
@@ -877,16 +877,22 @@ export default function ProductsPage() {
                                             {errors.price && <p className="text-xs text-red-500 mt-1">{errors.price}</p>}
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">Discount (%)</label>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Selling Price (₹)</label>
                                             <input
-                                                name="discountPercent"
+                                                name="sellingPrice"
                                                 type="number"
                                                 min="0"
-                                                max="100"
                                                 className="w-full p-3 border border-gray-300 rounded-lg outline-none"
-                                                value={editingProduct.discountPercent || ''}
-                                                onChange={handleChange}
-                                                placeholder="0"
+                                                value={editingProduct.price ? Math.round((editingProduct.price || 0) * (1 - (editingProduct.discountPercent || 0) / 100)) || '' : ''}
+                                                onChange={(e) => {
+                                                    const basePrice = editingProduct.price || 0;
+                                                    const sellingPrice = Number(e.target.value);
+                                                    const discountPercent = basePrice > 0
+                                                        ? Math.min(100, Math.max(0, ((basePrice - sellingPrice) / basePrice) * 100))
+                                                        : 0;
+                                                    setEditingProduct(prev => ({ ...prev, discountPercent }));
+                                                }}
+                                                placeholder={String(editingProduct.price || 0)}
                                             />
                                         </div>
                                         <div>
@@ -1153,14 +1159,14 @@ export default function ProductsPage() {
                                                 <div key={index} className="flex flex-col sm:flex-row gap-2 sm:items-center border border-gray-100 rounded-lg p-2 sm:border-0 sm:p-0">
                                                     <input
                                                         type="text"
-                                                        placeholder="Label (e.g. 1 Year Warranty)"
+                                                        placeholder="Label (e.g. 6 Months Warranty)"
                                                         className="flex-1 p-2 border border-gray-300 rounded-lg text-sm"
                                                         value={option.label}
                                                         onChange={(e) => updateConfigOption('warranty', index, 'label', e.target.value)}
                                                     />
                                                     <input
                                                         type="text"
-                                                        placeholder="Value (e.g. 1 Year)"
+                                                        placeholder="Value (e.g. 6 Months)"
                                                         className="w-full sm:w-32 p-2 border border-gray-300 rounded-lg text-sm"
                                                         value={option.value}
                                                         onChange={(e) => updateConfigOption('warranty', index, 'value', e.target.value)}

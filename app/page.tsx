@@ -7,7 +7,7 @@ import { api } from "@/api/api";
 export const metadata: Metadata = {
     title: "Refurbished & Second Hand Laptops Online | Lapshark",
     description:
-        "Buy refurbished and second hand laptops online in India. Quality-checked Dell, HP and Lenovo business models with a 1-year warranty, COD and doorstep delivery.",
+        "Buy refurbished and second hand laptops online in India. Quality-checked Dell, HP and Lenovo business models with a 6-month warranty, COD and doorstep delivery.",
 };
 
 export default async function HomePage() {

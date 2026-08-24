@@ -164,7 +164,7 @@ export default function Home({
                         <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-slate-100">
                             {[
                                 { icon: Truck, title: "Free Delivery", desc: "On orders above ₹10,000" },
-                                { icon: ShieldCheck, title: "1-Year Warranty", desc: "Comprehensive coverage" },
+                                { icon: ShieldCheck, title: "6-Month Warranty", desc: "Comprehensive coverage" },
                                 { icon: Recycle, title: "Eco-Conscious", desc: "100% Sustainable packaging" },
                                 { icon: Cpu, title: "Expert Support", desc: "Lifetime tech assistance" },
                             ].map((f, i) => (
@@ -216,7 +216,7 @@ export default function Home({
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-8 text-center divide-x divide-slate-800">
                         {[
-                            { value: 1, suffix: "-Year", label: "Official Warranty" },
+                            { value: 6, suffix: "-Month", label: "Official Warranty" },
                             { value: 40, suffix: "+", label: "Point Quality Check" },
                             { value: 14, suffix: "-Day", label: "Easy Returns" },
                             { value: 100, suffix: "%", label: "COD Available" },
@@ -339,7 +339,7 @@ export default function Home({
                     {[
                         { icon: Search, step: "01", title: "Browse & Select", desc: "Filter by budget, brand, or specs to find the laptop that fits your needs." },
                         { icon: PackageCheck, step: "02", title: "Verified & Delivered", desc: "Every unit passes a 40+ point inspection before it ships to your door." },
-                        { icon: Smile, step: "03", title: "Use with Confidence", desc: "Backed by a 1-year warranty and 14-day easy returns, no questions asked." },
+                        { icon: Smile, step: "03", title: "Use with Confidence", desc: "Backed by a 6-month warranty and 14-day easy returns, no questions asked." },
                     ].map((s, i) => (
                         <div key={i} className="relative flex flex-col items-center text-center">
                             <div className="relative z-10 w-16 h-16 rounded-2xl bg-teal-600 text-white flex items-center justify-center shadow-lg shadow-teal-200">
@@ -603,7 +603,7 @@ export default function Home({
                 </div>
                 <Accordion multiple className="rounded-2xl border border-slate-100 bg-white px-4 md:px-6 shadow-sm">
                     {[
-                        { q: "Do you offer a warranty on refurbished laptops?", a: "Yes, every laptop comes with a 1-year official warranty covering the motherboard, screen, RAM, HDD/SSD, and original accessories." },
+                        { q: "Do you offer a warranty on refurbished laptops?", a: "Yes, every laptop comes with a 6-month official warranty covering the motherboard, screen, RAM, HDD/SSD, and original accessories." },
                         { q: "How thoroughly are the laptops tested?", a: "Each unit goes through a 40+ point quality inspection covering the screen, battery health, keyboard, ports, and body condition before it's listed for sale." },
                         { q: "Can I return a laptop if I don't like it?", a: "Yes, we offer 14-day easy returns on all laptops, no questions asked." },
                         { q: "Is Cash on Delivery (COD) available?", a: "Yes, COD is available nationwide, along with no-cost EMI options at checkout." },

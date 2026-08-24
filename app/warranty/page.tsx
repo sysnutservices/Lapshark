@@ -4,7 +4,7 @@ import WarrantyContent from "./WarrantyContent";
 export const metadata: Metadata = {
     title: "Warranty Policy",
     description:
-        "Comprehensive 1-year warranty coverage for your refurbished device from Lapshark.",
+        "Comprehensive 6-month warranty coverage for your refurbished device from Lapshark.",
     alternates: {
         canonical: "https://lapshark.com/warranty",
     },

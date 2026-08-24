@@ -114,6 +114,13 @@ export interface Coupon {
   isActive: boolean;
 }
 
+export interface HeroSlide {
+  href?: string;
+  imageDesktop: string;
+  imageTablet: string;
+  imageMobile: string;
+}
+
 export interface SiteConfig {
   hero: {
     title: string;
@@ -124,6 +131,7 @@ export interface SiteConfig {
     imageTablet: string;
     imageDesktop: string;
     activeHeroTemplate: "default",
+    slides?: HeroSlide[];
   };
   banners: Array<{
     id: string;

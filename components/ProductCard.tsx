@@ -291,7 +291,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
           <div className="flex items-center gap-1.5 text-[10px] md:text-xs text-slate-500 font-medium mt-2 mb-3">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-            1-Year Warranty
+            6-Month Warranty
           </div>
 
           <Button

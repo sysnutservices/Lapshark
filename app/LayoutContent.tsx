@@ -18,7 +18,7 @@ const MarqueeBar = () => {
         "•",
         "NO COST EMI AVAILABLE",
         "•",
-        "1 YEAR OFFICIAL WARRANTY",
+        "6 MONTHS OFFICIAL WARRANTY",
         "•",
     ];
 

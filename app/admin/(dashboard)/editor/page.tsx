@@ -31,20 +31,54 @@ export default function SiteEditor() {
 
     useEffect(() => {
         if (siteConfig) {
-            setConfig(siteConfig);
+            const hero = siteConfig.hero;
+            // Migrate pre-slideshow configs (a single image/imageDesktop/imageTablet/
+            // imageMobile set) into a one-item slides array so existing banners keep
+            // showing up once this loads, instead of appearing to have vanished.
+            const slides = hero?.slides?.length
+                ? hero.slides
+                : (hero?.imageDesktop || hero?.image)
+                    ? [{
+                        href: '/products',
+                        imageDesktop: hero.imageDesktop || hero.image || '',
+                        imageTablet: hero.imageTablet || hero.imageMobile || hero.image || '',
+                        imageMobile: hero.imageMobile || hero.imageTablet || hero.image || '',
+                    }]
+                    : [];
+            setConfig({ ...siteConfig, hero: { ...hero, slides } });
         }
     }, [siteConfig]);
     const [isGalleryOpen, setIsGalleryOpen] = useState(false);
     const [galleryTarget, setGalleryTarget] = useState<{
-        type: 'hero' | 'banner' | 'blog' | 'heroDevice' | 'newBlog',
+        type: 'banner' | 'blog' | 'heroDevice' | 'newBlog',
         index?: number,
-        device?: DeviceType
+        device?: DeviceType,
+        slideIndex?: number
     } | null>(null);
 
-    const handleSave = () => {
+    const addHeroSlide = () => {
+        setConfig(prev => ({
+            ...prev,
+            hero: { ...prev.hero, slides: [...(prev.hero.slides || []), { href: '/products', imageDesktop: '', imageTablet: '', imageMobile: '' }] }
+        }));
+    };
+
+    const removeHeroSlide = (index: number) => {
+        setConfig(prev => ({
+            ...prev,
+            hero: { ...prev.hero, slides: (prev.hero.slides || []).filter((_, i) => i !== index) }
+        }));
+    };
+
+    const handleSave = async () => {
         const { blogs: _, ...configWithoutBlogs } = config;
-        updateSiteConfig(configWithoutBlogs as SiteConfig);
-        alert('Site configuration updated successfully!');
+        try {
+            await updateSiteConfig(configWithoutBlogs as SiteConfig);
+            alert('Site configuration updated successfully!');
+        } catch (error) {
+            console.error('Error updating site config:', error);
+            alert('Failed to update site configuration. Please try again.');
+        }
     };
 
     const toggleSection = (key: keyof typeof config.sections) => {
@@ -163,13 +197,8 @@ export default function SiteEditor() {
         }
     };
 
-    const openGalleryForHero = () => {
-        setGalleryTarget({ type: 'hero' });
-        setIsGalleryOpen(true);
-    };
-
-    const openGalleryForHeroDevice = (device: DeviceType) => {
-        setGalleryTarget({ type: 'heroDevice', device });
+    const openGalleryForHeroDevice = (device: DeviceType, slideIndex: number) => {
+        setGalleryTarget({ type: 'heroDevice', device, slideIndex });
         setIsGalleryOpen(true);
     };
 
@@ -189,22 +218,19 @@ export default function SiteEditor() {
     };
 
     const handleImageSelect = (imageUrl: string) => {
-        if (galleryTarget?.type === 'hero') {
-            setConfig(prev => ({
-                ...prev,
-                hero: { ...prev.hero, image: imageUrl }
-            }));
-        } else if (galleryTarget?.type === 'heroDevice' && galleryTarget.device) {
+        if (galleryTarget?.type === 'heroDevice' && galleryTarget.device && galleryTarget.slideIndex !== undefined) {
             const deviceField = galleryTarget.device === 'desktop'
                 ? 'imageDesktop'
                 : galleryTarget.device === 'mobile'
                     ? 'imageMobile'
                     : 'imageTablet';
+            const slideIndex = galleryTarget.slideIndex;
 
-            setConfig(prev => ({
-                ...prev,
-                hero: { ...prev.hero, [deviceField]: imageUrl }
-            }));
+            setConfig(prev => {
+                const slides = [...(prev.hero.slides || [])];
+                slides[slideIndex] = { ...slides[slideIndex], [deviceField]: imageUrl };
+                return { ...prev, hero: { ...prev.hero, slides } };
+            });
         } else if (galleryTarget?.type === 'banner' && galleryTarget.index !== undefined) {
             updateBanner(galleryTarget.index, 'image', imageUrl);
         } else if (galleryTarget?.type === 'blog' && galleryTarget.index !== undefined && selectedBlog) {
@@ -226,14 +252,11 @@ export default function SiteEditor() {
         }
     };
 
-    const getDeviceImage = (device: DeviceType) => {
-        if (!config?.hero) return '';
-        switch (device) {
-            case 'desktop': return config.hero.imageDesktop || '';
-            case 'tablet': return config.hero.imageTablet || '';
-            case 'mobile': return config.hero.imageMobile || '';
-        }
-    };
+    const deviceFieldOf = (device: DeviceType) =>
+        device === 'desktop' ? 'imageDesktop' : device === 'mobile' ? 'imageMobile' : 'imageTablet';
+
+    const getSlideDeviceImage = (slideIndex: number, device: DeviceType) =>
+        config?.hero?.slides?.[slideIndex]?.[deviceFieldOf(device)] || '';
 
     return (
         <>
@@ -276,96 +299,72 @@ export default function SiteEditor() {
                         {activeTab === 'hero' && (
                             <div className="space-y-6">
                                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 space-y-6">
-                                    <div className="border-b pb-4">
-                                        <h2 className="text-lg font-bold text-gray-900">Responsive Hero Images</h2>
-                                        <p className="text-sm text-gray-500 mt-1">Set different images for each device type</p>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        {(['desktop', 'tablet', 'mobile'] as DeviceType[]).map((device) => {
-                                            const Icon = getDeviceIcon(device);
-                                            const deviceImage = getDeviceImage(device);
-
-                                            return (
-                                                <div key={device} className="space-y-3">
-                                                    <div className="flex items-center gap-2">
-                                                        <Icon className="w-4 h-4 text-gray-600" />
-                                                        <label className="text-sm font-bold text-gray-700 capitalize">
-                                                            {device}
-                                                        </label>
-                                                    </div>
-
-                                                    <button
-                                                        onClick={() => openGalleryForHeroDevice(device)}
-                                                        className="w-full p-3 border-2 border-dashed border-gray-300 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all flex items-center justify-center gap-2 text-gray-600 hover:text-blue-600 font-medium"
-                                                    >
-                                                        <ImageIcon className="w-4 h-4" />
-                                                        Select
-                                                    </button>
-
-                                                    {deviceImage && (
-                                                        <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-3 rounded-lg border border-gray-200">
-                                                            <div className="flex items-center justify-between mb-2">
-                                                                <p className="text-xs font-bold text-gray-500 uppercase">Preview</p>
-                                                                <button
-                                                                    onClick={() => openGalleryForHeroDevice(device)}
-                                                                    className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
-                                                                >
-                                                                    <RefreshCcw className="w-3 h-3" />
-                                                                    Change
-                                                                </button>
-                                                            </div>
-                                                            <div className="rounded-lg overflow-hidden shadow-sm border border-gray-200 bg-white">
-                                                                <img
-                                                                    src={deviceImage}
-                                                                    alt={`${device} preview`}
-                                                                    className="w-full h-32 object-cover"
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-
-                                    <div className="pt-4 border-t border-gray-200">
-                                        <div className="flex items-center justify-between mb-3">
-                                            <div>
-                                                <label className="block text-sm font-bold text-gray-700">Default Hero Image</label>
-                                                <p className="text-xs text-gray-500 mt-1">Fallback image if device-specific images are not set</p>
-                                            </div>
-                                            <button
-                                                onClick={openGalleryForHero}
-                                                className="px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all flex items-center gap-2 text-gray-600 hover:text-blue-600 font-medium text-sm"
-                                            >
-                                                <ImageIcon className="w-4 h-4" />
-                                                Select Default
-                                            </button>
+                                    <div className="border-b pb-4 flex items-center justify-between">
+                                        <div>
+                                            <h2 className="text-lg font-bold text-gray-900">Hero Slideshow</h2>
+                                            <p className="text-sm text-gray-500 mt-1">Add one or more banners — with more than one they rotate as a slideshow on the homepage</p>
                                         </div>
-
-                                        {config?.hero?.image && (
-                                            <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-lg border border-gray-200">
-                                                <div className="flex items-center justify-between mb-2">
-                                                    <p className="text-xs font-bold text-gray-500 uppercase">Preview</p>
-                                                    <button
-                                                        onClick={openGalleryForHero}
-                                                        className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
-                                                    >
-                                                        <RefreshCcw className="w-3 h-3" />
-                                                        Change
-                                                    </button>
-                                                </div>
-                                                <div className="rounded-lg overflow-hidden shadow-sm border border-gray-200 bg-white">
-                                                    <img
-                                                        src={config.hero.image}
-                                                        alt="Default Hero Preview"
-                                                        className="w-full h-40 object-cover"
-                                                    />
-                                                </div>
-                                            </div>
-                                        )}
+                                        <button
+                                            onClick={addHeroSlide}
+                                            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-1.5 shrink-0"
+                                        >
+                                            <Plus className="w-4 h-4" /> Add Slide
+                                        </button>
                                     </div>
+
+                                    {(config?.hero?.slides || []).length === 0 && (
+                                        <p className="text-sm text-gray-500 text-center py-8">No slides yet. Add one to get started.</p>
+                                    )}
+
+                                    {(config?.hero?.slides || []).map((slide, slideIndex) => (
+                                        <div key={slideIndex} className="border border-gray-200 rounded-xl p-4 space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <h3 className="font-bold text-gray-900 text-sm">Slide {slideIndex + 1}</h3>
+                                                <button
+                                                    onClick={() => removeHeroSlide(slideIndex)}
+                                                    className="text-red-500 hover:text-red-700"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                {(['desktop', 'tablet', 'mobile'] as DeviceType[]).map((device) => {
+                                                    const Icon = getDeviceIcon(device);
+                                                    const deviceImage = getSlideDeviceImage(slideIndex, device);
+
+                                                    return (
+                                                        <div key={device} className="space-y-2">
+                                                            <div className="flex items-center gap-2">
+                                                                <Icon className="w-4 h-4 text-gray-600" />
+                                                                <label className="text-sm font-bold text-gray-700 capitalize">
+                                                                    {device}
+                                                                </label>
+                                                            </div>
+
+                                                            <button
+                                                                onClick={() => openGalleryForHeroDevice(device, slideIndex)}
+                                                                className="w-full p-3 border-2 border-dashed border-gray-300 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all flex items-center justify-center gap-2 text-gray-600 hover:text-blue-600 font-medium text-sm"
+                                                            >
+                                                                <ImageIcon className="w-4 h-4" />
+                                                                {deviceImage ? 'Change' : 'Select'}
+                                                            </button>
+
+                                                            {deviceImage && (
+                                                                <div className="rounded-lg overflow-hidden shadow-sm border border-gray-200 bg-white">
+                                                                    <img
+                                                                        src={deviceImage}
+                                                                        alt={`Slide ${slideIndex + 1} ${device} preview`}
+                                                                        className="w-full h-24 object-cover"
+                                                                    />
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         )}
@@ -742,11 +741,9 @@ export default function SiteEditor() {
                 }}
                 onSelect={handleImageSelect}
                 currentImage={
-                    galleryTarget?.type === 'hero'
-                        ? config.hero.image
-                        : galleryTarget?.type === 'heroDevice' && galleryTarget.device
-                            ? getDeviceImage(galleryTarget.device)
-                            : galleryTarget?.type === 'banner' && galleryTarget.index !== undefined
+                    galleryTarget?.type === 'heroDevice' && galleryTarget.device && galleryTarget.slideIndex !== undefined
+                        ? getSlideDeviceImage(galleryTarget.slideIndex, galleryTarget.device)
+                        : galleryTarget?.type === 'banner' && galleryTarget.index !== undefined
                                 ? config.banners[galleryTarget.index].image
                                 : galleryTarget?.type === 'blog' && selectedBlog
                                     ? selectedBlog.image

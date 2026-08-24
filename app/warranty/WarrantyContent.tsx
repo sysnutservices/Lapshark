@@ -26,7 +26,7 @@ export default function WarrantyContent() {
                             <Shield className="w-6 h-6" />
                         </div>
                         <h3 className="font-bold text-lg mb-2">Standard Warranty</h3>
-                        <p className="text-sm text-slate-500">1 Year for most laptops.<br />6 Months for Apple devices.</p>
+                        <p className="text-sm text-slate-500">6 Months for all laptops and Apple devices.</p>
                     </div>
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center text-center">
                         <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-green-600 mb-4">
@@ -54,11 +54,7 @@ export default function WarrantyContent() {
                         <div className="grid md:grid-cols-2 gap-8">
                             <div className="space-y-4">
                                 <div className="p-4 bg-slate-50 rounded-xl border-l-4 border-teal-500">
-                                    <h4 className="font-bold text-slate-900 flex items-center gap-2"><Laptop className="w-4 h-4" /> Standard Products (Non-Apple)</h4>
-                                    <p className="text-sm text-slate-600 mt-1">Valid for <span className="font-bold">One Year</span> from the date of original retail purchase.</p>
-                                </div>
-                                <div className="p-4 bg-slate-50 rounded-xl border-l-4 border-slate-800">
-                                    <h4 className="font-bold text-slate-900 flex items-center gap-2"><Laptop className="w-4 h-4" /> Apple Products</h4>
+                                    <h4 className="font-bold text-slate-900 flex items-center gap-2"><Laptop className="w-4 h-4" /> All Laptops & Apple Products</h4>
                                     <p className="text-sm text-slate-600 mt-1">Valid for <span className="font-bold">Six Months</span> from the date of original retail purchase.</p>
                                 </div>
                             </div>

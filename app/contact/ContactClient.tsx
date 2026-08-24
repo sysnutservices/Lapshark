@@ -38,7 +38,7 @@ export const ContactClient: React.FC = () => {
     const faqs = [
         {
             question: "Do you offer a warranty on refurbished laptops?",
-            answer: "Yes! All our laptops come with a comprehensive 1-year warranty covering hardware defects. Batteries are covered for 3 months."
+            answer: "Yes! All our laptops come with a comprehensive 6-month warranty covering hardware defects. Batteries are covered for 3 months."
         },
         {
             question: "How long does shipping take?",

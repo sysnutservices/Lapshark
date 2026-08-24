@@ -423,7 +423,7 @@ export default function ShopClient({
                         through our 40-point inspection.
                         {Number.isFinite(lowestPrice) &&
                             ` Prices start at ₹${lowestPrice.toLocaleString("en-IN")}.`}{" "}
-                        All come with a 1-year warranty, doorstep delivery across India, and
+                        All come with a 6-month warranty, doorstep delivery across India, and
                         a 14-day return window with free pickup.
                     </p>
                 </div>
