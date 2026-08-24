@@ -110,7 +110,7 @@ export const CheckoutLogin: React.FC<CheckoutLoginProps> = ({
                 <div className="text-center mb-8 w-full">
                     {showLogo && (
                         <div className="w-full flex items-center justify-center mb-4">
-                            <img src={logo} alt="" className="w-32" />
+                            <img src={logo.src} alt="Lapshark" className="w-32" />
                         </div>
                     )}
                     <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">
