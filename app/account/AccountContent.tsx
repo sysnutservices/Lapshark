@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
-    Package, MapPin, LogOut, Settings, Heart, ShoppingBag, X, CreditCard, Truck, CheckCircle, Clock, XCircle, ChevronRight
+    Package, MapPin, LogOut, LogIn, Settings, Heart, ShoppingBag, X, CreditCard, Truck, CheckCircle, Clock, XCircle, ChevronRight
 } from 'lucide-react';
 import { api } from '@/api/api';
 import { CheckoutLogin } from '@/components/LoginComponent';
@@ -293,19 +293,29 @@ export const Account: React.FC = () => {
                     <aside className="lg:w-1/4">
                         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sticky top-8">
                             {/* User Info */}
-                            <div className="flex items-center gap-4 mb-6 pb-6 border-b border-slate-100">
-                                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-teal-500 to-teal-800 flex items-center justify-center text-white font-bold text-2xl flex-shrink-0 shadow-lg">
-                                    {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                            {user ? (
+                                <div className="flex items-center gap-4 mb-6 pb-6 border-b border-slate-100">
+                                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-teal-500 to-teal-800 flex items-center justify-center text-white font-bold text-2xl flex-shrink-0 shadow-lg">
+                                        {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                                    </div>
+                                    <div className="overflow-hidden flex-1">
+                                        <h2 className="text-lg font-bold text-slate-900 truncate">
+                                            {user.name || 'User'}
+                                        </h2>
+                                        <p className="text-sm text-slate-500 truncate">
+                                            {user.mobile || 'User'}
+                                        </p>
+                                    </div>
                                 </div>
-                                <div className="overflow-hidden flex-1">
-                                    <h2 className="text-lg font-bold text-slate-900 truncate">
-                                        {user?.name || 'User'}
-                                    </h2>
-                                    <p className="text-sm text-slate-500 truncate">
-                                        {user?.mobile || 'User'}
-                                    </p>
-                                </div>
-                            </div>
+                            ) : (
+                                <button
+                                    onClick={() => setShowLogin(true)}
+                                    className="w-full flex items-center justify-center gap-2 mb-6 pb-6 border-b border-slate-100 pt-2 font-medium text-teal-600 hover:text-teal-700"
+                                >
+                                    <LogIn className="w-5 h-5" />
+                                    Login
+                                </button>
+                            )}
 
                             {/* Navigation */}
                             <nav className="space-y-2">
@@ -322,13 +332,15 @@ export const Account: React.FC = () => {
                                         {item.label}
                                     </button>
                                 ))}
-                                <button
-                                    onClick={handleLogout}
-                                    className="w-full flex items-center px-4 py-3 rounded-xl font-medium text-red-500 hover:bg-red-50 transition-colors"
-                                >
-                                    <LogOut className="w-5 h-5 mr-3" />
-                                    Sign Out
-                                </button>
+                                {user && (
+                                    <button
+                                        onClick={handleLogout}
+                                        className="w-full flex items-center px-4 py-3 rounded-xl font-medium text-red-500 hover:bg-red-50 transition-colors"
+                                    >
+                                        <LogOut className="w-5 h-5 mr-3" />
+                                        Sign Out
+                                    </button>
+                                )}
                             </nav>
                         </div>
                     </aside>
