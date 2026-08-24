@@ -250,6 +250,22 @@ export default function CheckoutContent() {
         try {
             const orderData = await createOrderOnServer();
 
+            // createOrderOnServer just returns res.json() unchecked — a
+            // rejected coupon, out-of-stock item, etc. comes back as
+            // {message: "..."} with no key/razorpayOrderId, which used to
+            // fall straight through into `new window.Razorpay({key:
+            // undefined, ...})` and open a broken payment modal with no
+            // explanation.
+            if (!orderData?.success || !orderData?.razorpayOrderId) {
+                MySwal.fire({
+                    title: "Couldn't place order",
+                    text: orderData?.message || "Something went wrong. Please try again.",
+                    icon: "error"
+                });
+                setIsProcessing(false);
+                return;
+            }
+
             const res = await loadRazorpayScript();
             if (!res) {
                 alert("Razorpay failed to load");
@@ -262,22 +278,42 @@ export default function CheckoutContent() {
                 amount: orderData.amount,
                 order_id: orderData.razorpayOrderId,
                 handler: async function (response: any) {
-                    console.log("Payment ID:", response.razorpay_payment_id);
-                    console.log("Order ID:", response.razorpay_order_id);
-                    console.log("Signature:", response.razorpay_signature);
+                    // Money has already left the customer's account at this
+                    // point — Razorpay's own modal confirmed the charge.
+                    // This call is only asking our backend to record that,
+                    // so its result has to gate cart-clear/redirect: the
+                    // previous code ignored it entirely, meaning a failed
+                    // verify (network blip, server error, ...) still showed
+                    // "Order Success" and wiped the cart even though the
+                    // order was left sitting unpaid in the database with no
+                    // way for the customer to know or retry.
+                    try {
+                        const verifyRes = await fetch(`${API_URL}/orders/verify`, {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "Authorization": `Bearer ${localStorage.getItem("token")}`
+                            },
+                            body: JSON.stringify(response)
+                        });
+                        const verifyData = await verifyRes.json();
 
-                    await fetch(`${API_URL}/orders/verify`, {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "Authorization": `Bearer ${localStorage.getItem("token")}`
-                        },
-                        body: JSON.stringify(response)
-                    });
+                        if (!verifyRes.ok || !verifyData?.success) {
+                            throw new Error(verifyData?.message || "Payment verification failed");
+                        }
 
-                    setIsProcessing(false);
-                    clearCart();
-                    router.push(`/order-success/${orderData.razorpayOrderId}`);
+                        setIsProcessing(false);
+                        clearCart();
+                        router.push(`/order-success/${orderData.razorpayOrderId}`);
+                    } catch (verifyError) {
+                        console.error("Payment verification error:", verifyError);
+                        setIsProcessing(false);
+                        MySwal.fire({
+                            title: "Payment received, confirmation pending",
+                            text: `Your payment went through but we couldn't confirm it automatically. Please contact support with this reference: ${response.razorpay_payment_id}`,
+                            icon: "warning"
+                        });
+                    }
                 },
                 modal: {
                     ondismiss: function () {
