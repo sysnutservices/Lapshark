@@ -49,7 +49,7 @@ const PAYMENT_METHOD_ICONS = {
 };
 
 export const Account: React.FC = () => {
-    const { user, logout } = useAuth();
+    const { user, logout, loginWithUser } = useAuth();
     const { customerOrders, fetchCustomerOrders } = useStore();
     const router = useRouter();
 
@@ -184,9 +184,10 @@ export const Account: React.FC = () => {
                 },
             });
 
-            // Update local storage with new user data
+            // Sync AuthContext (not just localStorage) so the rest of the
+            // app — Navbar included — reflects the edit immediately.
             const updatedUser = { ...user, ...response.data.user };
-            localStorage.setItem('user', JSON.stringify(updatedUser));
+            loginWithUser(updatedUser, token);
 
             alert('Profile updated successfully!');
         } catch (error: any) {

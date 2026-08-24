@@ -6,6 +6,7 @@ import { jwtDecode } from "jwt-decode";
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
+  loginWithUser: (user: User, token: string) => void;
   logout: () => void;
   isAdmin: boolean;
 }
@@ -68,6 +69,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  // Used by customer OTP login (CheckoutLogin) — that flow verifies against
+  // a different endpoint than the admin email/password login above, but
+  // both need to land in this same context so the rest of the app (Navbar's
+  // Login/Logout state included) has one source of truth.
+  const loginWithUser = (loggedInUser: User, token: string) => {
+    setUser(loggedInUser);
+    localStorage.setItem("user", JSON.stringify(loggedInUser));
+    localStorage.setItem("token", token);
+
+    try {
+      const decoded: any = jwtDecode(token);
+      setIsAdmin(decoded?.role === "admin");
+    } catch {
+      setIsAdmin(false);
+    }
+  };
+
   const logout = () => {
     setUser(null);
     setIsAdmin(false);
@@ -76,7 +94,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAdmin }}>
+    <AuthContext.Provider value={{ user, login, loginWithUser, logout, isAdmin }}>
       {children}
     </AuthContext.Provider>
   );

@@ -6,6 +6,7 @@ import axios from 'axios';
 import { API_URL } from '@/api/api';
 import logo from "@/assets/logo.svg"
 import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
 
 interface CheckoutLoginProps {
     onLoginSuccess?: () => void;
@@ -26,6 +27,7 @@ export const CheckoutLogin: React.FC<CheckoutLoginProps> = ({
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [countdown, setCountdown] = useState(0);
+    const { loginWithUser } = useAuth();
 
     // Send OTP Handler
     const handleSendOTP = async (e: React.FormEvent) => {
@@ -69,9 +71,13 @@ export const CheckoutLogin: React.FC<CheckoutLoginProps> = ({
             if (response.data.success) {
                 const userData = response.data.user;
 
-                // Store token and user data
-                localStorage.setItem('token', userData.token);
-                localStorage.setItem('user', JSON.stringify(userData));
+                // Route through AuthContext (not just localStorage) so the
+                // rest of the app — Navbar's Login/Logout state included —
+                // actually sees this login without needing a page reload.
+                loginWithUser(
+                    { id: userData._id, name: userData.name, email: userData.email, mobile: userData.mobile, role: 'customer' },
+                    userData.token
+                );
 
                 // Call success callback
                 if (onLoginSuccess) {

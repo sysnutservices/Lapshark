@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
-import { ShoppingCart, Search, Menu, X, Heart, ChevronRight, Phone, User, LogOut } from 'lucide-react';
+import { ShoppingCart, Search, Menu, X, Heart, ChevronRight, Phone, User, LogOut, LogIn } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useUserFeatures } from '../context/UserFeatureContext';
 import { Logo } from './Logo';
@@ -174,10 +174,6 @@ export const Navbar: React.FC = () => {
                 { name: 'Wishlist', path: '/wishlist', icon: Heart },
                 { name: 'Account', path: '/account', icon: User },
               ].map((item) => (
-
-                // LOGOUT BUTTON (NO LINK)
-
-                // NORMAL LINK ITEMS
                 <Link
                   key={item.name}
                   href={item.path}
@@ -195,23 +191,40 @@ export const Navbar: React.FC = () => {
               )
 
               )}
-              <button
-                key="logout"
-                onClick={() => {
-                  logout();
-                  closeMenu();
-                  router.push("/");
-                }}
-                className="w-full flex items-center justify-between px-4 py-4 rounded-xl 
-                   text-lg font-medium text-slate-800 hover:text-red-600 
+              {user ? (
+                <button
+                  key="logout"
+                  onClick={() => {
+                    logout();
+                    closeMenu();
+                    router.push("/");
+                  }}
+                  className="w-full flex items-center justify-between px-4 py-4 rounded-xl
+                   text-lg font-medium text-slate-800 hover:text-red-600
                    hover:bg-red-50 transition-all active:scale-98 group"
-              >
-                <span className="flex items-center">
-                  <LogOut className="w-5 h-5 mr-3 text-slate-400 group-hover:text-red-500" />
-                  Logout
-                </span>
-                <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-red-500" />
-              </button>
+                >
+                  <span className="flex items-center">
+                    <LogOut className="w-5 h-5 mr-3 text-slate-400 group-hover:text-red-500" />
+                    Logout
+                  </span>
+                  <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-red-500" />
+                </button>
+              ) : (
+                <Link
+                  key="login"
+                  href="/account"
+                  onClick={closeMenu}
+                  className="flex items-center justify-between px-4 py-4 rounded-xl
+                   text-lg font-medium text-slate-800 hover:text-teal-600
+                   hover:bg-teal-50 transition-all active:scale-98 group"
+                >
+                  <span className="flex items-center">
+                    <LogIn className="w-5 h-5 mr-3 text-slate-400 group-hover:text-teal-500" />
+                    Login
+                  </span>
+                  <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-teal-500" />
+                </Link>
+              )}
             </div>
 
 
