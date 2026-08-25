@@ -4,6 +4,7 @@ import { Providers } from "./providers";
 import { LayoutContent } from "./LayoutContent";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
+import Script from "next/script";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
@@ -65,6 +66,15 @@ export const viewport: Viewport = {
     themeColor: "#020617",
 };
 
+// Third-party analytics — each script is entirely absent from the page
+// unless its env var is set, so the site behaves identically with none of
+// these configured (no accounts yet) as it will once they're filled in.
+// window.gtag/fbq/clarity are what lib/analytics.ts's trackEvent() checks
+// for before dispatching to each provider.
+const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID;
+const CLARITY_PROJECT_ID = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID;
+
 export default function RootLayout({
     children,
 }: Readonly<{
@@ -73,6 +83,51 @@ export default function RootLayout({
     return (
         <html lang="en" className={cn("font-sans", geist.variable)}>
             <body className="antialiased" suppressHydrationWarning={true}>
+                {GA_MEASUREMENT_ID && (
+                    <>
+                        <Script src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`} strategy="afterInteractive" />
+                        <Script id="ga4-init" strategy="afterInteractive">
+                            {`
+                                window.dataLayer = window.dataLayer || [];
+                                function gtag(){dataLayer.push(arguments);}
+                                window.gtag = gtag;
+                                gtag('js', new Date());
+                                // send_page_view off: LayoutContent.tsx already fires a page_view
+                                // through trackEvent() on every route change, which forwards to
+                                // gtag — letting gtag.js's own automatic pageview run too would
+                                // double-count every navigation.
+                                gtag('config', '${GA_MEASUREMENT_ID}', { send_page_view: false });
+                            `}
+                        </Script>
+                    </>
+                )}
+                {META_PIXEL_ID && (
+                    <Script id="meta-pixel-init" strategy="afterInteractive">
+                        {`
+                            !function(f,b,e,v,n,t,s)
+                            {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+                            n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+                            if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+                            n.queue=[];t=b.createElement(e);t.async=!0;
+                            t.src=v;s=b.getElementsByTagName(e)[0];
+                            s.parentNode.insertBefore(t,s)}(window, document,'script',
+                            'https://connect.facebook.net/en_US/fbevents.js');
+                            fbq('init', '${META_PIXEL_ID}');
+                            fbq('track', 'PageView');
+                        `}
+                    </Script>
+                )}
+                {CLARITY_PROJECT_ID && (
+                    <Script id="clarity-init" strategy="afterInteractive">
+                        {`
+                            (function(c,l,a,r,i,t,y){
+                                c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+                                t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+                                y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+                            })(window, document, "clarity", "script", "${CLARITY_PROJECT_ID}");
+                        `}
+                    </Script>
+                )}
                 <script
                     type="application/ld+json"
                     dangerouslySetInnerHTML={{

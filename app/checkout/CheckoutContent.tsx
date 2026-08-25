@@ -12,7 +12,7 @@ import { useUserFeatures } from '@/context/UserFeatureContext';
 import { API_URL } from '@/api/api';
 import confetti from "canvas-confetti"
 import { CheckoutLogin } from '@/components/LoginComponent';
-import { trackEvent } from '@/lib/analytics';
+import { trackEvent, generateEventId, trackPurchaseConversion } from '@/lib/analytics';
 
 // Declare Razorpay on window object to avoid TS errors
 declare global {
@@ -205,7 +205,7 @@ export default function CheckoutContent() {
         }
     };
 
-    const createOrderOnServer = async () => {
+    const createOrderOnServer = async (metaEventId: string) => {
         // Get location from state or localStorage
         let location = userLocation;
         if (!location) {
@@ -250,6 +250,11 @@ export default function CheckoutContent() {
                 discount: discount || 0,
                 total: finalTotal,
                 paymentMethod,
+                // Reused server-side by markOrderPaid's Meta CAPI Purchase
+                // call, and here again once payment succeeds — the shared id
+                // is what lets Meta dedupe the browser Pixel hit and the
+                // server CAPI hit into one conversion instead of two.
+                metaEventId,
                 items: finalCart.map(item => ({
                     productId: item.productId,
                     quantity: item.quantity,
@@ -288,11 +293,12 @@ export default function CheckoutContent() {
         }
 
         trackEvent("begin_checkout", { finalTotal, paymentMethod, itemCount: finalCart.length });
+        const metaEventId = generateEventId();
 
         setIsProcessing(true);
 
         try {
-            const orderData = await createOrderOnServer();
+            const orderData = await createOrderOnServer(metaEventId);
 
             // createOrderOnServer just returns res.json() unchecked — a
             // rejected coupon, out-of-stock item, etc. comes back as
@@ -345,6 +351,19 @@ export default function CheckoutContent() {
                         if (!verifyRes.ok || !verifyData?.success) {
                             throw new Error(verifyData?.message || "Payment verification failed");
                         }
+
+                        trackPurchaseConversion({
+                            eventId: metaEventId,
+                            orderId: orderData.razorpayOrderId,
+                            total: finalTotal,
+                            items: finalCart.map(item => ({
+                                productId: item.productId,
+                                title: item.title,
+                                quantity: item.quantity,
+                                finalPrice: item.finalPrice,
+                                price: item.price,
+                            })),
+                        });
 
                         setIsProcessing(false);
                         clearCart();
