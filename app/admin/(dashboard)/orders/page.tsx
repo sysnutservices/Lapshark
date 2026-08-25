@@ -10,6 +10,7 @@ export default function OrderManager() {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('All');
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+    const [statusUpdating, setStatusUpdating] = useState(false);
 
     const filteredOrders = orders.filter(order => {
         const matchesSearch =
@@ -22,9 +23,11 @@ export default function OrderManager() {
     const getStatusColor = (status: string) => {
         switch (status) {
             case 'Delivered': return 'bg-green-100 text-green-700 border-green-200';
-            case 'Shipped': return 'bg-blue-100 text-blue-700 border-blue-200';
+            case 'Shipped':
+            case 'Out for Delivery': return 'bg-blue-100 text-blue-700 border-blue-200';
             case 'Processing': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
-            case 'Cancelled': return 'bg-red-100 text-red-700 border-red-200';
+            case 'Cancelled':
+            case 'RTO': return 'bg-red-100 text-red-700 border-red-200';
             default: return 'bg-gray-100 text-gray-700 border-gray-200';
         }
     };
@@ -34,6 +37,7 @@ export default function OrderManager() {
             case 'Paid': return 'bg-green-100 text-green-700 border-green-200';
             case 'Pending': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
             case 'Failed': return 'bg-red-100 text-red-700 border-red-200';
+            case 'Refunded': return 'bg-blue-100 text-blue-700 border-blue-200';
         }
     };
 
@@ -64,8 +68,10 @@ export default function OrderManager() {
                         <option value="Pending">Pending</option>
                         <option value="Processing">Processing</option>
                         <option value="Shipped">Shipped</option>
+                        <option value="Out for Delivery">Out for Delivery</option>
                         <option value="Delivered">Delivered</option>
                         <option value="Cancelled">Cancelled</option>
+                        <option value="RTO">RTO</option>
                     </select>
                 </div>
             </div>
@@ -162,6 +168,19 @@ export default function OrderManager() {
                                     })}</p>
                                     <p className="text-sm font-medium text-gray-500">Payment: {selectedOrder.paymentMethod}</p>
                                     <p className="text-sm text-gray-500">Payment Status: <span className={`px-2 rounded-full text-xs font-bold border ${getPaymentColor(selectedOrder.paymentStatus)}`}>{selectedOrder.paymentStatus}</span></p>
+                                    {selectedOrder.paymentMethod === 'COD' && !!selectedOrder.advanceAmount && selectedOrder.status !== 'Cancelled' && (
+                                        <p className="text-sm text-gray-500">
+                                            Advance paid: ₹{selectedOrder.advanceAmount.toLocaleString('en-IN')} · Collect on delivery: <span className="font-bold text-amber-700">₹{(selectedOrder.total - selectedOrder.advanceAmount).toLocaleString('en-IN')}</span>
+                                        </p>
+                                    )}
+                                    {selectedOrder.refund && (
+                                        <p className="text-sm text-gray-500">
+                                            Refund: ₹{(selectedOrder.refund.amount || 0).toLocaleString('en-IN')} —{' '}
+                                            <span className={`font-bold ${selectedOrder.refund.status === 'failed' ? 'text-red-600' : 'text-blue-600'}`}>
+                                                {selectedOrder.refund.status === 'failed' ? 'Failed — refund manually' : selectedOrder.refund.status}
+                                            </span>
+                                        </p>
+                                    )}
                                 </div>
                                 <div className="space-y-1">
                                     <label className="text-xs font-bold text-gray-400 uppercase">Shipping Address</label>
@@ -215,22 +234,44 @@ export default function OrderManager() {
                                     {['Pending', 'Processing', 'Shipped', 'Delivered'].map((status) => (
                                         <button
                                             key={status}
-                                            onClick={() => {
-                                                setSelectedOrder(prev => ({ ...prev!, status: status as any })); // instant UI update
-                                                updateOrderStatus(selectedOrder.orderId, status as any); // backend update
+                                            disabled={selectedOrder.status === status || statusUpdating}
+                                            onClick={async () => {
+                                                setStatusUpdating(true);
+                                                try {
+                                                    // "Shipped" books the real Ekart shipment server-side, so this
+                                                    // waits for the response instead of updating optimistically —
+                                                    // a courier-side failure must not show "Shipped" when it isn't.
+                                                    const updated = await updateOrderStatus(selectedOrder.orderId, status as any);
+                                                    setSelectedOrder(updated);
+                                                } catch (err: any) {
+                                                    alert(err?.response?.data?.message || `Couldn't update status to ${status}`);
+                                                } finally {
+                                                    setStatusUpdating(false);
+                                                }
                                             }}
-
-                                            disabled={selectedOrder.status === status}
-                                            className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-all ${selectedOrder.status === status
+                                            className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-all disabled:opacity-60 ${selectedOrder.status === status
                                                 ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
                                                 : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
                                                 }`}
                                         >
-                                            {status}
+                                            {status === 'Shipped' && selectedOrder.status !== 'Shipped' && statusUpdating ? 'Shipping...' : status}
                                         </button>
 
                                     ))}
                                 </div>
+                                {selectedOrder.shipment?.awb && (
+                                    <div className="mt-3 bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 text-sm">
+                                        <p className="text-gray-700"><span className="font-bold">AWB:</span> {selectedOrder.shipment.awb}</p>
+                                        {selectedOrder.shipment.courierStatus && (
+                                            <p className="text-gray-500 mt-1">Courier status: {selectedOrder.shipment.courierStatus}</p>
+                                        )}
+                                        {selectedOrder.shipment.trackingUrl && (
+                                            <a href={selectedOrder.shipment.trackingUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-bold underline mt-1 inline-block">
+                                                Track shipment
+                                            </a>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

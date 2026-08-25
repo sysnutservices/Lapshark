@@ -47,7 +47,7 @@ interface StoreContextType {
 
   // Orders
   placeOrder: (order: Order) => Promise<void>;
-  updateOrderStatus: (id: string, status: Order["status"]) => Promise<void>;
+  updateOrderStatus: (id: string, status: Order["status"]) => Promise<Order>;
 
   // Coupons
   addCoupon: (coupon: Coupon) => Promise<void>;
@@ -211,20 +211,16 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     setOrders((prev) => [res.data, ...prev]);
   };
 
+  // No optimistic update here: moving to "Shipped" now books a real Ekart
+  // shipment server-side and can fail (courier down, bad address, ...) — the
+  // old optimistic set-then-fetch showed "Shipped" even when the backend
+  // rejected the change, leaving the UI out of sync with what's actually true.
+  // Callers see the failure via the rejected promise.
   const updateOrderStatus = async (orderId: string, status: Order["status"]) => {
-    setOrders(prev =>
-      prev.map(o =>
-        o.orderId === orderId ? { ...o, status } : o
-      )
-    );
-
     const res = await api.put(`/orders/${orderId}/status`, { status });
-
-    setOrders(prev =>
-      prev.map(o =>
-        o.orderId === orderId ? res.data.order : o
-      )
-    );
+    const updated = res.data.order as Order;
+    setOrders(prev => prev.map(o => (o.orderId === orderId ? updated : o)));
+    return updated;
   };
 
   // ------------------------

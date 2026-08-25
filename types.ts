@@ -41,6 +41,10 @@ export interface Product {
   isBestDeal?: boolean;
   condition?: string;
   configOptions?: any;
+  weightKg?: number;
+  lengthCm?: number;
+  widthCm?: number;
+  heightCm?: number;
 }
 
 export interface CartItem extends Product {
@@ -71,11 +75,26 @@ export interface Order {
   date: string;
   mapLink: string;
   total: number;
-  status: 'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';
-  paymentStatus: 'Paid' | 'Pending' | 'Failed';
+  advanceAmount?: number;
+  status: 'Pending' | 'Processing' | 'Shipped' | 'Out for Delivery' | 'Delivered' | 'Cancelled' | 'RTO';
+  paymentStatus: 'Paid' | 'Pending' | 'Failed' | 'Refunded';
   paymentMethod: 'Razorpay' | 'COD' | 'Card';
   items: CartItem[];
   shippingAddress?: Address;
+  shipment?: {
+    awb?: string;
+    courierStatus?: string;
+    labelUrl?: string;
+    trackingUrl?: string;
+    shippedAt?: string;
+    deliveredAt?: string;
+  };
+  refund?: {
+    id?: string;
+    amount?: number;
+    status?: string;
+    refundedAt?: string;
+  };
 }
 
 export interface Address {
