@@ -9,6 +9,7 @@ import { useUserFeatures } from '../context/UserFeatureContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { trackEvent } from '@/lib/analytics';
 
 interface ProductCardProps {
   product: Product;
@@ -130,6 +131,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       removeFromWishlist(id);
     } else {
       addToWishlist(product);
+      trackEvent("wishlist_add", { productId: id, title: product.title });
     }
   };
 
@@ -141,6 +143,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       removeFromCompare(id);
     } else {
       addToCompare(product);
+      trackEvent("compare_started", { productId: id, title: product.title });
     }
   };
 

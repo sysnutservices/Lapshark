@@ -16,6 +16,7 @@ import dynamic from 'next/dynamic';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { trackEvent } from '@/lib/analytics';
 import {
     Carousel,
     CarouselContent,
@@ -74,6 +75,14 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
     useEffect(() => {
         if (product) {
             addToRecentlyViewed(product);
+            trackEvent("view_item", {
+                productId: product.productId || product.id || product._id || "",
+                title: product.title,
+                category: product.category,
+                brand: product.brand,
+                price: product.price,
+                finalPrice: product.finalPrice,
+            });
         }
     }, [product?.id, addToRecentlyViewed]);
 
@@ -387,7 +396,14 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
                                     title="Protection Plan"
                                     options={product.configOptions.warranty}
                                     selected={selectedWarranty}
-                                    setSelected={setSelectedWarranty}
+                                    setSelected={(opt: any) => {
+                                        setSelectedWarranty(opt);
+                                        trackEvent("warranty_select", {
+                                            productId: product.productId || product.id || product._id || "",
+                                            warrantyValue: opt?.value,
+                                            warrantyPrice: opt?.price,
+                                        });
+                                    }}
                                 />
                             )}
                         </div>

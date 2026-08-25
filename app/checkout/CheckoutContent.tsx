@@ -12,6 +12,7 @@ import { useUserFeatures } from '@/context/UserFeatureContext';
 import { API_URL } from '@/api/api';
 import confetti from "canvas-confetti"
 import { CheckoutLogin } from '@/components/LoginComponent';
+import { trackEvent } from '@/lib/analytics';
 
 // Declare Razorpay on window object to avoid TS errors
 declare global {
@@ -163,6 +164,7 @@ export default function CheckoutContent() {
 
             if (result?.valid) {
                 setDiscount(result.discountAmount);
+                trackEvent("coupon_applied", { couponCode, discountAmount: result.discountAmount });
 
                 const duration = 5 * 1000;
                 const animationEnd = Date.now() + duration;
@@ -285,6 +287,8 @@ export default function CheckoutContent() {
             return;
         }
 
+        trackEvent("begin_checkout", { finalTotal, paymentMethod, itemCount: finalCart.length });
+
         setIsProcessing(true);
 
         try {
@@ -369,6 +373,7 @@ export default function CheckoutContent() {
             rzp.open();
 
             rzp.on("payment.failed", function (response: any) {
+                trackEvent("checkout_payment_failed", { reason: response?.error?.description });
                 alert(response.error.description);
                 setIsProcessing(false);
             });

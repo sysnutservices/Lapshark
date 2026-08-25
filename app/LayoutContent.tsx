@@ -7,8 +7,9 @@ import Link from "next/link";
 import Image from "next/image";
 import logo from "../assets/logo_dark.svg";
 import { Phone, MapPin, ArrowRight } from "lucide-react";
-import React from "react";
+import React, { useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { trackPageView } from "@/lib/analytics";
 
 const MarqueeBar = () => {
     const items = [
@@ -42,6 +43,14 @@ const MarqueeBar = () => {
 export function LayoutContent({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const isAdminPage = pathname?.startsWith('/admin');
+
+    // Declared before the early return below so every render calls the same
+    // number of hooks — admin routes render their own layout entirely, so
+    // customer-behavior page_view tracking has no business firing there.
+    useEffect(() => {
+        if (isAdminPage || !pathname) return;
+        trackPageView(pathname);
+    }, [pathname, isAdminPage]);
 
     if (isAdminPage) {
         return <main>{children}</main>;

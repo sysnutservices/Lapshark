@@ -10,6 +10,7 @@ import React, {
 import { Product, CartItem } from "../types";
 import { api } from "@/api/api";
 import { migrateKey } from "@/lib/localStorage";
+import { trackEvent } from "@/lib/analytics";
 
 interface CartContextType {
   cart: CartItem[];
@@ -107,6 +108,14 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const addToCart = async (product: Product) => {
     const productId = product._id || product.productId || product.id;
     if (!productId) return;
+
+    trackEvent("add_to_cart", {
+      productId,
+      title: product.title,
+      quantity: 1,
+      finalPrice: product.finalPrice,
+      price: product.price,
+    });
 
     // ✅ LOGGED-IN USER → BACKEND
     if (isLoggedIn) {
