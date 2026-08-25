@@ -1,6 +1,15 @@
 import { API_URL } from "@/api/api";
 import type { AnalyticsEventName, AnalyticsEventPayloads } from "./analyticsEvents";
 
+declare global {
+  interface Window {
+    dataLayer?: unknown[];
+    gtag?: (...args: unknown[]) => void;
+    fbq?: (...args: unknown[]) => void;
+    clarity?: (...args: unknown[]) => void;
+  }
+}
+
 const CONSENT_KEY = "lapshark_cookie_consent";
 const VISITOR_KEY = "lapshark_visitor_id";
 const SESSION_KEY = "lapshark_session_id";
@@ -114,12 +123,98 @@ function send(payload: Record<string, unknown>) {
   });
 }
 
+// Only these have GA4 "recommended event" names / Meta standard-event
+// names — everything else still gets forwarded (GA4 accepts any custom
+// event name; Meta's fbq('trackCustom', ...) is exactly for this), just
+// without the special commerce-shaped params built below.
+const GA4_STANDARD_EVENTS: Partial<Record<AnalyticsEventName, string>> = {
+  view_item: "view_item",
+  add_to_cart: "add_to_cart",
+  begin_checkout: "begin_checkout",
+  wishlist_add: "add_to_wishlist",
+  login: "login",
+};
+
+const META_STANDARD_EVENTS: Partial<Record<AnalyticsEventName, string>> = {
+  view_item: "ViewContent",
+  add_to_cart: "AddToCart",
+  begin_checkout: "InitiateCheckout",
+  wishlist_add: "AddToWishlist",
+};
+
+const COMMERCE_EVENTS: ReadonlySet<AnalyticsEventName> = new Set([
+  "view_item",
+  "add_to_cart",
+  "wishlist_add",
+]);
+
+// Fans a tracked event out to whichever third-party providers are actually
+// loaded (window.gtag/fbq/clarity only exist if their script ran, which
+// only happens if the matching NEXT_PUBLIC_* env var is set — see
+// app/layout.tsx). No-ops per-provider when that provider isn't present,
+// so this is safe to call unconditionally from trackEvent().
+function dispatchToProviders(name: AnalyticsEventName, properties: Record<string, unknown>, eventId: string) {
+  const value = (properties.finalPrice ?? properties.price ?? properties.finalTotal) as number | undefined;
+
+  if (typeof window.gtag === "function") {
+    const ga4Name = GA4_STANDARD_EVENTS[name] || name;
+    const params: Record<string, unknown> = { ...properties };
+    if (COMMERCE_EVENTS.has(name)) {
+      params.currency = "INR";
+      params.value = value;
+      params.items = [
+        {
+          item_id: properties.productId,
+          item_name: properties.title,
+          item_brand: properties.brand,
+          item_category: properties.category,
+          price: value,
+        },
+      ];
+    } else if (name === "begin_checkout") {
+      params.currency = "INR";
+      params.value = properties.finalTotal;
+    } else if (name === "page_view") {
+      params.page_path = properties.path;
+      params.page_title = properties.title;
+      params.page_location = window.location.href;
+    }
+    window.gtag("event", ga4Name, params);
+  }
+
+  if (typeof window.fbq === "function") {
+    const metaName = META_STANDARD_EVENTS[name];
+    const data: Record<string, unknown> = {};
+    if (properties.productId) data.content_ids = [properties.productId];
+    if (properties.title) data.content_name = properties.title;
+    if (value !== undefined) {
+      data.value = value;
+      data.currency = "INR";
+    }
+
+    if (name === "page_view") {
+      window.fbq("track", "PageView", {}, { eventID: eventId });
+    } else if (metaName) {
+      window.fbq("track", metaName, data, { eventID: eventId });
+    } else {
+      window.fbq("trackCustom", name, data, { eventID: eventId });
+    }
+  }
+
+  if (typeof window.clarity === "function") {
+    if (name === "begin_checkout") window.clarity("set", "checkout_started", "true");
+    if (name === "login") window.clarity("set", "customer_type", "returning");
+  }
+}
+
 /**
  * Fire a tracking event. Never throws, never blocks the caller — safe to
  * call from any critical path (cart, checkout, auth) without awaiting.
  * No-ops entirely until the user has accepted cookies
  * (components/CookieConsent.tsx) — no visitor/session id is even generated
- * before that.
+ * before that. Also fans out to GA4/Meta Pixel/Clarity when those scripts
+ * are loaded (see app/layout.tsx) — nothing to configure per call site,
+ * dispatchToProviders() maps the shared internal event onto each one.
  */
 export function trackEvent<T extends AnalyticsEventName>(
   name: T,
@@ -131,13 +226,16 @@ export function trackEvent<T extends AnalyticsEventName>(
 
     const visitorId = getVisitorId();
     const { sessionId, utm, referrer } = getSessionContext();
+    const eventId = crypto.randomUUID();
+    const props = (properties || {}) as Record<string, unknown>;
 
     send({
       eventName: name,
       visitorId,
       sessionId,
+      eventId,
       userId: getUserId(),
-      properties: properties || {},
+      properties: props,
       page: {
         url: window.location.href,
         path: window.location.pathname,
@@ -146,6 +244,8 @@ export function trackEvent<T extends AnalyticsEventName>(
       utm,
       referrer,
     });
+
+    dispatchToProviders(name, props, eventId);
   } catch {
     // trackEvent must never throw into the caller.
   }
@@ -157,8 +257,8 @@ export function trackEvent<T extends AnalyticsEventName>(
  * AuthContext's loginWithUser sets localStorage["user"], every subsequent
  * trackEvent automatically carries the known userId — that's the entire
  * anonymous-visitor-to-customer merge, no separate step needed. Exported
- * for API completeness / a future provider (e.g. Meta CAPI) that might need
- * an explicit identify call site.
+ * for API completeness / a future provider that might need an explicit
+ * identify call site.
  */
 export function identifyCustomer(): string | undefined {
   if (typeof window === "undefined") return undefined;
@@ -171,4 +271,70 @@ export function trackPageView(path: string, title?: string) {
     title,
     referrer: typeof document !== "undefined" ? document.referrer : undefined,
   });
+}
+
+/**
+ * A fresh id to mint once at the start of checkout (see
+ * CheckoutContent.tsx) and carry through: sent to the backend with the
+ * order (Order.metaEventId), reused here for the Purchase conversion fired
+ * on success, and reused again server-side for the Meta CAPI Purchase call
+ * in markOrderPaid — the one shared id is what lets Meta dedupe the browser
+ * Pixel hit and the server CAPI hit into a single conversion.
+ */
+export function generateEventId(): string {
+  return crypto.randomUUID();
+}
+
+/**
+ * Fires the GA4 `purchase` / Meta Pixel `Purchase` conversion on checkout
+ * success. Deliberately does NOT go through trackEvent()/the backend —
+ * markOrderPaid already records the first-party purchase event and the
+ * Meta CAPI echo server-side (see orderController.ts), which is the
+ * reliable path that doesn't depend on this redirect actually completing.
+ * This call is purely for the two providers that need a browser-side hit.
+ */
+export function trackPurchaseConversion(params: {
+  eventId: string;
+  orderId: string;
+  total: number;
+  items: Array<{ productId: string; title: string; quantity: number; finalPrice?: number; price?: number }>;
+}) {
+  if (typeof window === "undefined") return;
+  try {
+    if (!hasConsent()) return;
+
+    if (typeof window.gtag === "function") {
+      window.gtag("event", "purchase", {
+        transaction_id: params.orderId,
+        value: params.total,
+        currency: "INR",
+        items: params.items.map((i) => ({
+          item_id: i.productId,
+          item_name: i.title,
+          price: i.finalPrice ?? i.price,
+          quantity: i.quantity,
+        })),
+      });
+    }
+
+    if (typeof window.fbq === "function") {
+      window.fbq(
+        "track",
+        "Purchase",
+        {
+          value: params.total,
+          currency: "INR",
+          content_ids: params.items.map((i) => i.productId),
+          contents: params.items.map((i) => ({ id: i.productId, quantity: i.quantity })),
+        },
+        { eventID: params.eventId }
+      );
+    }
+
+    if (typeof window.clarity === "function") {
+      window.clarity("set", "purchase_completed", "true");
+    }
+  } catch {
+    // never throw into the caller
+  }
 }
