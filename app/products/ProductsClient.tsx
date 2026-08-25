@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Slider } from "@/components/ui/slider";
+import { trackEvent } from "@/lib/analytics";
 import {
     Accordion,
     AccordionContent,
@@ -143,9 +144,11 @@ export default function ShopClient({
     const toggleFilter = (
         list: string[],
         setList: React.Dispatch<React.SetStateAction<string[]>>,
-        value: string
+        value: string,
+        filterType: string
     ) => {
         setList(list.includes(value) ? list.filter((item) => item !== value) : [...list, value]);
+        trackEvent("filter_used", { filterType, value });
     };
 
     // Filter Logic
@@ -314,7 +317,7 @@ export default function ShopClient({
                                     key={brand}
                                     label={brand}
                                     checked={selectedBrands.includes(brand)}
-                                    onCheckedChange={() => toggleFilter(selectedBrands, setSelectedBrands, brand)}
+                                    onCheckedChange={() => toggleFilter(selectedBrands, setSelectedBrands, brand, 'brand')}
                                 />
                             ))}
                         </div>
@@ -332,7 +335,7 @@ export default function ShopClient({
                                     key={proc}
                                     label={proc}
                                     checked={selectedProcessor.includes(proc)}
-                                    onCheckedChange={() => toggleFilter(selectedProcessor, setSelectedProcessor, proc)}
+                                    onCheckedChange={() => toggleFilter(selectedProcessor, setSelectedProcessor, proc, 'processor')}
                                 />
                             ))}
                         </div>
@@ -350,7 +353,7 @@ export default function ShopClient({
                                     key={ram}
                                     label={ram}
                                     checked={selectedRam.includes(ram)}
-                                    onCheckedChange={() => toggleFilter(selectedRam, setSelectedRam, ram)}
+                                    onCheckedChange={() => toggleFilter(selectedRam, setSelectedRam, ram, 'ram')}
                                 />
                             ))}
                         </div>
@@ -368,7 +371,7 @@ export default function ShopClient({
                                     key={storage}
                                     label={storage}
                                     checked={selectedStorage.includes(storage)}
-                                    onCheckedChange={() => toggleFilter(selectedStorage, setSelectedStorage, storage)}
+                                    onCheckedChange={() => toggleFilter(selectedStorage, setSelectedStorage, storage, 'storage')}
                                 />
                             ))}
                         </div>
@@ -386,7 +389,7 @@ export default function ShopClient({
                                     key={display}
                                     label={display}
                                     checked={selectedDisplay.includes(display)}
-                                    onCheckedChange={() => toggleFilter(selectedDisplay, setSelectedDisplay, display)}
+                                    onCheckedChange={() => toggleFilter(selectedDisplay, setSelectedDisplay, display, 'display')}
                                 />
                             ))}
                         </div>
@@ -464,7 +467,7 @@ export default function ShopClient({
                     </Sheet>
 
                     {/* Sort Dropdown */}
-                    <Select value={sortBy} onValueChange={(v) => v && setSortBy(v)}>
+                    <Select value={sortBy} onValueChange={(v) => { if (v) { setSortBy(v); trackEvent("sort_used", { sortBy: v }); } }}>
                         <SelectTrigger className="h-auto w-full min-w-[180px] rounded-xl border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-700 md:w-[200px]">
                             <SelectValue />
                         </SelectTrigger>

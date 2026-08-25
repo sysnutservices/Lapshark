@@ -10,6 +10,7 @@ import { useUserFeatures } from '../context/UserFeatureContext';
 import { Logo } from './Logo';
 import logo from "../assets/logo.svg";
 import { useAuth } from '@/context/AuthContext';
+import { trackEvent } from '@/lib/analytics';
 
 export const Navbar: React.FC = () => {
   const { totalItems } = useCart();
@@ -235,7 +236,13 @@ export const Navbar: React.FC = () => {
               <a href="tel:+918971319555" className="text-2xl font-bold block mb-4 tracking-tight flex items-center gap-2">
                 <Phone className="w-5 h-5 text-teal-400" /> +91 897 131 9555
               </a>
-              <button className="w-full bg-white text-slate-900 font-bold py-3 rounded-xl hover:bg-teal-50 transition-colors shadow-lg">
+              <button
+                onClick={() => {
+                  trackEvent("whatsapp_click", { location: "navbar_mobile_menu" });
+                  window.open("https://wa.me/918971319555", "_blank");
+                }}
+                className="w-full bg-white text-slate-900 font-bold py-3 rounded-xl hover:bg-teal-50 transition-colors shadow-lg"
+              >
                 Chat on WhatsApp
               </button>
             </div>

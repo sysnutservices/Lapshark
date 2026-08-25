@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, ReactNode, useEffect } from
 import { User } from "../types";
 import { API_URL } from "@/api/api";
 import { jwtDecode } from "jwt-decode";
+import { trackEvent } from "@/lib/analytics";
 
 interface AuthContextType {
   user: User | null;
@@ -77,6 +78,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setUser(loggedInUser);
     localStorage.setItem("user", JSON.stringify(loggedInUser));
     localStorage.setItem("token", token);
+    // trackEvent reads localStorage["user"] fresh on every call, so this is
+    // also the anonymous-visitor-to-customer identity merge — every event
+    // from here on automatically carries this user's id.
+    trackEvent("login", { method: "otp" });
 
     try {
       const decoded: any = jwtDecode(token);
