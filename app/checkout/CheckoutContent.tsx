@@ -108,7 +108,15 @@ export default function CheckoutContent() {
     const shippingThreshold = 10000;
     const shippingCost = totalPrice > shippingThreshold ? 0 : 500;
 
-    const [finalTotal, setFinalTotal] = useState(totalPrice + shippingCost);
+    // Derived, not its own state: the cart hydrates from localStorage/API
+    // asynchronously, so `totalPrice` is 0 on CheckoutContent's very first
+    // render. A `useState(totalPrice + shippingCost)` initializer captures
+    // that stale 0 permanently — nothing re-syncs it once the cart finishes
+    // loading, so the whole checkout (order total, Pay button, Razorpay
+    // amount) silently locked to a ₹500 shipping-only charge for every
+    // order. Deriving it fresh every render is what actually fixes that,
+    // not a useEffect chasing totalPrice around.
+    const finalTotal = totalPrice + shippingCost - discount;
 
     if (cart.length === 0) {
         return (
@@ -155,7 +163,6 @@ export default function CheckoutContent() {
 
             if (result?.valid) {
                 setDiscount(result.discountAmount);
-                setFinalTotal(totalPrice + shippingCost - result.discountAmount);
 
                 const duration = 5 * 1000;
                 const animationEnd = Date.now() + duration;
@@ -182,7 +189,6 @@ export default function CheckoutContent() {
                 }, 250);
             } else {
                 setDiscount(0);
-                setFinalTotal(totalPrice + shippingCost);
                 MySwal.fire({
                     title: "Invalid Coupon!",
                     icon: "error",
@@ -194,7 +200,6 @@ export default function CheckoutContent() {
         } catch (error) {
             console.error("Coupon validation failed:", error);
             setDiscount(0);
-            setFinalTotal(totalPrice + shippingCost);
         }
     };
 
