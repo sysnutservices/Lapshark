@@ -33,6 +33,34 @@ export default function CheckoutContent() {
     const [showLogin, setShowLogin] = useState(false);
     const [locationReady, setLocationReady] = useState(false);
     const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+    const [serviceability, setServiceability] = useState<{ checked: boolean; serviceable: boolean; message?: string }>({ checked: false, serviceable: true });
+    const [paymentMethod, setPaymentMethod] = useState<'Razorpay' | 'COD'>('Razorpay');
+    // Mirrors orderController's COD_ADVANCE_AMOUNT — the server is what
+    // actually decides the charged amount, this is only for the pre-payment
+    // label/summary so keep the two in sync if it ever changes.
+    const COD_ADVANCE_AMOUNT = 500;
+
+    // Pincode check against Ekart — pure checkout UX guardrail (fails open on
+    // any error/pincode format the backend rejects), not the actual gate on
+    // whether an order can ship. Re-runs whenever the selected address changes.
+    useEffect(() => {
+        const zip = selectedAddress?.zip;
+        if (!zip) {
+            setServiceability({ checked: false, serviceable: true });
+            return;
+        }
+        let cancelled = false;
+        fetch(`${API_URL}/shipping/serviceability/${zip}`)
+            .then((res) => res.json())
+            .then((data) => {
+                if (cancelled) return;
+                setServiceability({ checked: true, serviceable: data.serviceable !== false, message: data.message });
+            })
+            .catch(() => {
+                if (!cancelled) setServiceability({ checked: true, serviceable: true });
+            });
+        return () => { cancelled = true; };
+    }, [selectedAddress?.zip]);
 
     useEffect(() => {
         // Fetch addresses
@@ -96,6 +124,13 @@ export default function CheckoutContent() {
             </div>
         );
     }
+
+    // What Razorpay actually charges right now: the full total for online
+    // payment, or just the advance for COD (full total if the order's too
+    // small to leave anything meaningful for COD — mirrors the server guard).
+    const isCODEligible = finalTotal > COD_ADVANCE_AMOUNT;
+    const payNowAmount = paymentMethod === 'COD' && isCODEligible ? COD_ADVANCE_AMOUNT : finalTotal;
+    const codBalance = paymentMethod === 'COD' && isCODEligible ? finalTotal - COD_ADVANCE_AMOUNT : 0;
 
     // Helper to load Razorpay Script
     const loadRazorpayScript = () => {
@@ -207,7 +242,7 @@ export default function CheckoutContent() {
                 coupon: couponCode || null,
                 discount: discount || 0,
                 total: finalTotal,
-                paymentMethod: "Razorpay",
+                paymentMethod,
                 items: finalCart.map(item => ({
                     productId: item.productId,
                     quantity: item.quantity,
@@ -471,6 +506,12 @@ export default function CheckoutContent() {
                                             <div className="flex items-center gap-4 mt-3 text-sm text-slate-500 font-medium">
                                                 <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5" /> {selectedAddress.phone}</span>
                                             </div>
+                                            {serviceability.checked && !serviceability.serviceable && (
+                                                <div className="mt-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
+                                                    We currently can&apos;t deliver to this pincode ({selectedAddress.zip}).{serviceability.message ? ` ${serviceability.message}` : ''} Please{' '}
+                                                    <Link href="/addresses" className="font-bold underline">choose another address</Link>.
+                                                </div>
+                                            )}
                                         </div>
                                     ) : (
                                         <div className="text-center py-4">
@@ -479,6 +520,41 @@ export default function CheckoutContent() {
                                         </div>
                                     )}
                                 </div>
+                            </section>
+
+                            {/* Payment Method */}
+                            <section className="bg-white shadow-sm rounded-3xl border border-slate-200 overflow-hidden">
+                                <div className="px-6 md:px-8 py-5 border-b border-slate-100 bg-slate-50/50">
+                                    <h2 className="text-slate-700 font-bold flex items-center gap-2">
+                                        <CreditCard className="w-5 h-5 text-teal-600" />
+                                        Payment Method
+                                    </h2>
+                                </div>
+                                <div className="p-6 md:p-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setPaymentMethod('Razorpay')}
+                                        className={`text-left p-4 rounded-2xl border-2 transition-all ${paymentMethod === 'Razorpay' ? 'border-teal-600 bg-teal-50' : 'border-slate-200 hover:border-slate-300'}`}
+                                    >
+                                        <span className="font-bold text-slate-900 text-sm block">Pay Online</span>
+                                        <span className="text-xs text-slate-500">Card, UPI, Netbanking — full amount now</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPaymentMethod('COD')}
+                                        className={`text-left p-4 rounded-2xl border-2 transition-all ${paymentMethod === 'COD' ? 'border-teal-600 bg-teal-50' : 'border-slate-200 hover:border-slate-300'}`}
+                                    >
+                                        <span className="font-bold text-slate-900 text-sm block">Cash on Delivery</span>
+                                        <span className="text-xs text-slate-500">
+                                            {isCODEligible ? `₹${COD_ADVANCE_AMOUNT} advance now, rest on delivery` : 'Full amount now (order too small for COD)'}
+                                        </span>
+                                    </button>
+                                </div>
+                                {paymentMethod === 'COD' && isCODEligible && (
+                                    <div className="mx-6 md:mx-8 mb-6 -mt-2 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl px-4 py-3">
+                                        Pay <span className="font-bold">₹{COD_ADVANCE_AMOUNT}</span> now to confirm this order. The remaining <span className="font-bold">₹{codBalance.toLocaleString('en-IN')}</span> is collected by the courier on delivery.
+                                    </div>
+                                )}
                             </section>
 
                             <div className="grid grid-cols-2 gap-4">
@@ -503,7 +579,7 @@ export default function CheckoutContent() {
                                 </div>
                                 <button
                                     onClick={handleRazorpayPayment}
-                                    disabled={isProcessing || !selectedAddress}
+                                    disabled={isProcessing || !selectedAddress || (serviceability.checked && !serviceability.serviceable)}
                                     className="w-full flex items-center justify-center rounded-2xl border border-transparent bg-teal-600 px-6 py-4 text-sm font-bold text-white shadow-xl shadow-teal-200 hover:bg-teal-700 cursor-pointer focus:outline-none focus:ring-4 focus:ring-teal-500/20 disabled:opacity-70 disabled:cursor-not-allowed transition-all transform active:scale-[0.98]"
                                 >
                                     {isProcessing ? (
@@ -515,7 +591,7 @@ export default function CheckoutContent() {
                                             Processing...
                                         </span>
                                     ) : (
-                                        `Pay ₹${finalTotal.toLocaleString('en-IN')}`
+                                        paymentMethod === 'COD' && isCODEligible ? `Pay ₹${payNowAmount.toLocaleString('en-IN')} Advance` : `Pay ₹${payNowAmount.toLocaleString('en-IN')}`
                                     )}
                                 </button>
                             </div>
@@ -601,7 +677,7 @@ export default function CheckoutContent() {
 
                                         <button
                                             onClick={handleRazorpayPayment}
-                                            disabled={isProcessing || !selectedAddress}
+                                            disabled={isProcessing || !selectedAddress || (serviceability.checked && !serviceability.serviceable)}
                                             className="w-full flex items-center justify-center rounded-2xl border border-transparent bg-teal-600 px-6 py-4 text-lg font-bold text-white shadow-xl shadow-teal-200 hover:bg-teal-700 cursor-pointer focus:outline-none focus:ring-4 focus:ring-teal-500/20 disabled:opacity-70 disabled:cursor-not-allowed transition-all transform active:scale-[0.98]"
                                         >
                                             {isProcessing ? (
@@ -613,7 +689,7 @@ export default function CheckoutContent() {
                                                     Processing...
                                                 </span>
                                             ) : (
-                                                `Pay ₹${finalTotal.toLocaleString('en-IN')}`
+                                                paymentMethod === 'COD' && isCODEligible ? `Pay ₹${payNowAmount.toLocaleString('en-IN')} Advance` : `Pay ₹${payNowAmount.toLocaleString('en-IN')}`
                                             )}
                                         </button>
 

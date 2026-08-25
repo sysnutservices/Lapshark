@@ -62,16 +62,21 @@ export default function OrderDetailsContent() {
         );
     }
 
-    const steps = ['Pending', 'Processing', 'Shipped', 'Delivered'];
+    const steps = ['Pending', 'Processing', 'Shipped', 'Out for Delivery', 'Delivered'];
     const currentStepIndex = steps.indexOf(order.status);
     const isCancelled = order.status === 'Cancelled';
+    // RTO (courier sent the shipment back) is a terminal exception like
+    // Cancelled, not a further step down the same timeline.
+    const isRTO = order.status === 'RTO';
 
     const getStatusColor = (status: string) => {
         switch (status) {
             case 'Delivered': return 'text-green-600 bg-green-100 border-green-200';
-            case 'Shipped': return 'text-teal-600 bg-teal-100 border-teal-200';
+            case 'Shipped':
+            case 'Out for Delivery': return 'text-teal-600 bg-teal-100 border-teal-200';
             case 'Processing': return 'text-yellow-600 bg-yellow-100 border-yellow-200';
-            case 'Cancelled': return 'text-red-600 bg-red-100 border-red-200';
+            case 'Cancelled':
+            case 'RTO': return 'text-red-600 bg-red-100 border-red-200';
             default: return 'text-slate-600 bg-slate-100 border-slate-200';
         }
     };
@@ -117,12 +122,16 @@ export default function OrderDetailsContent() {
 
                         {/* Status Timeline */}
                         <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-                            {isCancelled ? (
+                            {isCancelled || isRTO ? (
                                 <div className="flex items-center gap-4 text-red-600 bg-red-50 p-4 rounded-xl border border-red-100">
                                     <XCircle className="w-8 h-8" />
                                     <div>
-                                        <h3 className="font-bold text-lg">Order Cancelled</h3>
-                                        <p className="text-sm text-red-500">This order has been cancelled. If you have any questions, please contact support.</p>
+                                        <h3 className="font-bold text-lg">{isRTO ? 'Returned to Origin' : 'Order Cancelled'}</h3>
+                                        <p className="text-sm text-red-500">
+                                            {isRTO
+                                                ? "This shipment couldn't be delivered and was sent back. Please contact support."
+                                                : 'This order has been cancelled. If you have any questions, please contact support.'}
+                                        </p>
                                     </div>
                                 </div>
                             ) : (
@@ -165,6 +174,16 @@ export default function OrderDetailsContent() {
                                             <p className="text-teal-700 text-sm">
                                                 {order.status === 'Delivered' ? `Delivered on ${order.date}` : `Arriving by ${new Date(new Date(order.date).setDate(new Date(order.date).getDate() + 5)).toDateString()}`}
                                             </p>
+                                            {order.shipment?.awb && (
+                                                <p className="text-teal-700 text-sm mt-1">
+                                                    AWB: {order.shipment.awb}
+                                                    {order.shipment.trackingUrl && (
+                                                        <a href={order.shipment.trackingUrl} target="_blank" rel="noopener noreferrer" className="font-bold underline ml-2">
+                                                            Track shipment
+                                                        </a>
+                                                    )}
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -238,11 +257,36 @@ export default function OrderDetailsContent() {
                                 </div>
                                 <div className="flex justify-between items-center text-sm">
                                     <span className="text-slate-500">Payment Status</span>
-                                    <span className={`px-2 py-0.5 rounded text-xs font-bold ${order.paymentStatus === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                                    <span className={`px-2 py-0.5 rounded text-xs font-bold ${order.paymentStatus === 'Paid' ? 'bg-green-100 text-green-700'
+                                        : order.paymentStatus === 'Refunded' ? 'bg-blue-100 text-blue-700'
+                                            : order.paymentStatus === 'Failed' ? 'bg-red-100 text-red-700'
+                                                : 'bg-yellow-100 text-yellow-700'
                                         }`}>
                                         {order.paymentStatus}
                                     </span>
                                 </div>
+                                {order.paymentMethod === 'COD' && !!order.advanceAmount && order.status !== 'Cancelled' && (
+                                    <>
+                                        <div className="flex justify-between items-center text-sm">
+                                            <span className="text-slate-500">Advance Paid</span>
+                                            <span className="font-bold text-slate-900">₹{order.advanceAmount.toLocaleString('en-IN')}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center text-sm pt-2 border-t border-dashed border-slate-200">
+                                            <span className="text-slate-500">Due on Delivery</span>
+                                            <span className="font-bold text-amber-700">₹{(order.total - order.advanceAmount).toLocaleString('en-IN')}</span>
+                                        </div>
+                                    </>
+                                )}
+                                {order.refund && (
+                                    <div className="flex justify-between items-center text-sm pt-2 border-t border-dashed border-slate-200">
+                                        <span className="text-slate-500">Advance Refund</span>
+                                        <span className="font-bold text-blue-700">
+                                            {order.refund.status === 'failed'
+                                                ? "Failed — we'll follow up manually"
+                                                : `₹${(order.refund.amount || 0).toLocaleString('en-IN')} (${order.refund.status})`}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                         </div>
 

@@ -181,6 +181,7 @@ export default function ProductsPage() {
         setEditingProduct(prev => ({
             ...prev,
             [name]: name === 'price' || name === 'discountPercent' || name === 'stock' || name === 'rating' || name === 'reviews'
+                || name === 'weightKg' || name === 'lengthCm' || name === 'widthCm' || name === 'heightCm'
                 ? Number(value)
                 : value
         }));
@@ -413,6 +414,10 @@ export default function ProductsPage() {
             formData.append('price', String(editingProduct.price || 0));
             formData.append('discountPercent', String(editingProduct.discountPercent || 0));
             formData.append('stock', String(editingProduct.stock || 0));
+            if (editingProduct.weightKg !== undefined) formData.append('weightKg', String(editingProduct.weightKg));
+            if (editingProduct.lengthCm !== undefined) formData.append('lengthCm', String(editingProduct.lengthCm));
+            if (editingProduct.widthCm !== undefined) formData.append('widthCm', String(editingProduct.widthCm));
+            if (editingProduct.heightCm !== undefined) formData.append('heightCm', String(editingProduct.heightCm));
             formData.append('condition', editingProduct.condition || 'Excellent');
             formData.append('rating', String(editingProduct.rating || 5));
             formData.append('reviews', String(editingProduct.reviews || 0));
@@ -907,6 +912,61 @@ export default function ProductsPage() {
                                                 placeholder="0"
                                             />
                                             {errors.stock && <p className="text-xs text-red-500 mt-1">{errors.stock}</p>}
+                                        </div>
+                                    </div>
+
+                                    {/* Shipping package dims — used to book the Ekart shipment (rate +
+                                        serviceability); defaults to a typical boxed-laptop parcel so this
+                                        is optional, override only when a product's real package differs. */}
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Weight (kg)</label>
+                                            <input
+                                                name="weightKg"
+                                                type="number"
+                                                min="0"
+                                                step="0.1"
+                                                className="w-full p-3 border border-gray-300 rounded-lg outline-none"
+                                                value={editingProduct.weightKg ?? ''}
+                                                onChange={handleChange}
+                                                placeholder="2.5"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Length (cm)</label>
+                                            <input
+                                                name="lengthCm"
+                                                type="number"
+                                                min="0"
+                                                className="w-full p-3 border border-gray-300 rounded-lg outline-none"
+                                                value={editingProduct.lengthCm ?? ''}
+                                                onChange={handleChange}
+                                                placeholder="35"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Width (cm)</label>
+                                            <input
+                                                name="widthCm"
+                                                type="number"
+                                                min="0"
+                                                className="w-full p-3 border border-gray-300 rounded-lg outline-none"
+                                                value={editingProduct.widthCm ?? ''}
+                                                onChange={handleChange}
+                                                placeholder="25"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Height (cm)</label>
+                                            <input
+                                                name="heightCm"
+                                                type="number"
+                                                min="0"
+                                                className="w-full p-3 border border-gray-300 rounded-lg outline-none"
+                                                value={editingProduct.heightCm ?? ''}
+                                                onChange={handleChange}
+                                                placeholder="8"
+                                            />
                                         </div>
                                     </div>
 
