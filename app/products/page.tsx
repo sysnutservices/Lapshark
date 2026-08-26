@@ -31,6 +31,7 @@ export default async function Shop({
     searchParams: Promise<{
         category?: string;
         priceRange?: number;
+        q?: string;
     }>;
 }) {
     // ✅ MUST await in Next.js 15
@@ -45,6 +46,7 @@ export default async function Shop({
         <ShopClient
             initialCategory={categoryParam}
             initialPriceRange={priceRangeParam}
+            initialSearch={params.q ?? ""}
             initialProducts={products}
         />
     );

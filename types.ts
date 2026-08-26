@@ -109,6 +109,16 @@ export interface Address {
   phone: string;
   type: 'Home' | 'Work' | 'Other';
 }
+export interface Review {
+  _id: string;
+  productId: string;
+  userId: string;
+  userName: string;
+  rating: number;
+  comment: string;
+  verifiedPurchase: boolean;
+  createdAt: string;
+}
 export interface BlogPost {
   _id: string;
   title: string;

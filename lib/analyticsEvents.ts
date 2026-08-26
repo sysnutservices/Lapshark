@@ -12,6 +12,7 @@ export const ANALYTICS_EVENTS = [
   "warranty_select",
   "filter_used",
   "sort_used",
+  "search",
   "whatsapp_click",
   "begin_checkout",
   "coupon_applied",
@@ -69,6 +70,10 @@ export interface SortUsedProperties {
   sortBy: string;
 }
 
+export interface SearchProperties {
+  query: string;
+}
+
 export interface WhatsappClickProperties {
   location: string;
 }
@@ -103,6 +108,7 @@ export interface AnalyticsEventPayloads {
   warranty_select: WarrantySelectProperties;
   filter_used: FilterUsedProperties;
   sort_used: SortUsedProperties;
+  search: SearchProperties;
   whatsapp_click: WhatsappClickProperties;
   begin_checkout: BeginCheckoutProperties;
   coupon_applied: CouponAppliedProperties;

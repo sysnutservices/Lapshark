@@ -20,6 +20,7 @@ export const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     const handleScroll = () => {
@@ -49,6 +50,15 @@ export const Navbar: React.FC = () => {
 
   const closeMenu = () => {
     setIsMobileMenuOpen(false);
+  };
+
+  const submitSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = searchTerm.trim();
+    if (!q) return;
+    trackEvent('search', { query: q });
+    closeMenu();
+    router.push(`/products?q=${encodeURIComponent(q)}`);
   };
 
   const currentPath = pathname;
@@ -92,14 +102,16 @@ export const Navbar: React.FC = () => {
 
             {/* Icons */}
             <div className="flex items-center space-x-3 lg:space-x-5">
-              <div className="hidden lg:flex relative group">
+              <form onSubmit={submitSearch} className="hidden lg:flex relative group">
                 <input
                   type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Search..."
                   className="pl-10 pr-4 py-2 bg-slate-100/50 border border-transparent hover:border-slate-200 focus:border-teal-500 focus:bg-white rounded-full text-sm focus:outline-none focus:ring-4 focus:ring-teal-500/10 w-48 focus:w-64 transition-all duration-300"
                 />
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 transform -translate-y-1/2 group-hover:text-teal-500 transition-colors" />
-              </div>
+              </form>
 
               <Link href="/wishlist" aria-label="Wishlist" className="relative p-2.5 hover:bg-slate-100 rounded-full transition-all hover:scale-105 group hidden sm:flex">
                 <Heart className="w-5 h-5 text-slate-600 group-hover:text-red-500 transition-colors" />
@@ -156,14 +168,16 @@ export const Navbar: React.FC = () => {
 
           <div className="flex-1 overflow-y-auto px-6 py-8 space-y-8 bg-white">
             {/* Search */}
-            <div className="relative">
+            <form onSubmit={submitSearch} className="relative">
               <input
                 type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search for laptops..."
                 className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-200 focus:border-teal-500 focus:bg-white rounded-xl text-base focus:outline-none transition-all shadow-sm"
               />
               <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 transform -translate-y-1/2" />
-            </div>
+            </form>
 
             {/* Navigation Links */}
             <div className="space-y-1">

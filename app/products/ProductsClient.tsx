@@ -102,10 +102,12 @@ function FilterSectionLabel({ title, count }: { title: string; count?: number })
 export default function ShopClient({
     initialCategory,
     initialPriceRange,
+    initialSearch = "",
     initialProducts = [],
 }: {
     initialCategory: string;
     initialPriceRange: number;
+    initialSearch?: string;
     initialProducts?: any[];
 }) {
     const { products: storeProducts } = useStore();
@@ -121,6 +123,7 @@ export default function ShopClient({
     const router = useRouter();
 
     // State
+    const [searchQuery, setSearchQuery] = useState<string>(initialSearch);
     const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory);
     const [priceRange, setPriceRange] = useState<[number, number]>([0, initialPriceRange]);
     const [sortBy, setSortBy] = useState<string>("featured");
@@ -154,6 +157,13 @@ export default function ShopClient({
     // Filter Logic
     const filteredProducts = products
         .filter((product) => {
+            const q = searchQuery.trim().toLowerCase();
+            const matchSearch =
+                !q ||
+                product.title?.toLowerCase().includes(q) ||
+                product.brand?.toLowerCase().includes(q) ||
+                product.category?.toLowerCase().includes(q);
+
             const matchCategory =
                 selectedCategory === "All" || product.category === selectedCategory;
 
@@ -203,6 +213,7 @@ export default function ShopClient({
                 });
 
             return (
+                matchSearch &&
                 matchCategory &&
                 matchPrice &&
                 matchBrand &&
@@ -220,6 +231,7 @@ export default function ShopClient({
         });
 
     const clearAllFilters = () => {
+        setSearchQuery("");
         setSelectedCategory("All");
         setPriceRange([0, MAX_PRICE]);
         setSelectedBrands([]);
@@ -431,6 +443,18 @@ export default function ShopClient({
                     </p>
                 </div>
                 <div className="flex items-center w-full md:w-auto gap-3">
+                    {/* Search */}
+                    <div className="relative flex-1 md:flex-none md:w-64">
+                        <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder="Search laptops..."
+                            className="w-full h-auto rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-3.5 text-sm font-medium text-slate-700 focus:border-teal-500 focus:outline-none focus:ring-4 focus:ring-teal-500/10"
+                        />
+                    </div>
+
                     {/* Mobile Filters Trigger */}
                     <Sheet open={isMobileFiltersOpen} onOpenChange={setIsMobileFiltersOpen}>
                         <SheetTrigger
@@ -500,8 +524,9 @@ export default function ShopClient({
                                 No matching laptops found
                             </h3>
                             <p className="text-slate-500 mb-8 max-w-sm mx-auto">
-                                We couldn't find any products matching your current filters. Try
-                                adjusting your price range or categories.
+                                {searchQuery
+                                    ? `No results for "${searchQuery}". Try a different term or clear your filters.`
+                                    : "We couldn't find any products matching your current filters. Try adjusting your price range or categories."}
                             </p>
                             <Button
                                 onClick={clearAllFilters}
