@@ -18,7 +18,7 @@ interface JourneyEvent {
 
 interface Visitor {
     visitorId: string;
-    userId?: { name?: string; mobile?: string; email?: string } | null;
+    userId?: { name?: string; mobile?: string; email?: string; pincode?: string } | null;
     intentScore: number;
     intentLevel: 'cold' | 'warm' | 'hot' | 'customer';
     firstSeenAt: string;
@@ -135,10 +135,24 @@ export default function VisitorJourneyPage() {
                 </div>
                 <div>
                     <p className="text-xs text-gray-400 uppercase font-bold">Customer</p>
-                    <p className="font-medium text-gray-900">
-                        {visitor.userId?.name ? `${visitor.userId.name} (${visitor.userId.mobile})` : 'Anonymous'}
-                    </p>
+                    <p className="font-medium text-gray-900">{visitor.userId?.name || 'Anonymous'}</p>
                 </div>
+                {visitor.userId && (
+                    <>
+                        <div>
+                            <p className="text-xs text-gray-400 uppercase font-bold">Phone</p>
+                            <p className="font-medium text-gray-900">{visitor.userId.mobile || '—'}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-gray-400 uppercase font-bold">Email</p>
+                            <p className="font-medium text-gray-900">{visitor.userId.email || '—'}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-gray-400 uppercase font-bold">Pincode</p>
+                            <p className="font-medium text-gray-900">{visitor.userId.pincode || '—'}</p>
+                        </div>
+                    </>
+                )}
                 <div>
                     <p className="text-xs text-gray-400 uppercase font-bold">First Touch</p>
                     <p className="font-medium text-gray-900">{visitor.firstTouch?.source || 'Direct'}</p>
