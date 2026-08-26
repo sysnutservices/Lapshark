@@ -178,6 +178,17 @@ export interface SiteConfig {
     email: string;
     address: string;
   };
+  analytics?: {
+    gaMeasurementId?: string;
+    metaPixelId?: string;
+    clarityProjectId?: string;
+    // The real secret is never sent to the client (see backend's
+    // getSiteConfig) — this flag just tells the Settings UI whether one is
+    // already saved, so it can show "configured" instead of the value.
+    metaCapiAccessTokenSet?: boolean;
+    // Only used when actually submitting a new token via updateSiteConfig.
+    metaCapiAccessToken?: string;
+  };
 }
 
 

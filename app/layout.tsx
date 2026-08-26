@@ -5,6 +5,7 @@ import { LayoutContent } from "./LayoutContent";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 import Script from "next/script";
+import { API_URL } from "@/api/api";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
@@ -67,19 +68,38 @@ export const viewport: Viewport = {
 };
 
 // Third-party analytics — each script is entirely absent from the page
-// unless its env var is set, so the site behaves identically with none of
-// these configured (no accounts yet) as it will once they're filled in.
-// window.gtag/fbq/clarity are what lib/analytics.ts's trackEvent() checks
-// for before dispatching to each provider.
-const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
-const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID;
-const CLARITY_PROJECT_ID = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID;
+// unless an id is actually configured, so the site behaves identically
+// with none of these set (no accounts yet) as it will once they're filled
+// in. window.gtag/fbq/clarity are what lib/analytics.ts's trackEvent()
+// checks for before dispatching to each provider.
+//
+// IDs come from the admin Settings page (SiteConfig.analytics, edited via
+// PUT /admin/site-config) so pasting one in takes effect without a
+// redeploy — `revalidate: 60` matches the backend's own publicCache
+// max-age on /site-config, so a change shows up within about a minute.
+// The NEXT_PUBLIC_* env vars still work as a fallback for anyone who'd
+// rather set them at deploy time instead.
+async function getAnalyticsConfig() {
+    try {
+        const res = await fetch(`${API_URL}/site-config`, { next: { revalidate: 60 } });
+        if (!res.ok) return {};
+        const data = await res.json();
+        return data?.analytics || {};
+    } catch {
+        return {};
+    }
+}
 
-export default function RootLayout({
+export default async function RootLayout({
     children,
 }: Readonly<{
     children: React.ReactNode;
 }>) {
+    const analyticsConfig = await getAnalyticsConfig();
+    const GA_MEASUREMENT_ID = analyticsConfig.gaMeasurementId || process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+    const META_PIXEL_ID = analyticsConfig.metaPixelId || process.env.NEXT_PUBLIC_META_PIXEL_ID;
+    const CLARITY_PROJECT_ID = analyticsConfig.clarityProjectId || process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID;
+
     return (
         <html lang="en" className={cn("font-sans", geist.variable)}>
             <body className="antialiased" suppressHydrationWarning={true}>
