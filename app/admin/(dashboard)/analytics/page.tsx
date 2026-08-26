@@ -90,7 +90,7 @@ export default function AnalyticsOverview() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
                         <StatCard title="Visitors" value={stats.visitors} icon={Users} color="text-blue-500" bgColor="bg-blue-100" href="/admin/analytics/visitors" />
                         <StatCard title="Product Views" value={stats.productViews} icon={Eye} color="text-purple-500" bgColor="bg-purple-100" href="/admin/analytics/products" />
-                        <StatCard title="Add to Cart" value={stats.addToCart} icon={ShoppingCart} color="text-orange-500" bgColor="bg-orange-100" />
+                        <StatCard title="Add to Cart" value={stats.addToCart} icon={ShoppingCart} color="text-orange-500" bgColor="bg-orange-100" href="/admin/analytics/products" />
                         <StatCard title="Checkouts Started" value={stats.checkoutsStarted} icon={CreditCard} color="text-amber-500" bgColor="bg-amber-100" />
                         <StatCard title="Purchases" value={stats.purchases} icon={TrendingUp} color="text-green-500" bgColor="bg-green-100" href="/admin/orders" />
                         <StatCard title="Conversion Rate" value={`${stats.conversionRate}%`} icon={Percent} color="text-red-500" bgColor="bg-red-100" />
