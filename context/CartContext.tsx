@@ -109,8 +109,20 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     const productId = product._id || product.productId || product.id;
     if (!productId) return;
 
+    // Deliberately a different priority order than the cart-identity
+    // `productId` above (which prefers _id, for its own cart-dedup
+    // reasons) — every other tracking call site (view_item,
+    // wishlist_add, compare_started) resolves productId as
+    // productId-then-id-then-_id. ProductCard's quick-add button passes
+    // a product object without a real _id for config-default variants,
+    // so using the cart-identity value here split the same physical
+    // product into two rows on the admin Product Views page (one from
+    // view_item, one from add_to_cart, never merging). Matching the same
+    // priority order everywhere is what actually fixes that.
+    const trackingProductId = product.productId || product.id || product._id || productId;
+
     trackEvent("add_to_cart", {
-      productId,
+      productId: trackingProductId,
       title: product.title,
       quantity: 1,
       finalPrice: product.finalPrice,
