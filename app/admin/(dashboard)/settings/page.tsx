@@ -1,7 +1,109 @@
 "use client";
 
-import React from 'react';
-import { Settings as SettingsIcon, Globe, CreditCard, Truck } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Settings as SettingsIcon, Globe, CreditCard, Truck, BarChart3, Check } from 'lucide-react';
+import { useStore } from '@/context/StoreContext';
+
+function AnalyticsSettings() {
+    const { siteConfig, updateSiteConfig } = useStore();
+    const [gaMeasurementId, setGaMeasurementId] = useState('');
+    const [metaPixelId, setMetaPixelId] = useState('');
+    const [clarityProjectId, setClarityProjectId] = useState('');
+    const [metaCapiAccessToken, setMetaCapiAccessToken] = useState('');
+    const [saving, setSaving] = useState(false);
+    const [saved, setSaved] = useState(false);
+
+    // Sync local form state once siteConfig loads — the CAPI token field
+    // stays blank even then, since the backend never sends the real value
+    // back (see getSiteConfig); metaCapiAccessTokenSet is what drives the
+    // "already configured" hint instead.
+    useEffect(() => {
+        if (!siteConfig?.analytics) return;
+        setGaMeasurementId(siteConfig.analytics.gaMeasurementId || '');
+        setMetaPixelId(siteConfig.analytics.metaPixelId || '');
+        setClarityProjectId(siteConfig.analytics.clarityProjectId || '');
+    }, [siteConfig?.analytics]);
+
+    const handleSave = async () => {
+        if (!siteConfig) return;
+        setSaving(true);
+        try {
+            await updateSiteConfig({
+                ...siteConfig,
+                analytics: {
+                    ...siteConfig.analytics,
+                    gaMeasurementId,
+                    metaPixelId,
+                    clarityProjectId,
+                    // Blank means "leave it as-is" — the backend preserves
+                    // the existing token when this comes through empty.
+                    metaCapiAccessToken,
+                },
+            });
+            setMetaCapiAccessToken('');
+            setSaved(true);
+            setTimeout(() => setSaved(false), 2000);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="p-6 flex items-start gap-4">
+            <div className="p-3 bg-purple-50 text-purple-600 rounded-lg"><BarChart3 className="w-6 h-6" /></div>
+            <div className="flex-1">
+                <h3 className="font-bold text-gray-900">Analytics & Tracking</h3>
+                <p className="text-sm text-gray-500 mb-4">Paste in IDs from Google Analytics, Meta Events Manager, and Microsoft Clarity — takes effect within about a minute, no redeploy needed.</p>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">GA4 Measurement ID</label>
+                        <input
+                            className="w-full border rounded-lg p-2 text-sm font-mono"
+                            placeholder="G-XXXXXXXXXX"
+                            value={gaMeasurementId}
+                            onChange={(e) => setGaMeasurementId(e.target.value)}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Meta Pixel ID</label>
+                        <input
+                            className="w-full border rounded-lg p-2 text-sm font-mono"
+                            placeholder="1234567890123456"
+                            value={metaPixelId}
+                            onChange={(e) => setMetaPixelId(e.target.value)}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Microsoft Clarity Project ID</label>
+                        <input
+                            className="w-full border rounded-lg p-2 text-sm font-mono"
+                            placeholder="abc123xyz"
+                            value={clarityProjectId}
+                            onChange={(e) => setClarityProjectId(e.target.value)}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Meta Conversions API Token</label>
+                        <input
+                            type="password"
+                            className="w-full border rounded-lg p-2 text-sm font-mono"
+                            placeholder={siteConfig?.analytics?.metaCapiAccessTokenSet ? '•••••••• (configured — paste to replace)' : 'Paste access token'}
+                            value={metaCapiAccessToken}
+                            onChange={(e) => setMetaCapiAccessToken(e.target.value)}
+                        />
+                    </div>
+                </div>
+                <button
+                    onClick={handleSave}
+                    disabled={saving || !siteConfig}
+                    className="mt-4 bg-purple-600 text-white px-5 py-2 rounded-lg text-sm font-bold hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2"
+                >
+                    {saved ? <><Check className="w-4 h-4" /> Saved</> : saving ? 'Saving...' : 'Save Analytics Settings'}
+                </button>
+            </div>
+        </div>
+    );
+}
 
 export default function SettingsPage() {
     return (
@@ -10,6 +112,7 @@ export default function SettingsPage() {
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <div className="grid divide-y divide-gray-100">
+                    <AnalyticsSettings />
                     <div className="p-6 flex items-start gap-4">
                         <div className="p-3 bg-blue-50 text-blue-600 rounded-lg"><Globe className="w-6 h-6" /></div>
                         <div className="flex-1">
