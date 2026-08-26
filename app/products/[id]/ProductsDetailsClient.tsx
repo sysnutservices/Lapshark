@@ -6,9 +6,11 @@ import { useStore } from '@/context/StoreContext';
 import { useCart } from '@/context/CartContext';
 import { useUserFeatures } from '@/context/UserFeatureContext';
 import { Category } from '@/types';
-import { Star, Truck, Shield, ShoppingBag, Check, ClipboardCheck, Battery, Plus, ArrowLeft, ThumbsUp, User } from 'lucide-react';
+import { Star, Truck, Shield, ShoppingBag, Check, ClipboardCheck, Battery, Plus, ArrowLeft, User } from 'lucide-react';
 import { ProductCard } from '@/components/ProductCard';
-import { REVIEWS } from '@/env';
+import { Review } from '@/types';
+import { api } from '@/api/api';
+import { useAuth } from '@/context/AuthContext';
 import { CheckoutLogin } from '@/components/LoginComponent';
 import Script from 'next/script';
 import SkeletonProductCard from '@/components/SkeletonProductCard';
@@ -45,6 +47,7 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
     const { products, loading } = useStore();
     const { addToCart } = useCart();
     const { addToRecentlyViewed, addresses } = useUserFeatures();
+    const { user } = useAuth();
 
     const [selectedRam, setSelectedRam] = useState<any>(null);
     const [selectedCondition, setSelectedCondition] = useState<any>(null);
@@ -52,6 +55,17 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
     const [selectedWarranty, setSelectedWarranty] = useState<any>(null);
     const [activeImage, setActiveImage] = useState<string>('');
     const [showLogin, setShowLogin] = useState(false);
+    // CheckoutLogin is shared with the buy-now flow, which always wants to land
+    // on /checkout after login — writing a review doesn't, so this steers
+    // handleLoginSuccess instead of the checkout redirect firing every time.
+    const [loginIntent, setLoginIntent] = useState<'checkout' | 'review'>('checkout');
+
+    const [productReviews, setProductReviews] = useState<Review[]>([]);
+    const [showAllReviews, setShowAllReviews] = useState(false);
+    const [showReviewForm, setShowReviewForm] = useState(false);
+    const [reviewRating, setReviewRating] = useState(5);
+    const [reviewComment, setReviewComment] = useState('');
+    const [submittingReview, setSubmittingReview] = useState(false);
 
     // Server already fetched this product for metadata; use it until the store loads
     // so the details render in the initial HTML instead of a skeleton.
@@ -86,6 +100,36 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
         }
     }, [product?.id, addToRecentlyViewed]);
 
+    useEffect(() => {
+        if (!product?._id) return;
+        api.get(`/products/${product._id}/reviews`)
+            .then(res => setProductReviews(res.data || []))
+            .catch(() => setProductReviews([]));
+    }, [product?._id]);
+
+    const submitReview = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!product?._id || !reviewComment.trim()) return;
+        setSubmittingReview(true);
+        try {
+            await api.post(
+                `/products/${product._id}/reviews`,
+                { rating: reviewRating, comment: reviewComment.trim() },
+                { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+            );
+            const res = await api.get(`/products/${product._id}/reviews`);
+            setProductReviews(res.data || []);
+            setReviewComment('');
+            setReviewRating(5);
+            setShowReviewForm(false);
+        } catch (err) {
+            console.error('❌ Submit review failed', err);
+            alert('Could not submit your review. Please try again.');
+        } finally {
+            setSubmittingReview(false);
+        }
+    };
+
     if (!product && (loading || !products || products.length === 0)) {
         return <ProductDetailsSkeleton />;
     }
@@ -102,7 +146,6 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
     const originalPrice = (product?.price || 0) + (selectedRam?.price || 0) + (selectedStorage?.price || 0) + (selectedWarranty?.price || 0);
 
     const galleryImages = [product.image, ...(product.images || [])].filter((img, index, self) => self.indexOf(img) === index);
-    const productReviews = REVIEWS.filter(r => r.productId === product.id);
     const averageRating = productReviews.length > 0
         ? productReviews.reduce((acc, r) => acc + r.rating, 0) / productReviews.length
         : product.rating;
@@ -178,6 +221,10 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
 
     const handleLoginSuccess = () => {
         setShowLogin(false);
+        if (loginIntent === 'review') {
+            setShowReviewForm(true);
+            return;
+        }
         router.push("/checkout");
     };
 
@@ -509,10 +556,45 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
                 <div className="mb-12 md:mb-24 bg-white rounded-[2rem] md:rounded-[3rem] border border-slate-100 p-6 md:p-12 shadow-sm">
                     <div className="flex items-center justify-between mb-8 md:mb-12">
                         <h2 className="text-2xl md:text-3xl font-bold text-slate-900">Ratings & Reviews</h2>
-                        <Button className="hidden h-auto rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-bold hover:bg-teal-700 md:flex">
+                        <Button
+                            onClick={() => { if (user) { setShowReviewForm(v => !v); } else { setLoginIntent('review'); setShowLogin(true); } }}
+                            className="hidden h-auto rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-bold hover:bg-teal-700 md:flex"
+                        >
                             Write a Review
                         </Button>
                     </div>
+
+                    {showReviewForm && (
+                        <form onSubmit={submitReview} className="mb-8 p-6 bg-slate-50 rounded-2xl border border-slate-100 space-y-4">
+                            <div>
+                                <p className="text-sm font-bold text-slate-700 mb-2">Your Rating</p>
+                                <div className="flex gap-1">
+                                    {[1, 2, 3, 4, 5].map(n => (
+                                        <button type="button" key={`rate-${n}`} onClick={() => setReviewRating(n)}>
+                                            <Star className={`w-6 h-6 ${n <= reviewRating ? 'fill-current text-amber-400' : 'text-slate-200'}`} />
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <textarea
+                                value={reviewComment}
+                                onChange={(e) => setReviewComment(e.target.value)}
+                                placeholder="Share your experience with this laptop..."
+                                required
+                                maxLength={2000}
+                                rows={3}
+                                className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm focus:border-teal-500 focus:outline-none"
+                            />
+                            <div className="flex gap-3">
+                                <Button type="submit" disabled={submittingReview} className="h-auto rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-bold hover:bg-teal-700">
+                                    {submittingReview ? 'Submitting...' : 'Submit Review'}
+                                </Button>
+                                <Button type="button" variant="ghost" onClick={() => setShowReviewForm(false)} className="h-auto rounded-xl px-5 py-2.5 text-sm font-bold">
+                                    Cancel
+                                </Button>
+                            </div>
+                        </form>
+                    )}
 
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-16">
                         <div className="lg:col-span-4 space-y-6">
@@ -550,8 +632,8 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
 
                         <div className="lg:col-span-8 space-y-6">
                             {productReviews.length > 0 ? (
-                                productReviews.map((review) => (
-                                    <div key={`review-${review.id}`} className="pb-6 border-b border-slate-100 last:border-0">
+                                (showAllReviews ? productReviews : productReviews.slice(0, 3)).map((review) => (
+                                    <div key={`review-${review._id}`} className="pb-6 border-b border-slate-100 last:border-0">
                                         <div className="flex justify-between items-start mb-3">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
@@ -562,10 +644,10 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
                                                     <div className="flex items-center gap-2">
                                                         <div className="flex text-amber-400">
                                                             {[...Array(5)].map((_, i) => (
-                                                                <Star key={`review-${review.id}-star-${i}`} className={`w-3 h-3 ${i < review.rating ? 'fill-current' : 'text-slate-200'}`} />
+                                                                <Star key={`review-${review._id}-star-${i}`} className={`w-3 h-3 ${i < review.rating ? 'fill-current' : 'text-slate-200'}`} />
                                                             ))}
                                                         </div>
-                                                        {review.verified && (
+                                                        {review.verifiedPurchase && (
                                                             <Badge className="h-auto gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold bg-green-50 text-green-600 hover:bg-green-50">
                                                                 <Check className="w-2.5 h-2.5" /> Verified
                                                             </Badge>
@@ -573,27 +655,29 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
                                                     </div>
                                                 </div>
                                             </div>
-                                            <span className="text-xs text-slate-400 font-medium">{review.date}</span>
+                                            <span className="text-xs text-slate-400 font-medium">{new Date(review.createdAt).toLocaleDateString('en-IN')}</span>
                                         </div>
                                         <p className="text-slate-600 text-sm leading-relaxed">{review.comment}</p>
-                                        <div className="mt-3 flex items-center gap-4">
-                                            <button className="text-xs text-slate-400 hover:text-teal-600 flex items-center gap-1 transition-colors">
-                                                <ThumbsUp className="w-3.5 h-3.5" /> Helpful
-                                            </button>
-                                        </div>
                                     </div>
                                 ))
                             ) : (
                                 <div className="text-center py-12 bg-slate-50 rounded-2xl border border-slate-100 border-dashed">
                                     <p className="text-slate-500 font-medium mb-4">No reviews yet. Be the first to share your experience!</p>
-                                    <Button className="h-auto rounded-xl bg-teal-600 px-6 py-2.5 text-sm font-bold hover:bg-teal-700">
+                                    <Button
+                                        onClick={() => { if (user) { setShowReviewForm(true); } else { setLoginIntent('review'); setShowLogin(true); } }}
+                                        className="h-auto rounded-xl bg-teal-600 px-6 py-2.5 text-sm font-bold hover:bg-teal-700"
+                                    >
                                         Write a Review
                                     </Button>
                                 </div>
                             )}
 
-                            {productReviews.length > 3 && (
-                                <Button variant="ghost" className="h-auto w-full rounded-xl py-3 text-sm font-bold text-teal-600 hover:bg-teal-50">
+                            {!showAllReviews && productReviews.length > 3 && (
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => setShowAllReviews(true)}
+                                    className="h-auto w-full rounded-xl py-3 text-sm font-bold text-teal-600 hover:bg-teal-50"
+                                >
                                     View All Reviews
                                 </Button>
                             )}
