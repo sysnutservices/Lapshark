@@ -6,7 +6,7 @@ import { api } from '@/api/api';
 
 interface VisitorRow {
     visitorId: string;
-    userId?: { name?: string; mobile?: string } | null;
+    userId?: { name?: string; mobile?: string; email?: string; pincode?: string } | null;
     intentScore: number;
     intentLevel: 'cold' | 'warm' | 'hot' | 'customer';
     firstSeenAt: string;
@@ -51,7 +51,7 @@ export default function VisitorsPage() {
         <div className="space-y-6">
             <div>
                 <h1 className="text-2xl font-bold text-gray-900">Visitors</h1>
-                <p className="text-gray-500 text-sm">Sorted by purchase intent — the hottest leads first</p>
+                <p className="text-gray-500 text-sm">Sorted by purchase intent — the hottest leads first. Contact details only show once a visitor has logged in — anonymous browsing carries no PII to show.</p>
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -61,7 +61,10 @@ export default function VisitorsPage() {
                             <tr>
                                 <th className="px-6 py-4">Intent</th>
                                 <th className="px-6 py-4">Score</th>
-                                <th className="px-6 py-4">Customer</th>
+                                <th className="px-6 py-4">Name</th>
+                                <th className="px-6 py-4">Phone</th>
+                                <th className="px-6 py-4">Email</th>
+                                <th className="px-6 py-4">Pincode</th>
                                 <th className="px-6 py-4">Events</th>
                                 <th className="px-6 py-4">Last Source</th>
                                 <th className="px-6 py-4">Last Seen</th>
@@ -70,11 +73,11 @@ export default function VisitorsPage() {
                         <tbody>
                             {loading ? (
                                 <tr>
-                                    <td colSpan={6} className="text-center py-8 text-gray-400">Loading...</td>
+                                    <td colSpan={9} className="text-center py-8 text-gray-400">Loading...</td>
                                 </tr>
                             ) : visitors.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="text-center py-8 text-gray-400">No visitors tracked yet.</td>
+                                    <td colSpan={9} className="text-center py-8 text-gray-400">No visitors tracked yet.</td>
                                 </tr>
                             ) : (
                                 visitors.map((v) => (
@@ -88,10 +91,13 @@ export default function VisitorsPage() {
                                         </td>
                                         <td className="px-6 py-4 font-bold text-gray-900">{v.intentScore}</td>
                                         <td className="px-6 py-4">
-                                            <Link href={`/admin/analytics/visitors/${v.visitorId}`} className="hover:text-blue-600">
-                                                {v.userId?.name ? `${v.userId.name} (${v.userId.mobile})` : 'Anonymous'}
+                                            <Link href={`/admin/analytics/visitors/${v.visitorId}`} className="hover:text-blue-600 font-medium">
+                                                {v.userId?.name || 'Anonymous'}
                                             </Link>
                                         </td>
+                                        <td className="px-6 py-4">{v.userId?.mobile || '—'}</td>
+                                        <td className="px-6 py-4">{v.userId?.email || '—'}</td>
+                                        <td className="px-6 py-4">{v.userId?.pincode || '—'}</td>
                                         <td className="px-6 py-4">{v.totalEvents}</td>
                                         <td className="px-6 py-4">{v.lastTouch?.source || '—'}</td>
                                         <td className="px-6 py-4">{new Date(v.lastSeenAt).toLocaleString('en-IN')}</td>
