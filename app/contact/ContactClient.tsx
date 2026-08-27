@@ -99,9 +99,14 @@ export const ContactClient: React.FC = () => {
                                     <div className="w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center flex-shrink-0">
                                         <Mail className="w-6 h-6" />
                                     </div>
-                                    <div>
+                                    {/* min-w-0 on the flex child + wrap-anywhere on the address
+                                        itself: "support@lapshark.com" has no space/hyphen to wrap
+                                        at, so without either it forced this card 18px wider than
+                                        the viewport at 320px instead of wrapping to a second line.
+                                        Verified live: min-w-0 alone wasn't enough, needed both. */}
+                                    <div className="min-w-0">
                                         <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Email Us</p>
-                                        <a href="mailto:support@lapshark.com" className="text-lg font-bold text-slate-900 hover:text-teal-600 transition-colors block">
+                                        <a href="mailto:support@lapshark.com" className="text-lg font-bold text-slate-900 hover:text-teal-600 transition-colors block wrap-anywhere">
                                             support@lapshark.com
                                         </a>
                                         {/* Was "24/7 Response Time" — contradicted the phone card's real
