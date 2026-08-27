@@ -174,6 +174,16 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
 
   const removeFromCart = async (productId: string) => {
+    const removed = cart.find(i => i.productId === productId);
+    if (removed) {
+      trackEvent("remove_from_cart", {
+        productId,
+        title: removed.title,
+        quantity: removed.quantity,
+        finalPrice: removed.finalPrice,
+      });
+    }
+
     if (!isLoggedIn) {
       setCart(prev => prev.filter(i => i.productId !== productId));
       return;

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useStore } from '@/context/StoreContext';
 import { useCart } from '@/context/CartContext';
@@ -310,11 +311,18 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
                     {/* Left column - Product images */}
                     <div className="lg:col-span-7">
                         <div className="lg:sticky lg:top-24 space-y-4">
-                            <div className="bg-slate-50 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-12 flex items-center justify-center relative min-h-[300px] md:min-h-[500px] overflow-hidden">
-                                <img
-                                    src={(activeImage || product.image)}
+                            <div className="bg-slate-50 rounded-[2rem] md:rounded-[2.5rem] relative min-h-[300px] md:min-h-[500px] overflow-hidden">
+                                {/* next/image + priority: this is the LCP element on the
+                                    highest-value page in the funnel — same reasoning as
+                                    ProductCard's gallery image, but this one should load
+                                    eagerly instead of lazily since it's always above the fold. */}
+                                <Image
+                                    src={activeImage || product.image}
                                     alt={product.title}
-                                    className="w-full max-h-[300px] md:max-h-[500px] object-contain mix-blend-multiply transition-all duration-500 ease-in-out"
+                                    fill
+                                    priority
+                                    sizes="(max-width: 1024px) 100vw, 55vw"
+                                    className="object-contain p-6 md:p-12 mix-blend-multiply transition-all duration-500 ease-in-out"
                                 />
                                 {product.condition && (
                                     <Badge className="absolute top-4 left-4 md:top-8 md:left-8 h-auto gap-2 rounded-full bg-white/80 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-900 shadow-sm backdrop-blur-md hover:bg-white/80 md:px-4 md:py-2 md:text-xs">

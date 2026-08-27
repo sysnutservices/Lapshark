@@ -17,6 +17,7 @@ export const ANALYTICS_EVENTS = [
   "whatsapp_expert_click",
   "whatsapp_product_click",
   "begin_checkout",
+  "add_payment_info",
   "coupon_applied",
   "checkout_payment_failed",
   "login",
@@ -98,6 +99,7 @@ export interface RemoveFromCartProperties {
   productId: string;
   title: string;
   quantity: number;
+  finalPrice?: number;
 }
 
 export interface ViewItemListProperties {
@@ -108,6 +110,7 @@ export interface ViewItemListProperties {
 export interface SelectItemProperties {
   productId: string;
   title: string;
+  finalPrice?: number;
   listName?: string;
 }
 
@@ -123,22 +126,29 @@ export interface RecommendationCompletedProperties {
 }
 
 export interface EmiInfoViewedProperties {
-  productId: string;
+  price: number;
 }
 
 export interface QualityReportViewedProperties {
   productId: string;
 }
 
+// Fired once a comparison actually has 2+ products to look at (see
+// CompareContent) — distinct from compare_started (ProductCard), which
+// fires per single item added to the list.
 export interface CompareProductProperties {
-  productId: string;
-  title: string;
+  productIds: string[];
+  count: number;
 }
 
 export interface BeginCheckoutProperties {
   finalTotal: number;
   paymentMethod: string;
   itemCount: number;
+}
+
+export interface PaymentInfoProperties {
+  paymentMethod: string;
 }
 
 export interface CouponAppliedProperties {
@@ -178,6 +188,7 @@ export interface AnalyticsEventPayloads {
   quality_report_viewed: QualityReportViewedProperties;
   compare_product: CompareProductProperties;
   begin_checkout: BeginCheckoutProperties;
+  add_payment_info: PaymentInfoProperties;
   coupon_applied: CouponAppliedProperties;
   checkout_payment_failed: CheckoutPaymentFailedProperties;
   login: LoginProperties;

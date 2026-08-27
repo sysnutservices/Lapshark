@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import axios from 'axios';
 import { API_URL } from '@/api/api';
@@ -28,6 +28,19 @@ export const CheckoutLogin: React.FC<CheckoutLoginProps> = ({
     const [error, setError] = useState('');
     const [countdown, setCountdown] = useState(0);
     const { loginWithUser } = useAuth();
+
+    // Every call site renders this inside its own "fixed inset-0" overlay
+    // (no shared Dialog primitive) and only mounts it while the modal is
+    // actually open — so Escape-to-close belongs here once, rather than
+    // repeated in each of the ~5 call sites' wrapper divs.
+    useEffect(() => {
+        if (!closeLogin) return;
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "Escape") closeLogin();
+        };
+        window.addEventListener("keydown", onKeyDown);
+        return () => window.removeEventListener("keydown", onKeyDown);
+    }, [closeLogin]);
 
     // Send OTP Handler
     const handleSendOTP = async (e: React.FormEvent) => {
@@ -99,14 +112,21 @@ export const CheckoutLogin: React.FC<CheckoutLoginProps> = ({
     };
 
     return (
-        <div className="w-full max-w-md mx-auto">
+        <div className="w-full max-w-md mx-auto" role="dialog" aria-modal="true" aria-label="Log in">
             <div className="relative bg-white p-8 md:p-10 rounded-3xl shadow-xl">
 
-                <div className="flex justify-end w-full max-w-md mx-auto cursor-pointer">
-                    <div className="flex items-center justify-center p-1 hover:bg-slate-100 rounded-full" onClick={closeLogin}>
-                        <X />
+                {closeLogin && (
+                    <div className="flex justify-end w-full max-w-md mx-auto">
+                        <button
+                            type="button"
+                            onClick={closeLogin}
+                            aria-label="Close"
+                            className="flex items-center justify-center p-1 hover:bg-slate-100 rounded-full"
+                        >
+                            <X />
+                        </button>
                     </div>
-                </div>
+                )}
                 <div className="text-center mb-8 w-full">
                     {showLogo && (
                         <div className="w-full flex items-center justify-center mb-4">

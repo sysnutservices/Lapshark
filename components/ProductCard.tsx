@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+"use client";
+
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -38,6 +40,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const { addToWishlist, removeFromWishlist, isInWishlist, addToCompare, removeFromCompare, isInCompare } = useUserFeatures();
   const router = useRouter();
   const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
+
+  // Hand-rolled modal (not a Radix Dialog), so Escape-to-close isn't free —
+  // add it explicitly rather than pull in a new dialog primitive for one modal.
+  useEffect(() => {
+    if (!isQuickViewOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsQuickViewOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isQuickViewOpen]);
 
   const id = product.productId;
 
@@ -156,6 +169,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     setIsQuickViewOpen(true);
   };
 
+  const trackSelectItem = () => {
+    trackEvent("select_item", { productId: id, title: product.title, finalPrice: product.finalPrice });
+  };
+
   const getConditionStyles = (condition?: string) => {
     switch (condition) {
       case 'Like New': return 'text-emerald-700 bg-emerald-50 ring-1 ring-emerald-600/20';
@@ -214,7 +231,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         {/* Image Container */}
         {/* pt clears the compare/wishlist buttons floating above so the photo
             never sits under them (object-contain centres inside the padding box) */}
-        <Link href={`/products/${product.slug}`} className="relative aspect-[4/3] w-full overflow-hidden bg-slate-50/50 p-4 pt-12 md:p-8 md:pt-16 flex items-center justify-center">
+        <Link href={`/products/${product.slug}`} onClick={trackSelectItem} className="relative aspect-[4/3] w-full overflow-hidden bg-slate-50/50 p-4 pt-12 md:p-8 md:pt-16 flex items-center justify-center">
           {/* next/image, not a raw <img>: these were served as full-size
               unoptimized JPEGs straight from ImageKit and eagerly fetched, so a
               dozen product cards competed with the hero for bandwidth and
@@ -241,7 +258,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         <div className="p-3 md:p-5 flex flex-col flex-grow relative">
           <span className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{product.brand}</span>
 
-          <Link href={`/products/${product.slug}`} className="block mb-1.5 md:mb-2 group-hover:text-teal-600 transition-colors">
+          <Link href={`/products/${product.slug}`} onClick={trackSelectItem} className="block mb-1.5 md:mb-2 group-hover:text-teal-600 transition-colors">
             <h3 className="text-sm md:text-lg font-bold text-slate-900 leading-snug line-clamp-2">
               {product.title}
             </h3>
@@ -329,12 +346,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
       {/* Modern Quick View Modal */}
       {isQuickViewOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={`${product.title} quick view`}>
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onClick={() => setIsQuickViewOpen(false)} />
 
           <div className="relative bg-white rounded-3xl w-full max-w-4xl shadow-2xl animate-[slide-up_0.3s_ease-out] overflow-hidden flex flex-col md:flex-row max-h-[85vh]">
             <button
               onClick={() => setIsQuickViewOpen(false)}
+              aria-label="Close quick view"
               className="absolute top-4 right-4 p-2 bg-white hover:bg-slate-100 rounded-full z-10 transition-colors shadow-sm border border-slate-100"
             >
               <X className="w-5 h-5 text-slate-500" />

@@ -1,4 +1,8 @@
+"use client";
+
+import { useEffect, useRef } from "react";
 import { estimateFromPerMonth, calculateEstimatedEmi, EMI_TENURE_OPTIONS_MONTHS, EMI_PROVIDER_NAME } from "@/lib/emi";
+import { trackEvent } from "@/lib/analytics";
 
 // Compact "From ₹X/month" line for cards — always labeled an estimate since
 // no live financing API exists yet (see lib/emi.ts).
@@ -14,8 +18,24 @@ export function ProductEMILine({ price, className = "" }: { price: number; class
 
 // Fuller breakdown for the product page's Payment Options section.
 export function ProductEMIOptions({ price }: { price: number }) {
+    const tracked = useRef(false);
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (tracked.current || !ref.current) return;
+        const observer = new IntersectionObserver(([entry]) => {
+            if (entry.isIntersecting && !tracked.current) {
+                tracked.current = true;
+                trackEvent("emi_info_viewed", { price });
+                observer.disconnect();
+            }
+        }, { threshold: 0.4 });
+        observer.observe(ref.current);
+        return () => observer.disconnect();
+    }, [price]);
+
     return (
-        <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 md:p-5">
+        <div ref={ref} className="rounded-2xl border border-slate-100 bg-slate-50 p-4 md:p-5">
             <p className="text-sm font-bold text-slate-900 mb-1">EMI &amp; Payment Options</p>
             <p className="text-xs text-slate-500 mb-4">
                 Available via {EMI_PROVIDER_NAME} EMI Card. Figures below are estimates for planning — your

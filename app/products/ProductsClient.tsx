@@ -255,6 +255,18 @@ export default function ShopClient({
         setSelectedDisplay([]);
     };
 
+    // Fires once per distinct list view (category/use-case change), not on
+    // every filter tick — GA4's view_item_list is meant to mark "a list was
+    // shown", not track filter interactions (filter_used already covers those).
+    useEffect(() => {
+        if (products.length === 0) return;
+        trackEvent("view_item_list", {
+            listName: selectedUseCase ? `use:${selectedUseCase}` : selectedCategory,
+            itemCount: filteredProducts.length,
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedCategory, selectedUseCase, products.length]);
+
     const totalActiveFilters =
         selectedBrands.length +
         selectedRam.length +
