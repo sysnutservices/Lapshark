@@ -19,7 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { trackEvent } from '@/lib/analytics';
-import { STORE_POLICIES } from '@/lib/policies';
+import { STORE_POLICIES, LOW_STOCK_THRESHOLD } from '@/lib/policies';
 import { BestForLine, ProductTagBadges } from '@/components/ecommerce/ProductBadges';
 import { ProductEMILine, ProductEMIOptions } from '@/components/ecommerce/ProductEMI';
 import { ConditionExplainer } from '@/components/ecommerce/ProductCondition';
@@ -425,7 +425,12 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
                                 )}
                             </div>
                             <ProductEMILine price={finalPrice} className="mt-2" />
-                            <BestForLine useCases={product.useCases} className="mt-2" />
+                            {product.stock > 0 && product.stock <= LOW_STOCK_THRESHOLD && (
+                                <p className="text-xs md:text-sm font-bold text-amber-700 mt-2">
+                                    Only {product.stock} left in stock
+                                </p>
+                            )}
+                            <BestForLine product={product} className="mt-2" />
                             <ProductTagBadges tags={product.tags} className="mt-2" />
                         </div>
 

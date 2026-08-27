@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { trackEvent } from '@/lib/analytics';
-import { STORE_POLICIES } from '@/lib/policies';
+import { STORE_POLICIES, LOW_STOCK_THRESHOLD } from '@/lib/policies';
 
 interface ProductCardProps {
   product: Product;
@@ -279,7 +279,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             )}
           </div>
 
-          <BestForLine useCases={product.useCases} className="mb-2 md:mb-3 line-clamp-1" />
+          <BestForLine product={product} className="mb-2 md:mb-3 line-clamp-1" />
 
           {specPills.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-2 md:mb-3">
@@ -304,6 +304,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             {categoryTag && (
               <Badge variant="outline" className="rounded-full border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[9px] md:text-[10px] font-bold text-emerald-700 hover:bg-emerald-50">
                 {categoryTag}
+              </Badge>
+            )}
+            {product.stock > 0 && product.stock <= LOW_STOCK_THRESHOLD && (
+              <Badge className="rounded-full bg-amber-50 px-2.5 py-1 text-[9px] md:text-[10px] font-bold text-amber-700 hover:bg-amber-50">
+                Only {product.stock} left
               </Badge>
             )}
           </div>
