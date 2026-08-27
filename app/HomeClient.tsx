@@ -396,16 +396,21 @@ export default function Home({
                             <div className="space-y-6 md:space-y-8 text-center lg:text-left">
                                 <Badge className="h-auto gap-2 rounded-full border border-teal-500/30 bg-teal-500/10 px-4 py-1.5 text-teal-400 backdrop-blur-md hover:bg-teal-500/10">
                                     <CreditCard className="w-4 h-4" />
-                                    <span className="font-bold text-xs uppercase tracking-widest">Bajaj Finserv EMI</span>
+                                    <span className="font-bold text-xs uppercase tracking-widest">EMI Available</span>
                                 </Badge>
 
+                                {/* Led with the provider name before — ties the whole banner to
+                                    one financing partner as the headline hook. Provider-neutral
+                                    now so a second EMI option later doesn't require rewriting
+                                    this section; Bajaj Finserv is still named honestly below,
+                                    just not as the first thing read. */}
                                 <h2 className="text-4xl lg:text-6xl font-extrabold text-white leading-[1.1] tracking-tight">
                                     Buy Now.<br />
-                                    <span className="text-teal-400">Pay Easy EMIs.</span>
+                                    <span className="text-teal-400">Pay Monthly.</span>
                                 </h2>
 
                                 <p className="text-slate-400 text-base md:text-lg max-w-md mx-auto lg:mx-0 leading-relaxed">
-                                    Shop with Bajaj Finserv EMI Card. Get instant approval with flexible tenure options from <span className="text-white font-bold">3 to 24 months</span> at attractive interest rates.
+                                    EMI options available on eligible purchases via Bajaj Finserv EMI Card — flexible tenure from <span className="text-white font-bold">3 to 24 months</span> at attractive interest rates.
                                 </p>
 
                                 <div className="grid grid-cols-2 gap-4 max-w-md mx-auto lg:mx-0">

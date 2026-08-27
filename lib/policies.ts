@@ -57,3 +57,10 @@ export const STORE_POLICIES = {
   supportHoursLabel: "Mon-Sat, 10am - 7pm",
   supportResponseLabel: "We typically respond within 2 hours during business hours.",
 } as const;
+
+// Below this real stock count, product cards/pages show "Only N left" —
+// always the actual `stock` field, never a fabricated countdown. Kept
+// separate from STORE_POLICIES since it's a display threshold, not a
+// business policy, but centralized here for the same reason: one number,
+// not a copy in every component that shows it.
+export const LOW_STOCK_THRESHOLD = 3;

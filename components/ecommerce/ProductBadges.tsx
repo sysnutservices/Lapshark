@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
-import { USE_CASES } from "@/lib/product-recommendation";
+import { Product } from "@/types";
+import { USE_CASES, productUseCases } from "@/lib/product-recommendation";
 
 const USE_CASE_LABEL: Record<string, string> = Object.fromEntries(
     USE_CASES.map((u) => [u.value, u.label])
@@ -16,8 +17,18 @@ function formatTag(tag: string): string {
 
 // "Best for" line — one place that reads useCases/tags so ProductCard, the
 // PDP, and Shop-by-Need never hand-roll this label differently.
-export function BestForLine({ useCases, className = "" }: { useCases?: string[]; className?: string }) {
-    if (!useCases || useCases.length === 0) return null;
+//
+// Takes the product (not a raw useCases array): every real product in the
+// catalogue currently has an empty useCases field (never editorially
+// tagged), which made this line disappear everywhere even though
+// productUseCases()'s category fallback already resolves a real, honest
+// answer for every product (e.g. "Business Laptops" -> office/everyday) —
+// the same fallback the recommendation engine and Shop-by-Need filtering
+// already rely on. Reading the raw field directly here bypassed that and
+// showed nothing. An explicit admin-entered tag still always wins.
+export function BestForLine({ product, className = "" }: { product: Pick<Product, "useCases" | "category">; className?: string }) {
+    const useCases = productUseCases(product as Product);
+    if (useCases.length === 0) return null;
     const labels = useCases.map((u) => USE_CASE_LABEL[u] || u);
     return (
         <p className={`text-xs md:text-sm text-slate-500 ${className}`}>
