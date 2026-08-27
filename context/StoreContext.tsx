@@ -56,6 +56,7 @@ interface StoreContextType {
 
   // Customer
   blockCustomer: (id: string) => Promise<void>;
+  forceLogoutCustomer: (id: string) => Promise<void>;
 
   // Site config
   updateSiteConfig: (config: SiteConfig) => Promise<void>;
@@ -251,11 +252,26 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   // ------------------------
   // CUSTOMERS
   // ------------------------
+  // Both admin-only endpoints — api.put/post here previously sent no
+  // Authorization header at all (unlike updateSiteConfig just below, which
+  // does), so protect+admin on the backend would 401 these regardless of
+  // who's calling. Matching updateSiteConfig's pattern instead of
+  // propagating the same gap into the new force-logout call.
   const blockCustomer = async (id: string) => {
-    const res = await api.put(`/users/${id}/block`);
+    const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
+    const res = await api.put(`/users/${id}/block`, {}, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
     setCustomers((prev) =>
       prev.map((c) => (c.id === id ? res.data : c))
     );
+  };
+
+  const forceLogoutCustomer = async (id: string) => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
+    await api.post(`/users/${id}/force-logout`, {}, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
   };
 
   // ------------------------
@@ -317,6 +333,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         deleteCoupon,
         fetchCustomerOrders,
         blockCustomer,
+        forceLogoutCustomer,
         updateSiteConfig,
         customerOrders,
         stats,

@@ -2,11 +2,21 @@
 
 import React, { useState } from 'react';
 import { useStore } from '@/context/StoreContext';
-import { Search, Ban, CheckCircle, Mail, Calendar, User, Phone } from 'lucide-react';
+import { Search, Ban, CheckCircle, Mail, Calendar, User, Phone, LogOut } from 'lucide-react';
 
 export default function CustomerManager() {
-    const { customers, blockCustomer } = useStore();
+    const { customers, blockCustomer, forceLogoutCustomer } = useStore();
     const [searchTerm, setSearchTerm] = useState('');
+    const [loggingOutId, setLoggingOutId] = useState<string | null>(null);
+
+    const handleForceLogout = async (id: string) => {
+        setLoggingOutId(id);
+        try {
+            await forceLogoutCustomer(id);
+        } finally {
+            setLoggingOutId(null);
+        }
+    };
 
     const filteredCustomers = customers.filter(c => {
         const name = c?.name || '';
@@ -114,19 +124,29 @@ export default function CustomerManager() {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <button
-                                                onClick={() => blockCustomer(customer.id)}
-                                                className={`p-1.5 rounded transition-colors ${customer?.status === 'active'
-                                                    ? 'text-red-500 hover:bg-red-50'
-                                                    : 'text-green-500 hover:bg-green-50'
-                                                    }`}
-                                                title={customer?.status === 'active' ? 'Block User' : 'Unblock User'}
-                                            >
-                                                {customer?.status === 'active'
-                                                    ? <Ban className="w-4 h-4" />
-                                                    : <CheckCircle className="w-4 h-4" />
-                                                }
-                                            </button>
+                                            <div className="flex items-center justify-end gap-1">
+                                                <button
+                                                    onClick={() => handleForceLogout(customer.id)}
+                                                    disabled={loggingOutId === customer.id}
+                                                    className="p-1.5 rounded text-slate-500 hover:bg-slate-100 transition-colors disabled:opacity-50"
+                                                    title="Force log out on all devices — account stays active, they can log back in immediately"
+                                                >
+                                                    <LogOut className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => blockCustomer(customer.id)}
+                                                    className={`p-1.5 rounded transition-colors ${customer?.status === 'active'
+                                                        ? 'text-red-500 hover:bg-red-50'
+                                                        : 'text-green-500 hover:bg-green-50'
+                                                        }`}
+                                                    title={customer?.status === 'active' ? 'Block User' : 'Unblock User'}
+                                                >
+                                                    {customer?.status === 'active'
+                                                        ? <Ban className="w-4 h-4" />
+                                                        : <CheckCircle className="w-4 h-4" />
+                                                    }
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))
