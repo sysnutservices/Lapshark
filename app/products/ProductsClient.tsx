@@ -491,9 +491,15 @@ export default function ShopClient({
                         a {STORE_POLICIES.returnDays}-day return window{STORE_POLICIES.returnPickupFree ? " with free pickup" : ""}.
                     </p>
                 </div>
-                <div className="flex items-center w-full md:w-auto gap-3">
+                {/* flex-wrap + search on its own full-width row below 375px: search
+                    input + Filters button + Sort dropdown (min-w-[180px], long
+                    labels like "Price: Low to High") together need more than a
+                    320px screen offers in one row — forcing them onto one line
+                    either overflowed the page or squeezed the search box to 0
+                    width. Wrapping lets each control keep a usable size instead. */}
+                <div className="flex flex-wrap items-center w-full md:w-auto md:flex-nowrap gap-3">
                     {/* Search */}
-                    <div className="relative flex-1 md:flex-none md:w-64">
+                    <div className="relative w-full md:flex-none md:w-64">
                         <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                         <input
                             type="text"
