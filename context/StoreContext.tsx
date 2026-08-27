@@ -268,8 +268,12 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     const res = await api.put(`/users/${id}/block`, {}, {
       headers: { Authorization: `Bearer ${token}` },
     });
+    // res.data is the raw backend doc (_id only, same as the initial /users
+    // fetch) — replacing the customer with it unmapped is what broke the
+    // very next block/unblock click (confirmed live: worked once, then
+    // /users/undefined/block on the second click).
     setCustomers((prev) =>
-      prev.map((c) => (c.id === id ? res.data : c))
+      prev.map((c) => (c.id === id ? { ...res.data, id: res.data._id } : c))
     );
   };
 
