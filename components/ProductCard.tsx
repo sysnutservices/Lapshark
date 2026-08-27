@@ -265,12 +265,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           </Link>
 
           <div className="flex items-center gap-1 mb-1.5">
-            <div className="flex text-amber-400">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} className={`w-3 h-3 md:w-3.5 md:h-3.5 ${i < Math.round(product.rating) ? 'fill-current' : 'text-slate-200'}`} />
-              ))}
-            </div>
-            <span className="text-[10px] md:text-xs text-slate-400 font-medium ml-1">({product.reviews})</span>
+            {product.reviews > 0 ? (
+              <>
+                <div className="flex text-amber-400">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className={`w-3 h-3 md:w-3.5 md:h-3.5 ${i < Math.round(product.rating) ? 'fill-current' : 'text-slate-200'}`} />
+                  ))}
+                </div>
+                <span className="text-[10px] md:text-xs text-slate-400 font-medium ml-1">({product.reviews})</span>
+              </>
+            ) : (
+              <span className="text-[10px] md:text-xs text-slate-400 font-medium">No reviews yet</span>
+            )}
           </div>
 
           <BestForLine useCases={product.useCases} className="mb-2 md:mb-3 line-clamp-1" />
@@ -375,12 +381,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               <h2 className="text-xl md:text-3xl font-bold text-slate-900 mb-2 md:mb-3 leading-tight">{product.title}</h2>
 
               <div className="flex items-center gap-4 mb-4 md:mb-6">
-                <div className="flex text-amber-400">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className={`w-4 h-4 ${i < Math.floor(product.rating) ? 'fill-current' : 'text-slate-200'}`} />
-                  ))}
-                </div>
-                <span className="text-sm font-medium text-slate-500">{product.reviews} verified reviews</span>
+                {product.reviews > 0 ? (
+                  <>
+                    <div className="flex text-amber-400">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className={`w-4 h-4 ${i < Math.floor(product.rating) ? 'fill-current' : 'text-slate-200'}`} />
+                      ))}
+                    </div>
+                    <span className="text-sm font-medium text-slate-500">{product.reviews} verified reviews</span>
+                  </>
+                ) : (
+                  <span className="text-sm font-medium text-slate-500">No reviews yet</span>
+                )}
               </div>
 
               <p className="text-slate-600 text-sm mb-6 md:mb-8 leading-relaxed line-clamp-3 md:line-clamp-none">{product.description}</p>

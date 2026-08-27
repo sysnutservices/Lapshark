@@ -1,19 +1,7 @@
 import type { Metadata } from "next";
-import { API_URL } from "@/api/api";
 import ShopClient from "./ProductsClient";
 import { STORE_POLICIES } from "@/lib/policies";
-
-// Fetched server-side so the catalogue is in the initial HTML: crawlers that
-// don't run JS (GPTBot, ClaudeBot, PerplexityBot) otherwise see an empty grid.
-async function getProducts() {
-    try {
-        const res = await fetch(`${API_URL}/products`, { next: { revalidate: 60 } });
-        if (!res.ok) return [];
-        return await res.json();
-    } catch {
-        return [];
-    }
-}
+import { getProductsServer } from "@/lib/getProductsServer";
 
 // "Second hand laptop" outsearches "refurbished laptop" in India (49.5k vs
 // 40.5k/mo) at lower difficulty, and this page is the target for both terms.
@@ -41,7 +29,7 @@ export default async function Shop({
     const categoryParam = params.category ?? "All";
     const priceRangeParam = params.priceRange ? Number(params.priceRange) : 300000;
 
-    const products = await getProducts();
+    const products = await getProductsServer();
 
     return (
         <ShopClient

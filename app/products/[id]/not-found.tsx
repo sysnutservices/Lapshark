@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { API_URL } from "@/api/api";
 import { ProductCard } from "@/components/ProductCard";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { getProductsServer } from "@/lib/getProductsServer";
 
 // Route-scoped override of the global 404 (app/not-found.tsx) — a removed
 // product page is a real dead end for anyone who followed an old link (an
@@ -11,17 +11,11 @@ import { cn } from "@/lib/utils";
 // notFound() call in page.tsx that renders it), it just doesn't leave the
 // visitor with nothing to do next (Section 19).
 async function getFallbackProducts() {
-    try {
-        const res = await fetch(`${API_URL}/products`, { next: { revalidate: 60 } });
-        if (!res.ok) return [];
-        const products = await res.json();
-        return products
-            .filter((p: any) => p.stock > 0)
-            .sort((a: any, b: any) => (b.isTrending ? 1 : 0) - (a.isTrending ? 1 : 0) || (b.isBestDeal ? 1 : 0) - (a.isBestDeal ? 1 : 0))
-            .slice(0, 4);
-    } catch {
-        return [];
-    }
+    const products = await getProductsServer();
+    return products
+        .filter((p: any) => p.stock > 0)
+        .sort((a: any, b: any) => (b.isTrending ? 1 : 0) - (a.isTrending ? 1 : 0) || (b.isBestDeal ? 1 : 0) - (a.isBestDeal ? 1 : 0))
+        .slice(0, 4);
 }
 
 export default async function ProductNotFound() {

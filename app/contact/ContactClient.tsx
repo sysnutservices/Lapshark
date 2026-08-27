@@ -71,7 +71,7 @@ export const ContactClient: React.FC = () => {
                 <div className="text-center mb-16">
                     <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 mb-6 tracking-tight">Get in Touch</h1>
                     <p className="text-slate-500 max-w-2xl mx-auto text-lg leading-relaxed">
-                        Have questions about a product or your order? We're here to help. Our team typically responds within 2 hours during business hours.
+                        Have questions about a product or your order? We're here to help. {STORE_POLICIES.supportResponseLabel}
                     </p>
                 </div>
 
@@ -91,7 +91,7 @@ export const ContactClient: React.FC = () => {
                                         <a href="tel:+918971319555" className="text-lg font-bold text-slate-900 hover:text-teal-600 transition-colors block">
                                             +91 897 131 9555
                                         </a>
-                                        <p className="text-sm text-slate-500 mt-1">Mon-Sat, 10am - 7pm</p>
+                                        <p className="text-sm text-slate-500 mt-1">{STORE_POLICIES.supportHoursLabel}</p>
                                     </div>
                                 </div>
 
@@ -104,7 +104,11 @@ export const ContactClient: React.FC = () => {
                                         <a href="mailto:support@lapshark.com" className="text-lg font-bold text-slate-900 hover:text-teal-600 transition-colors block">
                                             support@lapshark.com
                                         </a>
-                                        <p className="text-sm text-slate-500 mt-1">24/7 Response Time</p>
+                                        {/* Was "24/7 Response Time" — contradicted the phone card's real
+                                            Mon-Sat hours and the page hero's own "within 2 hours during
+                                            business hours" claim, with no support for a genuine 24/7
+                                            commitment anywhere in the codebase. */}
+                                        <p className="text-sm text-slate-500 mt-1">{STORE_POLICIES.supportResponseLabel}</p>
                                     </div>
                                 </div>
 

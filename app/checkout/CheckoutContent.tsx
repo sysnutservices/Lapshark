@@ -13,6 +13,7 @@ import { API_URL } from '@/api/api';
 import confetti from "canvas-confetti"
 import { CheckoutLogin } from '@/components/LoginComponent';
 import { trackEvent, generateEventId, trackPurchaseConversion } from '@/lib/analytics';
+import { STORE_POLICIES } from '@/lib/policies';
 
 // Declare Razorpay on window object to avoid TS errors
 declare global {
@@ -40,10 +41,11 @@ export default function CheckoutContent() {
         setPaymentMethod(method);
         trackEvent("add_payment_info", { paymentMethod: method });
     };
-    // Mirrors orderController's COD_ADVANCE_AMOUNT — the server is what
-    // actually decides the charged amount, this is only for the pre-payment
-    // label/summary so keep the two in sync if it ever changes.
-    const COD_ADVANCE_AMOUNT = 500;
+    // The server (orderController's COD_ADVANCE_AMOUNT) is what actually
+    // decides the charged amount — this is only for the pre-payment
+    // label/summary. Reads STORE_POLICIES instead of its own hardcoded copy
+    // so there's one frontend source instead of two that can drift.
+    const COD_ADVANCE_AMOUNT = STORE_POLICIES.codAdvanceAmount;
 
     // Pincode check against Ekart — pure checkout UX guardrail (fails open on
     // any error/pincode format the backend rejects), not the actual gate on

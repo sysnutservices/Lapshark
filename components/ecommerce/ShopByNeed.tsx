@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { USE_CASES } from "@/lib/product-recommendation";
+import { trackEvent } from "@/lib/analytics";
 
 // Links to /products?use=<value> — ProductsClient reads this param and
 // filters the already-loaded catalogue via productsForUseCase(), the same
@@ -12,6 +15,7 @@ export function ShopByNeed() {
                 <Link
                     key={uc.value}
                     href={`/products?use=${uc.value}`}
+                    onClick={() => trackEvent("shop_by_need_selected", { useCase: uc.value })}
                     className="group flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-100 bg-white p-4 md:p-6 text-center shadow-sm hover:shadow-md hover:border-teal-200 transition-all"
                 >
                     <span className="text-2xl md:text-3xl" aria-hidden>{uc.emoji}</span>

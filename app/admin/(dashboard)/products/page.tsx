@@ -5,6 +5,7 @@ import { useStore } from '@/context/StoreContext';
 import { Product, Category } from '@/types';
 import { Edit, Trash2, Plus, X, AlertCircle, Check, Search, Upload, Image as ImageIcon, Cpu, HardDrive, Monitor, Zap, Settings, Loader2, RefreshCw, Sparkles, Camera } from 'lucide-react';
 import { API_URL } from '@/api/api';
+import { STORE_POLICIES } from '@/lib/policies';
 import router from 'next/router';
 import dynamic from 'next/dynamic';
 const MDEditor = dynamic(
@@ -41,11 +42,14 @@ const DEFAULT_CONFIG_OPTIONS: IConfigOptions = {
         { label: "512GB SSD", value: "512GB", price: 3000 },
         { label: "1TB SSD", value: "1TB", price: 6000 },
     ],
-    warranty: [
-        { label: "6 Months Warranty", value: "6 Months", price: 0 },
-        { label: "1 Year Warranty", value: "1 Year", price: 1500 },
-        { label: "2 Year Warranty", value: "2 Year", price: 2999 },
-    ],
+    // Derived from STORE_POLICIES.extendedWarrantyOptions (lib/policies.ts) —
+    // was a second hardcoded copy of the same three prices/labels, drifting
+    // silently if one got edited and not the other.
+    warranty: STORE_POLICIES.extendedWarrantyOptions.map((o) => ({
+        label: o.label,
+        value: o.label.replace(" Warranty", ""),
+        price: o.price,
+    })),
     condition: [
         { label: "Good", value: "Good", price: 0 },
         { label: "Excellent", value: "Excellent", price: 2499 },
@@ -445,7 +449,7 @@ export default function ProductsPage() {
             if (editingProduct.widthCm !== undefined) formData.append('widthCm', String(editingProduct.widthCm));
             if (editingProduct.heightCm !== undefined) formData.append('heightCm', String(editingProduct.heightCm));
             formData.append('condition', editingProduct.condition || 'Excellent');
-            formData.append('rating', String(editingProduct.rating || 5));
+            formData.append('rating', String(editingProduct.rating || 0));
             formData.append('reviews', String(editingProduct.reviews || 0));
             formData.append('slug', editingProduct.slug || '');
 
@@ -604,7 +608,11 @@ export default function ProductsPage() {
                 stock: 0,
                 price: 0,
                 discountPercent: 0,
-                rating: 5,
+                // Was 5 — a brand-new product with 0 reviews shipped with a
+                // fake 5.0 rating (the exact "5.0 with 0 reviews" bug).
+                // Real ratings only ever come from recalculateProductRating
+                // once genuine reviews exist.
+                rating: 0,
                 reviews: 0,
                 image: '',
                 description: '',

@@ -144,9 +144,13 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
     const originalPrice = (product?.price || 0) + (selectedRam?.price || 0) + (selectedStorage?.price || 0) + (selectedWarranty?.price || 0);
 
     const galleryImages = [product.image, ...(product.images || [])].filter((img, index, self) => self.indexOf(img) === index);
+    // Computed only from the live-fetched reviews, not product.rating — a
+    // product record whose rating field wasn't yet backfilled by a real
+    // review (recalculateProductRating only runs when one is submitted)
+    // must never show a stale/default number here.
     const averageRating = productReviews.length > 0
         ? productReviews.reduce((acc, r) => acc + r.rating, 0) / productReviews.length
-        : product.rating;
+        : 0;
 
     const ratingDistribution = [5, 4, 3, 2, 1].map(star => {
         const count = productReviews.filter(r => Math.floor(r.rating) === star).length;
@@ -395,12 +399,18 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
                             <h1 className="text-2xl font-extrabold text-slate-900 mb-3 md:mb-4 tracking-tight leading-tight">{product.title}</h1>
 
                             <div className="flex items-center gap-3 md:gap-4 mb-4 md:mb-6">
-                                <div className="flex text-amber-400">
-                                    {[...Array(5)].map((_, i) => (
-                                        <Star key={`rating-star-${i}`} className={`w-4 h-4 md:w-5 md:h-5 ${i < Math.floor(product.rating) ? 'fill-current' : 'text-slate-200'}`} />
-                                    ))}
-                                </div>
-                                <span className="text-xs md:text-sm font-bold text-slate-500 border-b border-slate-300 pb-0.5 cursor-pointer">{product.reviews} reviews</span>
+                                {product.reviews > 0 ? (
+                                    <>
+                                        <div className="flex text-amber-400">
+                                            {[...Array(5)].map((_, i) => (
+                                                <Star key={`rating-star-${i}`} className={`w-4 h-4 md:w-5 md:h-5 ${i < Math.floor(product.rating) ? 'fill-current' : 'text-slate-200'}`} />
+                                            ))}
+                                        </div>
+                                        <span className="text-xs md:text-sm font-bold text-slate-500 border-b border-slate-300 pb-0.5 cursor-pointer">{product.reviews} reviews</span>
+                                    </>
+                                ) : (
+                                    <span className="text-xs md:text-sm font-bold text-slate-500">No reviews yet</span>
+                                )}
                             </div>
 
                             <div className="flex items-baseline gap-3 md:gap-4 flex-wrap">
@@ -644,36 +654,45 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
 
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-16">
                         <div className="lg:col-span-4 space-y-6">
-                            <div className="flex items-center gap-4 bg-slate-50 p-6 rounded-2xl border border-slate-100">
-                                <div className="text-center">
-                                    <span className="block text-5xl font-extrabold text-slate-900 tracking-tight">{averageRating.toFixed(1)}</span>
-                                    <span className="text-xs text-slate-500 font-medium mt-1 block">out of 5</span>
-                                </div>
-                                <div className="flex-1">
-                                    <div className="flex text-amber-400 mb-1">
-                                        {[...Array(5)].map((_, i) => (
-                                            <Star key={`avg-star-${i}`} className={`w-5 h-5 ${i < Math.round(averageRating) ? 'fill-current' : 'text-slate-200'}`} />
-                                        ))}
+                            {productReviews.length > 0 ? (
+                                <div className="flex items-center gap-4 bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                                    <div className="text-center">
+                                        <span className="block text-5xl font-extrabold text-slate-900 tracking-tight">{averageRating.toFixed(1)}</span>
+                                        <span className="text-xs text-slate-500 font-medium mt-1 block">out of 5</span>
                                     </div>
-                                    <p className="text-sm font-bold text-slate-500">{productReviews.length} Verified Reviews</p>
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                {ratingDistribution.map((item) => (
-                                    <div key={`rating-dist-${item.star}`} className="flex items-center gap-3 text-xs md:text-sm">
-                                        <span className="font-bold text-slate-700 w-3">{item.star}</span>
-                                        <Star className="w-3 h-3 text-slate-300" />
-                                        <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                                            <div
-                                                className="h-full bg-amber-400 rounded-full"
-                                                style={{ width: `${item.percentage}%` }}
-                                            ></div>
+                                    <div className="flex-1">
+                                        <div className="flex text-amber-400 mb-1">
+                                            {[...Array(5)].map((_, i) => (
+                                                <Star key={`avg-star-${i}`} className={`w-5 h-5 ${i < Math.round(averageRating) ? 'fill-current' : 'text-slate-200'}`} />
+                                            ))}
                                         </div>
-                                        <span className="text-slate-400 w-8 text-right">{item.count}</span>
+                                        <p className="text-sm font-bold text-slate-500">{productReviews.length} Verified Reviews</p>
                                     </div>
-                                ))}
-                            </div>
+                                </div>
+                            ) : (
+                                <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                                    <p className="text-sm font-bold text-slate-700">No reviews yet</p>
+                                    <p className="text-xs text-slate-500 mt-1">Be the first verified customer to review this product.</p>
+                                </div>
+                            )}
+
+                            {productReviews.length > 0 && (
+                                <div className="space-y-2">
+                                    {ratingDistribution.map((item) => (
+                                        <div key={`rating-dist-${item.star}`} className="flex items-center gap-3 text-xs md:text-sm">
+                                            <span className="font-bold text-slate-700 w-3">{item.star}</span>
+                                            <Star className="w-3 h-3 text-slate-300" />
+                                            <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full bg-amber-400 rounded-full"
+                                                    style={{ width: `${item.percentage}%` }}
+                                                ></div>
+                                            </div>
+                                            <span className="text-slate-400 w-8 text-right">{item.count}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         <div className="lg:col-span-8 space-y-6">

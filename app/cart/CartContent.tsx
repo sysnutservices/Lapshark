@@ -12,9 +12,11 @@ import {
     Minus,
     Plus,
     ShoppingBag,
+    Wallet,
 } from "lucide-react";
 import { useUserFeatures } from "@/context/UserFeatureContext";
 import { CheckoutLogin } from "@/components/LoginComponent";
+import { STORE_POLICIES } from "@/lib/policies";
 
 export default function CartContent() {
     const { cart, updateQuantity, removeFromCart, clearCart, totalPrice } =
@@ -301,6 +303,26 @@ export default function CartContent() {
                                         </p>
                                     </div>
                                 </div>
+                                {/* Cart is one of the three places (product page, cart,
+                                    checkout) the advance amount must be disclosed before
+                                    final checkout — was previously only shown at checkout. */}
+                                {STORE_POLICIES.codAvailable && (
+                                    <div className="flex-1 bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center gap-3">
+                                        <div className="p-2 bg-amber-50 rounded-full text-amber-600">
+                                            <Wallet className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-sm text-slate-900">
+                                                Cash on Delivery
+                                            </h4>
+                                            <p className="text-xs text-slate-500">
+                                                {finalTotal > STORE_POLICIES.codAdvanceAmount
+                                                    ? `₹${STORE_POLICIES.codAdvanceAmount} advance to confirm, rest on delivery`
+                                                    : "Pay in full on delivery"}
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
                                 <div className="md:hidden">
                                     <Link
                                         href="/products"
