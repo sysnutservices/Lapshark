@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { estimateFromPerMonth, calculateEstimatedEmi, EMI_TENURE_OPTIONS_MONTHS, EMI_PROVIDER_NAME } from "@/lib/emi";
+import { STORE_POLICIES } from "@/lib/policies";
 import { trackEvent } from "@/lib/analytics";
 
 // Compact "From ₹X/month" line for cards — always labeled an estimate since
@@ -49,6 +50,14 @@ export function ProductEMIOptions({ price }: { price: number }) {
                     </div>
                 ))}
             </div>
+            {STORE_POLICIES.codAvailable && (
+                <p className="text-xs text-slate-500 mt-4 pt-4 border-t border-slate-100">
+                    <span className="font-bold text-slate-700">Cash on Delivery</span> available.
+                    {price > STORE_POLICIES.codAdvanceAmount
+                        ? ` A ₹${STORE_POLICIES.codAdvanceAmount} advance is required to confirm COD orders — the rest is collected on delivery.`
+                        : " Pay the full amount on delivery."}
+                </p>
+            )}
         </div>
     );
 }

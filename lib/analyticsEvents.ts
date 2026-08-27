@@ -29,6 +29,8 @@ export const ANALYTICS_EVENTS = [
   "emi_info_viewed",
   "quality_report_viewed",
   "compare_product",
+  "budget_category_selected",
+  "shop_by_need_selected",
 ] as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENTS)[number];
@@ -141,6 +143,14 @@ export interface CompareProductProperties {
   count: number;
 }
 
+export interface BudgetCategorySelectedProperties {
+  budget: string;
+}
+
+export interface ShopByNeedSelectedProperties {
+  useCase: string;
+}
+
 export interface BeginCheckoutProperties {
   finalTotal: number;
   paymentMethod: string;
@@ -187,6 +197,8 @@ export interface AnalyticsEventPayloads {
   emi_info_viewed: EmiInfoViewedProperties;
   quality_report_viewed: QualityReportViewedProperties;
   compare_product: CompareProductProperties;
+  budget_category_selected: BudgetCategorySelectedProperties;
+  shop_by_need_selected: ShopByNeedSelectedProperties;
   begin_checkout: BeginCheckoutProperties;
   add_payment_info: PaymentInfoProperties;
   coupon_applied: CouponAppliedProperties;

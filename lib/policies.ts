@@ -47,4 +47,13 @@ export const STORE_POLICIES = {
     { label: "1 Year Warranty", months: 12, price: 1500 },
     { label: "2 Year Warranty", months: 24, price: 2999 },
   ],
+
+  // The only concretely-stated support hours anywhere in the codebase were
+  // the phone card's "Mon-Sat, 10am - 7pm" — everything else that touched
+  // support timing (a "24/7 Response Time" label next to email, a "typically
+  // responds within 2 hours" line in the page hero) was a separate,
+  // contradictory, unsourced claim. Standardized on the one real number;
+  // flagged to the business owner as needing confirmation, not guessed.
+  supportHoursLabel: "Mon-Sat, 10am - 7pm",
+  supportResponseLabel: "We typically respond within 2 hours during business hours.",
 } as const;

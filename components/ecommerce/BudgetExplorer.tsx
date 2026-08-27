@@ -6,6 +6,7 @@ import { Check } from "lucide-react";
 import { Product } from "@/types";
 import { ProductCard } from "@/components/ProductCard";
 import { BUDGET_RANGES, BudgetRange } from "@/lib/product-recommendation";
+import { trackEvent } from "@/lib/analytics";
 
 // Generic, representative expectations per price band — not tied to any one
 // listing, so it stays true regardless of which exact products are in stock.
@@ -31,7 +32,10 @@ export function BudgetExplorer({ products }: { products: Product[] }) {
                 {BUDGET_RANGES.map((b) => (
                     <button
                         key={b.value}
-                        onClick={() => setActive(b.value)}
+                        onClick={() => {
+                            setActive(b.value);
+                            trackEvent("budget_category_selected", { budget: b.value });
+                        }}
                         className={`rounded-full px-4 py-2 text-xs md:text-sm font-bold transition-colors ${active === b.value ? "bg-teal-600 text-white" : "bg-white text-slate-600 border border-slate-200 hover:border-teal-300"
                             }`}
                     >

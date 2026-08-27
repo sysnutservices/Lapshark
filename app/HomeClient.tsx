@@ -26,6 +26,7 @@ import { BudgetExplorer } from '@/components/ecommerce/BudgetExplorer';
 import { TrustComparison } from '@/components/ecommerce/TrustComparison';
 import { ValueComparison } from '@/components/ecommerce/ValueComparison';
 import { Reviews } from '@/components/ecommerce/Reviews';
+import { ExpertPicks } from '@/components/ecommerce/ExpertPicks';
 import { STORE_POLICIES } from '@/lib/policies';
 import * as motion from 'motion/react-m';
 import appleLogo from '@/assets/brands/apple.svg';
@@ -248,6 +249,15 @@ export default function Home({
                     <p className="mt-1 md:mt-2 text-sm md:text-base text-slate-500">Jump straight to laptops picked for what you'll actually use them for.</p>
                 </div>
                 <ShopByNeed />
+            </Reveal>
+
+            {/* Expert Picks — computed from live inventory, see ExpertPicks.tsx */}
+            <Reveal className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="mb-6 md:mb-10">
+                    <h2 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Best Picks Right Now</h2>
+                    <p className="mt-1 md:mt-2 text-sm md:text-base text-slate-500">Hand-picked from what's actually in stock today.</p>
+                </div>
+                <ExpertPicks products={products} />
             </Reveal>
 
             {/* What Can I Buy For My Budget? */}
