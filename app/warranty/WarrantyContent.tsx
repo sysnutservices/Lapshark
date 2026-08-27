@@ -1,6 +1,6 @@
 "use client"
 
-import { Shield, Clock, CheckCircle, XCircle, AlertTriangle, Truck, HelpCircle, Gavel, UserCheck, Zap, Laptop, FileText, CreditCard, RotateCcw, Battery } from 'lucide-react';
+import { Shield, Clock, CheckCircle, XCircle, AlertTriangle, Truck, HelpCircle, Gavel, UserCheck, Zap, Laptop, RotateCcw, Battery } from 'lucide-react';
 
 import Link from 'next/link';
 import { STORE_POLICIES } from '@/lib/policies';
@@ -144,53 +144,19 @@ export default function WarrantyContent() {
                         </div>
                     </div>
 
-                    {/* Payment & Refund Policy - NEW SECTION */}
-                    <div className="bg-gradient-to-br from-teal-50 to-teal-100 rounded-3xl p-8 shadow-sm border border-teal-100">
-                        <h2 className="text-2xl font-bold text-slate-900 mb-6 flex items-center gap-2">
-                            <CreditCard className="w-6 h-6 text-teal-800" /> Payment & Refund Policy
-                        </h2>
-                        <div className="grid md:grid-cols-2 gap-6">
-                            <div className="bg-white p-6 rounded-2xl border border-teal-100">
-                                <h3 className="font-bold text-slate-900 flex items-center gap-2 mb-3">
-                                    <CreditCard className="w-5 h-5 text-teal-600" /> Cash on Delivery (COD)
-                                </h3>
-                                <p className="text-sm text-slate-600 leading-relaxed">
-                                    If you choose <strong>Cash on Delivery (COD)</strong> as your payment method, you may be required to pay <strong>₹{STORE_POLICIES.codAdvanceAmount}</strong> as a advance payment at the placement of the order.
-                                </p>
-                            </div>
-
-                            <div className="bg-white p-6 rounded-2xl border border-teal-100">
-                                <h3 className="font-bold text-slate-900 flex items-center gap-2 mb-3">
-                                    <RotateCcw className="w-5 h-5 text-green-600" /> Refund Conditions
-                                </h3>
-                                <p className="text-sm text-slate-600 leading-relaxed mb-2">
-                                    <strong>Refunds are processed only when the mistake is from our side,</strong> such as:
-                                </p>
-                                <ul className="text-sm text-slate-600 space-y-1.5 list-disc pl-5">
-                                    <li>Wrong product delivered</li>
-                                    <li>Product damaged during shipment</li>
-                                    <li>Any other issue caused by Lapshark</li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        <div className="mt-6 p-5 bg-red-50 rounded-2xl border border-red-200">
-                            <h3 className="font-bold text-red-800 flex items-center gap-2 mb-3">
-                                <AlertTriangle className="w-5 h-5" /> Non-Refundable Situations
-                            </h3>
-                            <p className="text-sm text-red-700 leading-relaxed mb-3">
-                                <strong>No refund will be issued</strong> in the following cases:
-                            </p>
-                            <ul className="text-sm text-red-700 space-y-2 list-disc pl-5">
-                                <li><strong>Customer not available:</strong> If the customer is not present at the delivery address at the time of delivery</li>
-                                <li><strong>Order not accepted:</strong> If the customer refuses to accept the order upon delivery</li>
-                                <li><strong>Customer not reachable:</strong> If the customer cannot be contacted via phone/email during delivery attempts</li>
-                                <li><strong>Wrong address provided:</strong> If the customer provided an incorrect or incomplete delivery address</li>
-                            </ul>
-                            <p className="text-xs text-red-600 mt-3 font-medium">
-                                Please ensure you are available to receive the order and provide accurate contact details to avoid any issues.
-                            </p>
-                        </div>
+                    {/* Payment, COD, and refund/non-refund conditions moved to /returns —
+                        this page previously duplicated that policy (see
+                        app/returns/page.tsx's "Cash on Delivery (COD)" and
+                        "Non-Refundable Situations" sections), which is exactly the
+                        kind of split-source drift STORE_POLICIES exists to prevent.
+                        Warranty page covers warranty only; link out for the rest. */}
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 flex items-center justify-between gap-4 flex-wrap">
+                        <p className="text-sm text-slate-600">
+                            Looking for payment, COD, or refund details? Those are covered in full on our Returns &amp; Refunds policy.
+                        </p>
+                        <Link href="/returns" className="inline-flex items-center gap-2 bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-800 transition-colors flex-shrink-0">
+                            <RotateCcw className="w-4 h-4" /> View Returns &amp; Refunds Policy
+                        </Link>
                     </div>
 
                     {/* Additional Terms Accordion Style */}
