@@ -18,6 +18,15 @@ import { Card } from '@/components/ui/card';
 import { Reveal } from '@/components/Reveal';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
 import { HomeSkeleton } from '@/components/HomeSkeleton';
+import { TrustStats } from '@/components/ecommerce/TrustStats';
+import { TrustStrip } from '@/components/ecommerce/TrustStrip';
+import { LaptopFinder } from '@/components/ecommerce/LaptopFinder';
+import { ShopByNeed } from '@/components/ecommerce/ShopByNeed';
+import { BudgetExplorer } from '@/components/ecommerce/BudgetExplorer';
+import { TrustComparison } from '@/components/ecommerce/TrustComparison';
+import { ValueComparison } from '@/components/ecommerce/ValueComparison';
+import { Reviews } from '@/components/ecommerce/Reviews';
+import { STORE_POLICIES } from '@/lib/policies';
 import * as motion from 'motion/react-m';
 import appleLogo from '@/assets/brands/apple.svg';
 import dellLogo from '@/assets/brands/dell.svg';
@@ -164,7 +173,7 @@ export default function Home({
                         <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-slate-100">
                             {[
                                 { icon: Truck, title: "Free Delivery", desc: "On orders above ₹10,000" },
-                                { icon: ShieldCheck, title: "6-Month Warranty", desc: "Comprehensive coverage" },
+                                { icon: ShieldCheck, title: STORE_POLICIES.warrantyLabel, desc: "Comprehensive coverage" },
                                 { icon: Recycle, title: "Eco-Conscious", desc: "100% Sustainable packaging" },
                                 { icon: Cpu, title: "Expert Support", desc: "Lifetime tech assistance" },
                             ].map((f, i) => (
@@ -211,29 +220,43 @@ export default function Home({
                 </Reveal>
             )}
 
+            {/* Trust Strip — compact scan, distinct from the stats band below */}
+            <Reveal className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <TrustStrip />
+            </Reveal>
+
             {/* Trust Stats Band */}
             <Reveal className="bg-slate-900 py-12 md:py-16">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-8 text-center divide-x divide-slate-800">
-                        {[
-                            { value: 6, suffix: "-Month", label: "Official Warranty" },
-                            { value: 40, suffix: "+", label: "Point Quality Check" },
-                            { value: 14, suffix: "-Day", label: "Easy Returns" },
-                            { value: 100, suffix: "%", label: "COD Available" },
-                        ].map((stat, i) => (
-                            <div key={i}>
-                                <AnimatedCounter
-                                    value={stat.value}
-                                    suffix={stat.suffix}
-                                    className="block text-3xl md:text-5xl font-extrabold tracking-tight text-teal-400"
-                                />
-                                <p className="mt-2 text-xs md:text-sm font-semibold text-slate-400 uppercase tracking-wide">
-                                    {stat.label}
-                                </p>
-                            </div>
-                        ))}
-                    </div>
+                    <TrustStats />
                 </div>
+            </Reveal>
+
+            {/* Find Your Perfect Laptop — guided recommendation quiz */}
+            <Reveal className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="text-center mb-6 md:mb-10">
+                    <h2 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Find Your Perfect Laptop</h2>
+                    <p className="mt-1 md:mt-2 text-sm md:text-base text-slate-500">Answer two quick questions, get laptops actually matched to you.</p>
+                </div>
+                <LaptopFinder products={products} />
+            </Reveal>
+
+            {/* Shop by Need */}
+            <Reveal className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="mb-6 md:mb-10">
+                    <h2 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Shop by Your Need</h2>
+                    <p className="mt-1 md:mt-2 text-sm md:text-base text-slate-500">Jump straight to laptops picked for what you'll actually use them for.</p>
+                </div>
+                <ShopByNeed />
+            </Reveal>
+
+            {/* What Can I Buy For My Budget? */}
+            <Reveal className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="mb-6 md:mb-10">
+                    <h2 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">What Can I Buy For My Budget?</h2>
+                    <p className="mt-1 md:mt-2 text-sm md:text-base text-slate-500">See what's realistic at each price point before you shop.</p>
+                </div>
+                <BudgetExplorer products={products} />
             </Reveal>
 
             {/* Shop by Category */}
@@ -339,7 +362,7 @@ export default function Home({
                     {[
                         { icon: Search, step: "01", title: "Browse & Select", desc: "Filter by budget, brand, or specs to find the laptop that fits your needs." },
                         { icon: PackageCheck, step: "02", title: "Verified & Delivered", desc: "Every unit passes a 40+ point inspection before it ships to your door." },
-                        { icon: Smile, step: "03", title: "Use with Confidence", desc: "Backed by a 6-month warranty and 14-day easy returns, no questions asked." },
+                        { icon: Smile, step: "03", title: "Use with Confidence", desc: `Backed by a ${STORE_POLICIES.warrantyMonths}-month warranty and ${STORE_POLICIES.returnDays}-day easy returns.` },
                     ].map((s, i) => (
                         <div key={i} className="relative flex flex-col items-center text-center">
                             <div className="relative z-10 w-16 h-16 rounded-2xl bg-teal-600 text-white flex items-center justify-center shadow-lg shadow-teal-200">
@@ -539,61 +562,31 @@ export default function Home({
                 </Reveal>
             )}
 
-            {/* Quality Comparison */}
+            {/* Why Buy From Lapshark — was a vague "Others / Risky. Unverified.
+                Dirty." comparison with an unverified "80%+ Battery Guaranteed"
+                claim and a stock photo. Replaced with a concrete, factual
+                feature table sourced from STORE_POLICIES so nothing here can
+                say more than what's actually backed by real policy. */}
             {sections?.comparison && (
-                <Reveal className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="grid grid-cols-1 md:grid-cols-2 rounded-3xl md:rounded-[3rem] overflow-hidden shadow-2xl border border-slate-100">
-                        <div className="bg-slate-950 text-white p-8 md:p-12 lg:p-20 flex flex-col justify-center relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl translate-x-1/2 -translate-y-1/2"></div>
-
-                            <div className="relative z-10">
-                                <h3 className="text-3xl md:text-4xl font-extrabold mb-8 md:mb-12 tracking-tight">
-                                    The Lapshark<br />
-                                    <span className="text-emerald-500">Standard.</span>
-                                </h3>
-
-                                <div className="grid grid-cols-2 gap-6 md:gap-10">
-                                    {[
-                                        { icon: Monitor, title: "Pristine Screens", desc: "Zero dead pixels" },
-                                        { icon: Battery, title: "80%+ Battery", desc: "Guaranteed health" },
-                                        { icon: ShieldCheck, title: "Flawless Body", desc: "No visible dents" },
-                                        { icon: Keyboard, title: "Clean Keys", desc: "Sanitized & tested" }
-                                    ].map((item, i) => (
-                                        <div key={i} className="space-y-3">
-                                            <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-emerald-500">
-                                                <item.icon className="w-5 h-5 md:w-6 md:h-6" />
-                                            </div>
-                                            <div>
-                                                <h4 className="font-bold text-sm md:text-lg">{item.title}</h4>
-                                                <p className="text-slate-400 text-xs md:text-sm">{item.desc}</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="bg-slate-100 p-8 md:p-12 lg:p-20 flex flex-col items-center justify-center relative">
-                            <div className="text-center z-10 mb-6 md:mb-10">
-                                <h3 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">Others</h3>
-                                <p className="text-slate-500">Risky. Unverified. Dirty.</p>
-                            </div>
-
-                            <div className="relative w-full max-w-[200px] md:max-w-sm mx-auto grayscale opacity-70">
-                                <img
-                                    src="https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?auto=format&fit=crop&w=800&q=80"
-                                    alt="Competitor"
-                                    loading="lazy"
-                                    className="w-full h-auto object-contain mix-blend-multiply"
-                                />
-                                <Badge className="absolute top-1/4 right-1/4 animate-pulse rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-lg md:px-3 md:py-1 md:text-xs hover:bg-red-500">
-                                    Risk!
-                                </Badge>
-                            </div>
-                        </div>
+                <Reveal className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="text-center mb-8 md:mb-10">
+                        <span className="text-teal-600 font-bold tracking-widest uppercase text-xs mb-2 block">Compare</span>
+                        <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900">Why Buy From Lapshark?</h2>
                     </div>
+                    <TrustComparison />
                 </Reveal>
             )}
+
+            {/* New vs Refurbished value */}
+            <Reveal className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                <ValueComparison />
+            </Reveal>
+
+            {/* Trusted by Laptop Buyers — renders nothing until there are
+                enough genuine reviews to show, see components/ecommerce/Reviews. */}
+            <Reveal className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <Reviews />
+            </Reveal>
 
             {/* FAQ */}
             <Reveal className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -603,10 +596,10 @@ export default function Home({
                 </div>
                 <Accordion multiple className="rounded-2xl border border-slate-100 bg-white px-4 md:px-6 shadow-sm">
                     {[
-                        { q: "Do you offer a warranty on refurbished laptops?", a: "Yes, every laptop comes with a 6-month official warranty covering the motherboard, screen, RAM, HDD/SSD, and original accessories." },
-                        { q: "How thoroughly are the laptops tested?", a: "Each unit goes through a 40+ point quality inspection covering the screen, battery health, keyboard, ports, and body condition before it's listed for sale." },
-                        { q: "Can I return a laptop if I don't like it?", a: "Yes, we offer 14-day easy returns on all laptops, no questions asked." },
-                        { q: "Is Cash on Delivery (COD) available?", a: "Yes, COD is available nationwide, along with no-cost EMI options at checkout." },
+                        { q: "Do you offer a warranty on refurbished laptops?", a: `Yes, every laptop comes with a ${STORE_POLICIES.warrantyMonths}-month official warranty covering the motherboard, screen, RAM, HDD/SSD, and original accessories.` },
+                        { q: "How thoroughly are the laptops tested?", a: `Each unit goes through a ${STORE_POLICIES.qualityCheckPoints}+ point quality inspection covering the screen, battery health, keyboard, ports, and body condition before it's listed for sale.` },
+                        { q: "Can I return a laptop if I don't like it?", a: `Yes — you have ${STORE_POLICIES.returnDays} days from delivery, as long as the device is in its original condition with all accessories and the warranty seal intact.` },
+                        { q: "Is Cash on Delivery (COD) available?", a: "Yes, COD is available nationwide, along with EMI options at checkout." },
                     ].map((item, i) => (
                         <AccordionItem key={i} value={`faq-${i}`}>
                             <AccordionTrigger className="text-left text-sm md:text-base font-bold text-slate-900">

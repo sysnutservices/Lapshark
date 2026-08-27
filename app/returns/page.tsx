@@ -1,10 +1,11 @@
 import React from 'react';
 import { RefreshCcw, Truck, CreditCard, AlertTriangle, Check } from 'lucide-react';
 import { Metadata } from 'next';
+import { STORE_POLICIES } from '@/lib/policies';
 
 export const metadata: Metadata = {
     title: "Returns & Refunds - LAPSHARK",
-    description: "Our hassle-free 14-day return policy ensures you are satisfied with your purchase.",
+    description: `Our hassle-free ${STORE_POLICIES.returnDays}-day return policy ensures you are satisfied with your purchase.`,
     alternates: {
         canonical: "https://lapshark.com/returns",
     },
@@ -12,22 +13,24 @@ export const metadata: Metadata = {
 
 // Answers below are taken from copy visible on this page — Google requires FAQ
 // markup to match on-page content, and LLMs quote the answer text directly.
+// This page is the policy of record: STORE_POLICIES.returnConditions is
+// itself sourced from what's written here, so keep the two in sync.
 const faqs = [
     {
         q: "How long do I have to return a laptop to Lapshark?",
-        a: "Returns are accepted within 14 days of delivery. The return request must be initiated within that 14-day window.",
+        a: `Returns are accepted within ${STORE_POLICIES.returnDays} days of delivery. The return request must be initiated within that window.`,
     },
     {
         q: "What makes a product eligible for return?",
-        a: "The return request must be initiated within 14 days of delivery, the product must be in the same condition as received with no new scratches or dents, all original accessories such as the charger and cable must be included, the device must not have been tampered with or opened, and the warranty seal must be intact.",
+        a: `${STORE_POLICIES.returnConditions.join(" ")}`,
     },
     {
         q: "How long does a refund take?",
-        a: "Once your return is received and inspected by our technical team, usually within 48 hours of pickup, we notify you of approval or rejection. Approved refunds are credited automatically to your original method of payment within 5-7 business days.",
+        a: `Once your return is received and inspected by our technical team, usually within 48 hours of pickup, we notify you of approval or rejection. Approved refunds are credited automatically to your original method of payment within ${STORE_POLICIES.refundWindowLabel}.`,
     },
     {
         q: "What happens if my return is rejected?",
-        a: "If the device is found to be damaged by the user or parts are missing, we may reject the return or apply a restocking fee of up to 20%.",
+        a: `If the device is found to be damaged by the user or parts are missing, we may reject the return or apply a restocking fee of up to ${STORE_POLICIES.restockingFeeMaxPercent}%.`,
     },
     {
         q: "What should I do if my laptop arrives damaged?",
@@ -39,7 +42,7 @@ const faqs = [
     },
     {
         q: "Does Lapshark charge for return pickup?",
-        a: "No. Pickup is free and Lapshark handles the return logistics.",
+        a: STORE_POLICIES.returnPickupFree ? "No. Pickup is free and Lapshark handles the return logistics." : "Pickup fees may apply — check your return confirmation for details.",
     },
 ];
 
@@ -79,13 +82,13 @@ export default function Returns() {
                     <div className="grid md:grid-cols-3 gap-6">
                         <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 text-center">
                             <Truck className="w-8 h-8 text-slate-700 mx-auto mb-3" />
-                            <h3 className="font-bold text-slate-900 mb-1">14-Day Window</h3>
-                            <p className="text-sm text-slate-500">Easy returns within 14 days of delivery.</p>
+                            <h3 className="font-bold text-slate-900 mb-1">{STORE_POLICIES.returnDays}-Day Window</h3>
+                            <p className="text-sm text-slate-500">Easy returns within {STORE_POLICIES.returnDays} days of delivery.</p>
                         </div>
                         <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 text-center">
                             <CreditCard className="w-8 h-8 text-slate-700 mx-auto mb-3" />
                             <h3 className="font-bold text-slate-900 mb-1">Fast Refunds</h3>
-                            <p className="text-sm text-slate-500">Processed within 5-7 business days.</p>
+                            <p className="text-sm text-slate-500">Processed within {STORE_POLICIES.refundWindowLabel}.</p>
                         </div>
                         <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 text-center">
                             <Truck className="w-8 h-8 text-slate-700 mx-auto mb-3" />
@@ -99,13 +102,7 @@ export default function Returns() {
                             <h2 className="text-2xl font-bold text-slate-900 mb-4">Return Eligibility</h2>
                             <p className="text-slate-600 mb-4">To be eligible for a return, your item must meet the following criteria:</p>
                             <ul className="space-y-3">
-                                {[
-                                    "The return request is initiated within 14 days of delivery.",
-                                    "The product is in the same condition as received (no new scratches/dents).",
-                                    "All original accessories (charger, cable) are included.",
-                                    "The device has not been tampered with or opened.",
-                                    "The warranty seal is intact."
-                                ].map((item, i) => (
+                                {STORE_POLICIES.returnConditions.map((item, i) => (
                                     <li key={i} className="flex items-start gap-3 text-slate-700">
                                         <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
                                         <span>{item}</span>
@@ -120,8 +117,8 @@ export default function Returns() {
                                 Once your return is received and inspected by our technical team (usually within 48 hours of pickup), we will notify you of the approval or rejection of your refund.
                             </p>
                             <ul className="list-disc pl-5 mt-4 space-y-2 text-slate-600">
-                                <li><strong>Approved:</strong> Your refund will be processed, and a credit will automatically be applied to your original method of payment within 5-7 business days.</li>
-                                <li><strong>Rejected:</strong> If the device is found to be damaged by the user or parts are missing, we may reject the return or apply a restocking fee of up to 20%.</li>
+                                <li><strong>Approved:</strong> Your refund will be processed, and a credit will automatically be applied to your original method of payment within {STORE_POLICIES.refundWindowLabel}.</li>
+                                <li><strong>Rejected:</strong> If the device is found to be damaged by the user or parts are missing, we may reject the return or apply a restocking fee of up to {STORE_POLICIES.restockingFeeMaxPercent}%.</li>
                             </ul>
                         </section>
 

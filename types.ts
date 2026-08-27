@@ -45,6 +45,35 @@ export interface Product {
   lengthCm?: number;
   widthCm?: number;
   heightCm?: number;
+
+  // Recommendation-engine metadata — see lib/product-recommendation.ts.
+  // Optional: falls back to category-based matching when unset, so existing
+  // untagged products still work in "Find Your Perfect Laptop"/Shop by Need.
+  useCases?: string[];
+  performanceTier?: "basic" | "balanced" | "high-performance";
+  tags?: string[];
+
+  // Per-listing inspection data for the Quality Report — unset until an
+  // admin actually enters real numbers for that listing. See the backend
+  // schema comment (Product.ts) for why this is architected per-listing,
+  // not per physical unit.
+  qualityReport?: {
+    batteryHealthPercent?: number;
+    storageHealthPercent?: number;
+    displayStatus?: "passed" | "minor-wear" | "failed";
+    keyboardStatus?: "passed" | "minor-wear" | "failed";
+    trackpadStatus?: "passed" | "minor-wear" | "failed";
+    webcamStatus?: "passed" | "minor-wear" | "failed";
+    speakerStatus?: "passed" | "minor-wear" | "failed";
+    microphoneStatus?: "passed" | "minor-wear" | "failed";
+    wifiStatus?: "passed" | "minor-wear" | "failed";
+    bluetoothStatus?: "passed" | "minor-wear" | "failed";
+    portsStatus?: "passed" | "minor-wear" | "failed";
+    physicalConditionNotes?: string;
+    serialVerified?: boolean;
+    technicianChecked?: boolean;
+    inspectedAt?: string;
+  };
 }
 
 export interface CartItem extends Product {

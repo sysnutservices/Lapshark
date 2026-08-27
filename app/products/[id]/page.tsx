@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { API_URL } from "@/api/api";
+import { STORE_POLICIES } from "@/lib/policies";
 import ProductDetailsClient from "./ProductsDetailsClient";
 
 // Markdown -> plain text for meta descriptions.
@@ -117,6 +118,17 @@ export default async function ProductPage({ params }) {
                         description: product.description,
                         sku: product.productId,
                         brand: { "@type": "Brand", name: product.brand || "Lapshark" },
+                        // Real aggregate from Review docs (reviewController's
+                        // recalculateProductRating writes rating/reviews on the
+                        // product itself) — omitted entirely when there are no
+                        // reviews yet rather than asserting a rating of 0.
+                        ...(product.reviews > 0 && {
+                            aggregateRating: {
+                                "@type": "AggregateRating",
+                                ratingValue: product.rating,
+                                reviewCount: product.reviews,
+                            },
+                        }),
                         offers: {
                             "@type": "Offer",
                             url: `https://lapshark.com/products/${product.slug}`,
@@ -133,14 +145,22 @@ export default async function ProductPage({ params }) {
                                 product.stock > 0
                                     ? "https://schema.org/InStock"
                                     : "https://schema.org/OutOfStock",
-                            itemCondition: "https://schema.org/RefurbishedCondition",
-                            // Mirrors the published /returns policy.
+                            // "New" listings (the rare brand-new accessory) get the
+                            // real NewCondition value instead of an inaccurate
+                            // "Refurbished" claim — everything else on the site is
+                            // genuinely refurbished stock.
+                            itemCondition:
+                                product.condition === "New"
+                                    ? "https://schema.org/NewCondition"
+                                    : "https://schema.org/RefurbishedCondition",
+                            // Mirrors the published /returns policy via STORE_POLICIES —
+                            // was hardcoded to 14 here independent of the policy config.
                             hasMerchantReturnPolicy: {
                                 "@type": "MerchantReturnPolicy",
                                 applicableCountry: "IN",
                                 returnPolicyCategory:
                                     "https://schema.org/MerchantReturnFiniteReturnWindow",
-                                merchantReturnDays: 14,
+                                merchantReturnDays: STORE_POLICIES.returnDays,
                                 returnMethod: "https://schema.org/ReturnByMail",
                                 returnFees: "https://schema.org/FreeReturn",
                                 merchantReturnLink: "https://lapshark.com/returns",

@@ -13,6 +13,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Slider } from "@/components/ui/slider";
 import { trackEvent } from "@/lib/analytics";
+import { STORE_POLICIES } from "@/lib/policies";
+import { USE_CASES, UseCase, productUseCases } from "@/lib/product-recommendation";
 import {
     Accordion,
     AccordionContent,
@@ -103,11 +105,13 @@ export default function ShopClient({
     initialCategory,
     initialPriceRange,
     initialSearch = "",
+    initialUseCase = "",
     initialProducts = [],
 }: {
     initialCategory: string;
     initialPriceRange: number;
     initialSearch?: string;
+    initialUseCase?: string;
     initialProducts?: any[];
 }) {
     const { products: storeProducts } = useStore();
@@ -125,6 +129,7 @@ export default function ShopClient({
     // State
     const [searchQuery, setSearchQuery] = useState<string>(initialSearch);
     const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory);
+    const [selectedUseCase, setSelectedUseCase] = useState<string>(initialUseCase);
     const [priceRange, setPriceRange] = useState<[number, number]>([0, initialPriceRange]);
     const [sortBy, setSortBy] = useState<string>("featured");
     const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
@@ -139,6 +144,10 @@ export default function ShopClient({
     useEffect(() => {
         setSelectedCategory(initialCategory);
     }, [initialCategory]);
+
+    useEffect(() => {
+        setSelectedUseCase(initialUseCase);
+    }, [initialUseCase]);
 
     useEffect(() => {
         setPriceRange([0, initialPriceRange]);
@@ -166,6 +175,9 @@ export default function ShopClient({
 
             const matchCategory =
                 selectedCategory === "All" || product.category === selectedCategory;
+
+            const matchUseCase =
+                !selectedUseCase || productUseCases(product).includes(selectedUseCase as UseCase);
 
             const matchPrice =
                 product.finalPrice >= priceRange[0] && product.finalPrice <= priceRange[1];
@@ -215,6 +227,7 @@ export default function ShopClient({
             return (
                 matchSearch &&
                 matchCategory &&
+                matchUseCase &&
                 matchPrice &&
                 matchBrand &&
                 matchRam &&
@@ -233,6 +246,7 @@ export default function ShopClient({
     const clearAllFilters = () => {
         setSearchQuery("");
         setSelectedCategory("All");
+        setSelectedUseCase("");
         setPriceRange([0, MAX_PRICE]);
         setSelectedBrands([]);
         setSelectedRam([]);
@@ -241,12 +255,25 @@ export default function ShopClient({
         setSelectedDisplay([]);
     };
 
+    // Fires once per distinct list view (category/use-case change), not on
+    // every filter tick — GA4's view_item_list is meant to mark "a list was
+    // shown", not track filter interactions (filter_used already covers those).
+    useEffect(() => {
+        if (products.length === 0) return;
+        trackEvent("view_item_list", {
+            listName: selectedUseCase ? `use:${selectedUseCase}` : selectedCategory,
+            itemCount: filteredProducts.length,
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedCategory, selectedUseCase, products.length]);
+
     const totalActiveFilters =
         selectedBrands.length +
         selectedRam.length +
         selectedProcessor.length +
         selectedStorage.length +
         selectedDisplay.length +
+        (selectedUseCase ? 1 : 0) +
         (priceRange[1] < MAX_PRICE || priceRange[0] > 0 ? 1 : 0);
 
     const FilterPanel = (
@@ -285,6 +312,28 @@ export default function ShopClient({
                                     <RadioGroupItem value={cat} />
                                     <span className={`text-sm ${selectedCategory === cat ? "text-slate-900 font-bold" : "text-slate-600 font-medium"}`}>
                                         {cat}
+                                    </span>
+                                </label>
+                            ))}
+                        </RadioGroup>
+                    </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="useCase">
+                    <AccordionTrigger>Best For</AccordionTrigger>
+                    <AccordionContent>
+                        <RadioGroup value={selectedUseCase || "any"} onValueChange={(v) => setSelectedUseCase(v === "any" ? "" : v)}>
+                            <label className="flex items-center gap-3 cursor-pointer py-1.5">
+                                <RadioGroupItem value="any" />
+                                <span className={`text-sm ${!selectedUseCase ? "text-slate-900 font-bold" : "text-slate-600 font-medium"}`}>
+                                    Any Use
+                                </span>
+                            </label>
+                            {USE_CASES.map((uc) => (
+                                <label key={uc.value} className="flex items-center gap-3 cursor-pointer py-1.5">
+                                    <RadioGroupItem value={uc.value} />
+                                    <span className={`text-sm ${selectedUseCase === uc.value ? "text-slate-900 font-bold" : "text-slate-600 font-medium"}`}>
+                                        {uc.emoji} {uc.label}
                                     </span>
                                 </label>
                             ))}
@@ -435,11 +484,11 @@ export default function ShopClient({
                     <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
                         Every machine here is ex-corporate stock from Dell, HP and Lenovo —
                         business-grade laptops built for daily use, then quality-checked
-                        through our 40-point inspection.
+                        through our {STORE_POLICIES.qualityCheckPoints}-point inspection.
                         {Number.isFinite(lowestPrice) &&
                             ` Prices start at ₹${lowestPrice.toLocaleString("en-IN")}.`}{" "}
-                        All come with a 6-month warranty, doorstep delivery across India, and
-                        a 14-day return window with free pickup.
+                        All come with a {STORE_POLICIES.warrantyMonths}-month warranty, doorstep delivery across India, and
+                        a {STORE_POLICIES.returnDays}-day return window{STORE_POLICIES.returnPickupFree ? " with free pickup" : ""}.
                     </p>
                 </div>
                 <div className="flex items-center w-full md:w-auto gap-3">

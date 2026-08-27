@@ -10,16 +10,23 @@ import { Phone, MapPin, ArrowRight } from "lucide-react";
 import React, { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { trackPageView } from "@/lib/analytics";
+import { STORE_POLICIES } from "@/lib/policies";
+import { SUPPORT_PHONE, SUPPORT_PHONE_DISPLAY } from "@/lib/whatsapp";
 
 const MarqueeBar = () => {
+    // "NO COST EMI" was a real overclaim: the EMI banner further down this
+    // same page (HomeClient's Bajaj Finserv section) says "at attractive
+    // interest rates", which directly contradicts "no cost". Softened to
+    // what's actually confirmed (EMI is available) rather than asserting a
+    // 0%-interest claim the codebase itself doesn't back up.
     const items = [
-        "14 DAYS EASY RETURNS",
+        `${STORE_POLICIES.returnDays} DAYS EASY RETURNS`,
         "•",
         "COD AVAILABLE NATIONWIDE",
         "•",
-        "NO COST EMI AVAILABLE",
+        "EMI AVAILABLE",
         "•",
-        "6 MONTHS OFFICIAL WARRANTY",
+        `${STORE_POLICIES.warrantyMonths} MONTHS OFFICIAL WARRANTY`,
         "•",
     ];
 
@@ -75,9 +82,9 @@ export function LayoutContent({ children }: { children: React.ReactNode }) {
                                 Premium refurbished laptops for professionals, students, and gamers. Verified quality, unbeatable prices.
                             </p>
                             <div className="space-y-4">
-                                <a href="tel:+918971319555" className="flex items-center gap-3 text-white font-bold hover:text-teal-100 transition-colors">
+                                <a href={`tel:${SUPPORT_PHONE}`} className="flex items-center gap-3 text-white font-bold hover:text-teal-100 transition-colors">
                                     <div className="w-10 h-10 rounded-full bg-teal-700 border border-teal-400/40 flex items-center justify-center"><Phone className="w-5 h-5 text-white" /></div>
-                                    +91 897 131 9555
+                                    {SUPPORT_PHONE_DISPLAY}
                                 </a>
                                 <div className="flex items-start gap-3 text-sm text-teal-100">
                                     <div className="w-10 h-10 rounded-full bg-teal-700 border border-teal-400/40 flex items-center justify-center flex-shrink-0"><MapPin className="w-5 h-5 text-white" /></div>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { API_URL } from "@/api/api";
 import ShopClient from "./ProductsClient";
+import { STORE_POLICIES } from "@/lib/policies";
 
 // Fetched server-side so the catalogue is in the initial HTML: crawlers that
 // don't run JS (GPTBot, ClaudeBot, PerplexityBot) otherwise see an empty grid.
@@ -18,8 +19,7 @@ async function getProducts() {
 // 40.5k/mo) at lower difficulty, and this page is the target for both terms.
 export const metadata: Metadata = {
     title: "Refurbished & Second Hand Laptops in India",
-    description:
-        "Buy refurbished and second hand laptops online in India — Dell, HP and Lenovo business models, quality-checked, with a 6-month warranty and 14-day returns.",
+    description: `Buy refurbished and second hand laptops online in India — Dell, HP and Lenovo business models, quality-checked, with a ${STORE_POLICIES.warrantyMonths}-month warranty and ${STORE_POLICIES.returnDays}-day returns.`,
     alternates: {
         canonical: "https://lapshark.com/products",
     },
@@ -32,6 +32,7 @@ export default async function Shop({
         category?: string;
         priceRange?: number;
         q?: string;
+        use?: string;
     }>;
 }) {
     // ✅ MUST await in Next.js 15
@@ -47,6 +48,7 @@ export default async function Shop({
             initialCategory={categoryParam}
             initialPriceRange={priceRangeParam}
             initialSearch={params.q ?? ""}
+            initialUseCase={params.use ?? ""}
             initialProducts={products}
         />
     );

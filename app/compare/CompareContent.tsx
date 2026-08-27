@@ -1,16 +1,35 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useUserFeatures } from '@/context/UserFeatureContext';
 import { useCart } from '@/context/CartContext';
 import { X, ShoppingCart, AlertCircle, Check, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { STORE_POLICIES } from '@/lib/policies';
+import { trackEvent } from '@/lib/analytics';
+
+const USE_CASE_LABEL: Record<string, string> = {
+    student: 'Student', office: 'Office & Business', programming: 'Programming',
+    design: 'Design & Editing', gaming: 'Gaming', everyday: 'Everyday Use',
+};
 
 export default function CompareContent() {
     const { compareList, removeFromCompare } = useUserFeatures();
     const { addToCart } = useCart();
     const router = useRouter();
+
+    // Distinct from ProductCard's compare_started (fired per item added) —
+    // this marks an actual side-by-side comparison being viewed, which only
+    // means something once there's more than one product to compare.
+    useEffect(() => {
+        if (compareList.length < 2) return;
+        trackEvent("compare_product", {
+            productIds: compareList.map((p: any) => p.productId || p.id || p._id),
+            count: compareList.length,
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [compareList.length]);
 
     if (compareList.length === 0) {
         return (
@@ -129,6 +148,32 @@ export default function CompareContent() {
                                         {product.condition || 'Excellent'}
                                     </span>
                                 </td>
+                            ))}
+                        </tr>
+                        <tr>
+                            <td className="p-4 font-bold text-slate-700 bg-slate-50">Weight</td>
+                            {compareList.map(product => (
+                                <td key={product.id} className="p-4 text-center text-slate-600">{(product as any).weightKg ? `${(product as any).weightKg} kg` : '—'}</td>
+                            ))}
+                        </tr>
+                        <tr>
+                            <td className="p-4 font-bold text-slate-700 bg-slate-50">Recommended Use</td>
+                            {compareList.map(product => (
+                                <td key={product.id} className="p-4 text-center text-slate-600 text-sm">
+                                    {((product as any).useCases || []).map((u: string) => USE_CASE_LABEL[u] || u).join(', ') || '—'}
+                                </td>
+                            ))}
+                        </tr>
+                        <tr>
+                            <td className="p-4 font-bold text-slate-700 bg-slate-50">Warranty</td>
+                            {compareList.map(product => (
+                                <td key={product.id} className="p-4 text-center text-slate-600">{STORE_POLICIES.warrantyLabel}</td>
+                            ))}
+                        </tr>
+                        <tr>
+                            <td className="p-4 font-bold text-slate-700 bg-slate-50">Price</td>
+                            {compareList.map(product => (
+                                <td key={product.id} className="p-4 text-center font-bold text-slate-900">₹{product.finalPrice.toLocaleString('en-IN')}</td>
                             ))}
                         </tr>
                     </tbody>

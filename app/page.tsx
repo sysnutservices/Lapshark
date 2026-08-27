@@ -3,11 +3,11 @@ import type { Metadata } from "next";
 import HomeClient from "./HomeClient";
 import HeroSection from "./HeroSection";
 import { api } from "@/api/api";
+import { STORE_POLICIES } from "@/lib/policies";
 
 export const metadata: Metadata = {
     title: "Refurbished & Second Hand Laptops Online | Lapshark",
-    description:
-        "Buy refurbished and second hand laptops online in India. Quality-checked Dell, HP and Lenovo business models with a 6-month warranty, COD and doorstep delivery.",
+    description: `Buy refurbished and second hand laptops online in India. Quality-checked Dell, HP and Lenovo business models with a ${STORE_POLICIES.warrantyMonths}-month warranty, COD and doorstep delivery.`,
 };
 
 export default async function HomePage() {

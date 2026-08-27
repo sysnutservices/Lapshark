@@ -6,10 +6,16 @@ import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 import Script from "next/script";
 import { API_URL } from "@/api/api";
+import { STORE_POLICIES } from "@/lib/policies";
+import { SUPPORT_PHONE } from "@/lib/whatsapp";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 const SITE_URL = "https://lapshark.com";
+// "no-cost EMI" was asserted here 3x while HomeClient's own Bajaj Finserv
+// banner says "attractive interest rates" — a real self-contradiction, not
+// a confirmed 0%-interest offer, so softened to "EMI" everywhere.
+const SITE_DESCRIPTION = `Buy verified refurbished and second hand laptops at unbeatable prices with doorstep delivery, COD, EMI, and a ${STORE_POLICIES.warrantyMonths}-month warranty across India.`;
 
 export const metadata: Metadata = {
     metadataBase: new URL(SITE_URL),
@@ -17,8 +23,7 @@ export const metadata: Metadata = {
         default: "Lapshark | Refurbished & Second Hand Laptops in India",
         template: "%s | Lapshark",
     },
-    description:
-        "Buy verified refurbished and second hand laptops at unbeatable prices with doorstep delivery, COD, no-cost EMI, and 6-month warranty across India.",
+    description: SITE_DESCRIPTION,
     keywords: [
         "refurbished laptops",
         "second hand laptop",
@@ -48,16 +53,14 @@ export const metadata: Metadata = {
         type: "website",
         siteName: "Lapshark",
         title: "Lapshark | Refurbished & Second Hand Laptops in India",
-        description:
-            "Buy verified refurbished and second hand laptops at unbeatable prices with doorstep delivery, COD, no-cost EMI, and 6-month warranty across India.",
+        description: SITE_DESCRIPTION,
         url: SITE_URL,
         locale: "en_IN",
     },
     twitter: {
         card: "summary_large_image",
         title: "Lapshark | Refurbished & Second Hand Laptops in India",
-        description:
-            "Buy verified refurbished and second hand laptops at unbeatable prices with doorstep delivery, COD, no-cost EMI, and 6-month warranty across India.",
+        description: SITE_DESCRIPTION,
     },
 };
 
@@ -158,7 +161,7 @@ export default async function RootLayout({
                             legalName: "Sysnut Technologies",
                             url: SITE_URL,
                             logo: `${SITE_URL}/favicon.ico`,
-                            telephone: "+91-8971319555",
+                            telephone: SUPPORT_PHONE,
                             address: {
                                 "@type": "PostalAddress",
                                 streetAddress:
@@ -181,7 +184,11 @@ export default async function RootLayout({
                             url: SITE_URL,
                             potentialAction: {
                                 "@type": "SearchAction",
-                                target: `${SITE_URL}/products?category={search_term_string}`,
+                                // Was "?category=" — that's an exact-match category filter, not a
+                                // text search, so Google's sitelinks searchbox would have silently
+                                // returned nothing for any real search term. "?q=" is what the
+                                // actual search box (ProductsClient) reads.
+                                target: `${SITE_URL}/products?q={search_term_string}`,
                                 "query-input": "required name=search_term_string",
                             },
                         }),

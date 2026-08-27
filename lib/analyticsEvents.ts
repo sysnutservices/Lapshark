@@ -14,10 +14,21 @@ export const ANALYTICS_EVENTS = [
   "sort_used",
   "search",
   "whatsapp_click",
+  "whatsapp_expert_click",
+  "whatsapp_product_click",
   "begin_checkout",
+  "add_payment_info",
   "coupon_applied",
   "checkout_payment_failed",
   "login",
+  "remove_from_cart",
+  "view_item_list",
+  "select_item",
+  "laptop_recommendation_started",
+  "laptop_recommendation_completed",
+  "emi_info_viewed",
+  "quality_report_viewed",
+  "compare_product",
 ] as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENTS)[number];
@@ -78,10 +89,66 @@ export interface WhatsappClickProperties {
   location: string;
 }
 
+export interface WhatsappProductClickProperties {
+  productId: string;
+  title: string;
+  location: string;
+}
+
+export interface RemoveFromCartProperties {
+  productId: string;
+  title: string;
+  quantity: number;
+  finalPrice?: number;
+}
+
+export interface ViewItemListProperties {
+  listName: string;
+  itemCount: number;
+}
+
+export interface SelectItemProperties {
+  productId: string;
+  title: string;
+  finalPrice?: number;
+  listName?: string;
+}
+
+export interface RecommendationStartedProperties {
+  entryPoint: string;
+}
+
+export interface RecommendationCompletedProperties {
+  useCase: string;
+  budget: string;
+  performanceTier?: string;
+  resultCount: number;
+}
+
+export interface EmiInfoViewedProperties {
+  price: number;
+}
+
+export interface QualityReportViewedProperties {
+  productId: string;
+}
+
+// Fired once a comparison actually has 2+ products to look at (see
+// CompareContent) — distinct from compare_started (ProductCard), which
+// fires per single item added to the list.
+export interface CompareProductProperties {
+  productIds: string[];
+  count: number;
+}
+
 export interface BeginCheckoutProperties {
   finalTotal: number;
   paymentMethod: string;
   itemCount: number;
+}
+
+export interface PaymentInfoProperties {
+  paymentMethod: string;
 }
 
 export interface CouponAppliedProperties {
@@ -110,7 +177,18 @@ export interface AnalyticsEventPayloads {
   sort_used: SortUsedProperties;
   search: SearchProperties;
   whatsapp_click: WhatsappClickProperties;
+  whatsapp_expert_click: WhatsappClickProperties;
+  whatsapp_product_click: WhatsappProductClickProperties;
+  remove_from_cart: RemoveFromCartProperties;
+  view_item_list: ViewItemListProperties;
+  select_item: SelectItemProperties;
+  laptop_recommendation_started: RecommendationStartedProperties;
+  laptop_recommendation_completed: RecommendationCompletedProperties;
+  emi_info_viewed: EmiInfoViewedProperties;
+  quality_report_viewed: QualityReportViewedProperties;
+  compare_product: CompareProductProperties;
   begin_checkout: BeginCheckoutProperties;
+  add_payment_info: PaymentInfoProperties;
   coupon_applied: CouponAppliedProperties;
   checkout_payment_failed: CheckoutPaymentFailedProperties;
   login: LoginProperties;

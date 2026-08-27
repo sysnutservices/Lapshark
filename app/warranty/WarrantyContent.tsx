@@ -3,6 +3,7 @@
 import { Shield, Clock, CheckCircle, XCircle, AlertTriangle, Truck, HelpCircle, Gavel, UserCheck, Zap, Laptop, FileText, CreditCard, RotateCcw, Battery } from 'lucide-react';
 
 import Link from 'next/link';
+import { STORE_POLICIES } from '@/lib/policies';
 
 export default function WarrantyContent() {
     return (
@@ -26,7 +27,7 @@ export default function WarrantyContent() {
                             <Shield className="w-6 h-6" />
                         </div>
                         <h3 className="font-bold text-lg mb-2">Standard Warranty</h3>
-                        <p className="text-sm text-slate-500">6 Months for all laptops and Apple devices.</p>
+                        <p className="text-sm text-slate-500">{STORE_POLICIES.warrantyMonths} Months for all laptops and Apple devices.</p>
                     </div>
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center text-center">
                         <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-green-600 mb-4">
@@ -55,13 +56,13 @@ export default function WarrantyContent() {
                             <div className="space-y-4">
                                 <div className="p-4 bg-slate-50 rounded-xl border-l-4 border-teal-500">
                                     <h4 className="font-bold text-slate-900 flex items-center gap-2"><Laptop className="w-4 h-4" /> All Laptops & Apple Products</h4>
-                                    <p className="text-sm text-slate-600 mt-1">Valid for <span className="font-bold">Six Months</span> from the date of original retail purchase.</p>
+                                    <p className="text-sm text-slate-600 mt-1">Valid for <span className="font-bold">{STORE_POLICIES.warrantyMonths} Months</span> from the date of original retail purchase.</p>
                                 </div>
                             </div>
                             <div className="space-y-4">
                                 <div className="p-4 bg-slate-50 rounded-xl border-l-4 border-orange-500">
                                     <h4 className="font-bold text-slate-900 flex items-center gap-2"><Zap className="w-4 h-4" /> Accessories</h4>
-                                    <p className="text-sm text-slate-600 mt-1">6 Month Warranty on accessories included in the original packaging.</p>
+                                    <p className="text-sm text-slate-600 mt-1">{STORE_POLICIES.warrantyMonths} Month Warranty on accessories included in the original packaging.</p>
                                 </div>
                                 <div className="p-4 bg-red-50 rounded-xl border border-red-100">
                                     <h4 className="font-bold text-red-800 flex items-center gap-2"><XCircle className="w-4 h-4" /> Exclusions</h4>
@@ -85,7 +86,7 @@ export default function WarrantyContent() {
                                     We warrant that the refurbished hardware and accessories are free from defects in materials and workmanship under normal use.
                                 </p>
                                 <ul className="space-y-3">
-                                    {['Screen', 'Motherboard', 'Keyboard', 'Hard Drive & RAM', 'Original Accessories (6 Months)'].map((item, i) => (
+                                    {['Screen', 'Motherboard', 'Keyboard', 'Hard Drive & RAM', `Original Accessories (${STORE_POLICIES.warrantyMonths} Months)`].map((item, i) => (
                                         <li key={i} className="flex items-center gap-3 text-sm font-medium text-slate-700">
                                             <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div> {item}
                                         </li>
@@ -154,7 +155,7 @@ export default function WarrantyContent() {
                                     <CreditCard className="w-5 h-5 text-teal-600" /> Cash on Delivery (COD)
                                 </h3>
                                 <p className="text-sm text-slate-600 leading-relaxed">
-                                    If you choose <strong>Cash on Delivery (COD)</strong> as your payment method, you may be required to pay <strong>₹500</strong> as a advance payment at the placement of the order.
+                                    If you choose <strong>Cash on Delivery (COD)</strong> as your payment method, you may be required to pay <strong>₹{STORE_POLICIES.codAdvanceAmount}</strong> as a advance payment at the placement of the order.
                                 </p>
                             </div>
 

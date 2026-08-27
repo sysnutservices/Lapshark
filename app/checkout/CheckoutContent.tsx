@@ -36,6 +36,10 @@ export default function CheckoutContent() {
     const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
     const [serviceability, setServiceability] = useState<{ checked: boolean; serviceable: boolean; message?: string }>({ checked: false, serviceable: true });
     const [paymentMethod, setPaymentMethod] = useState<'Razorpay' | 'COD'>('Razorpay');
+    const selectPaymentMethod = (method: 'Razorpay' | 'COD') => {
+        setPaymentMethod(method);
+        trackEvent("add_payment_info", { paymentMethod: method });
+    };
     // Mirrors orderController's COD_ADVANCE_AMOUNT — the server is what
     // actually decides the charged amount, this is only for the pre-payment
     // label/summary so keep the two in sync if it ever changes.
@@ -562,7 +566,7 @@ export default function CheckoutContent() {
                                 <div className="p-6 md:p-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <button
                                         type="button"
-                                        onClick={() => setPaymentMethod('Razorpay')}
+                                        onClick={() => selectPaymentMethod('Razorpay')}
                                         className={`text-left p-4 rounded-2xl border-2 transition-all ${paymentMethod === 'Razorpay' ? 'border-teal-600 bg-teal-50' : 'border-slate-200 hover:border-slate-300'}`}
                                     >
                                         <span className="font-bold text-slate-900 text-sm block">Pay Online</span>
@@ -570,7 +574,7 @@ export default function CheckoutContent() {
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => setPaymentMethod('COD')}
+                                        onClick={() => selectPaymentMethod('COD')}
                                         className={`text-left p-4 rounded-2xl border-2 transition-all ${paymentMethod === 'COD' ? 'border-teal-600 bg-teal-50' : 'border-slate-200 hover:border-slate-300'}`}
                                     >
                                         <span className="font-bold text-slate-900 text-sm block">Cash on Delivery</span>
