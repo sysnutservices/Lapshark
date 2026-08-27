@@ -120,7 +120,13 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         setBlogs(blogsRes.data);
         setOrders(ordersRes.data.orders || ordersRes.data);
         setCoupons(couponsRes.data);
-        setCustomers(usersRes.data);
+        // GET /users returns raw Mongoose docs (_id only) — the User type
+        // declares `id` as required, but nothing ever populated it, so
+        // customer.id was undefined everywhere this list is used. Block/
+        // Unblock has silently been calling /users/undefined/block (a
+        // Mongoose CastError -> 500) this whole time; Force Logout just
+        // inherited the same bug by following that exact pattern.
+        setCustomers((usersRes.data || []).map((u: any) => ({ ...u, id: u._id })));
         setSiteConfig(siteRes.data);
 
       } catch (err) {
