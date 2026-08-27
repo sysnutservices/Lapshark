@@ -25,6 +25,7 @@ import { ShopByNeed } from '@/components/ecommerce/ShopByNeed';
 import { BudgetExplorer } from '@/components/ecommerce/BudgetExplorer';
 import { TrustComparison } from '@/components/ecommerce/TrustComparison';
 import { ValueComparison } from '@/components/ecommerce/ValueComparison';
+import { Reviews } from '@/components/ecommerce/Reviews';
 import { STORE_POLICIES } from '@/lib/policies';
 import * as motion from 'motion/react-m';
 import appleLogo from '@/assets/brands/apple.svg';
@@ -579,6 +580,12 @@ export default function Home({
             {/* New vs Refurbished value */}
             <Reveal className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
                 <ValueComparison />
+            </Reveal>
+
+            {/* Trusted by Laptop Buyers — renders nothing until there are
+                enough genuine reviews to show, see components/ecommerce/Reviews. */}
+            <Reveal className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <Reviews />
             </Reveal>
 
             {/* FAQ */}

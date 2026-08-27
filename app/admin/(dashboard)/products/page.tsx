@@ -52,6 +52,21 @@ const DEFAULT_CONFIG_OPTIONS: IConfigOptions = {
     ],
 };
 
+// Mirrors QUALITY_STATUS_VALUES / the CHECKS list in
+// components/ecommerce/ProductQualityReport.tsx — one place so admin input
+// and customer-facing display can't drift apart on field names or labels.
+const QUALITY_STATUS_CHECKS: { key: string; label: string }[] = [
+    { key: 'displayStatus', label: 'Display' },
+    { key: 'keyboardStatus', label: 'Keyboard' },
+    { key: 'trackpadStatus', label: 'Trackpad' },
+    { key: 'webcamStatus', label: 'Webcam' },
+    { key: 'speakerStatus', label: 'Speakers' },
+    { key: 'microphoneStatus', label: 'Microphone' },
+    { key: 'wifiStatus', label: 'Wi-Fi' },
+    { key: 'bluetoothStatus', label: 'Bluetooth' },
+    { key: 'portsStatus', label: 'Ports' },
+];
+
 // Mirrors backend USE_CASES (lapshark_backend/src/models/Product.ts) — the
 // controlled vocabulary lib/product-recommendation.ts filters on.
 const USE_CASE_OPTIONS = [
@@ -442,6 +457,14 @@ export default function ProductsPage() {
             formData.append('useCases', JSON.stringify((editingProduct as any).useCases || []));
             formData.append('tags', JSON.stringify((editingProduct as any).tags || []));
             if ((editingProduct as any).performanceTier) formData.append('performanceTier', (editingProduct as any).performanceTier);
+            const qualityReport = (editingProduct as any).qualityReport;
+            // Omit entirely rather than send "{}" when nothing's been entered —
+            // updateProduct only touches the field when req.body.qualityReport
+            // is present at all, so an empty object would overwrite existing
+            // per-listing data with nothing on every unrelated edit.
+            if (qualityReport && Object.values(qualityReport).some((v) => v !== undefined && v !== '')) {
+                formData.append('qualityReport', JSON.stringify(qualityReport));
+            }
 
             // ✅ Use existing productId when updating, generate new one when creating
             if (editingProduct.productId) {
@@ -1588,6 +1611,108 @@ export default function ProductsPage() {
                                         <AlertCircle className="w-4 h-4 inline mr-1" />
                                         These flags help categorize products for display on the homepage and special sections.
                                     </p>
+                                </div>
+
+                                {/* Section 7: Lapshark Quality Report */}
+                                <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6 space-y-5 shadow-sm">
+                                    <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider border-b pb-3 flex items-center">
+                                        <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                                            <span className="text-blue-600 font-bold">7</span>
+                                        </div>
+                                        Lapshark Quality Report
+                                    </h3>
+                                    <p className="text-xs text-gray-500 bg-blue-50 p-3 rounded-lg border border-blue-100">
+                                        <AlertCircle className="w-4 h-4 inline mr-1" />
+                                        Optional, per-listing. Leave a field blank/"Not checked" until it's actually
+                                        inspected — the customer-facing report only shows fields you've entered here,
+                                        never a fabricated pass. Only enter real per-unit numbers if this listing's
+                                        stock represents a single physical unit.
+                                    </p>
+
+                                    {(() => {
+                                        const qr: any = (editingProduct as any).qualityReport || {};
+                                        const setQr = (patch: any) =>
+                                            setEditingProduct({ ...editingProduct, qualityReport: { ...qr, ...patch } } as any);
+                                        return (
+                                            <>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-2">Battery Health (%)</label>
+                                                        <input
+                                                            type="number" min={0} max={100}
+                                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                                            value={qr.batteryHealthPercent ?? ''}
+                                                            onChange={(e) => setQr({ batteryHealthPercent: e.target.value === '' ? undefined : Number(e.target.value) })}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-2">SSD/Storage Health (%)</label>
+                                                        <input
+                                                            type="number" min={0} max={100}
+                                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                                            value={qr.storageHealthPercent ?? ''}
+                                                            onChange={(e) => setQr({ storageHealthPercent: e.target.value === '' ? undefined : Number(e.target.value) })}
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                                    {QUALITY_STATUS_CHECKS.map(({ key, label }) => (
+                                                        <div key={key}>
+                                                            <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
+                                                            <select
+                                                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                                                value={qr[key] || ''}
+                                                                onChange={(e) => setQr({ [key]: e.target.value || undefined })}
+                                                            >
+                                                                <option value="">Not checked</option>
+                                                                <option value="passed">Passed</option>
+                                                                <option value="minor-wear">Minor Wear</option>
+                                                                <option value="failed">Failed</option>
+                                                            </select>
+                                                        </div>
+                                                    ))}
+                                                </div>
+
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg">
+                                                        <input
+                                                            type="checkbox"
+                                                            id="serialVerified"
+                                                            checked={!!qr.serialVerified}
+                                                            onChange={(e) => setQr({ serialVerified: e.target.checked })}
+                                                            className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                                                        />
+                                                        <label htmlFor="serialVerified" className="text-sm font-medium text-gray-700 cursor-pointer flex-1">
+                                                            Serial Number Verified
+                                                        </label>
+                                                    </div>
+                                                    <div className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg">
+                                                        <input
+                                                            type="checkbox"
+                                                            id="technicianChecked"
+                                                            checked={!!qr.technicianChecked}
+                                                            onChange={(e) => setQr({ technicianChecked: e.target.checked })}
+                                                            className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                                                        />
+                                                        <label htmlFor="technicianChecked" className="text-sm font-medium text-gray-700 cursor-pointer flex-1">
+                                                            Technician Inspected
+                                                        </label>
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-2">Physical Condition Notes (internal + shown if entered)</label>
+                                                    <textarea
+                                                        rows={2}
+                                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                                        value={qr.physicalConditionNotes || ''}
+                                                        onChange={(e) => setQr({ physicalConditionNotes: e.target.value || undefined })}
+                                                    />
+                                                </div>
+                                            </>
+                                        );
+                                    })()}
                                 </div>
 
                                 {/* Sticky Footer with Action Buttons */}
