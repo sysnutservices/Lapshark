@@ -150,11 +150,17 @@ export default function WarrantyContent() {
                         "Non-Refundable Situations" sections), which is exactly the
                         kind of split-source drift STORE_POLICIES exists to prevent.
                         Warranty page covers warranty only; link out for the rest. */}
-                    <div className="bg-white p-6 rounded-2xl border border-slate-200 flex items-center justify-between gap-4 flex-wrap">
+                    {/* flex-col on mobile: the button alone (icon + "View Returns &
+                        Refunds Policy") is wider than the available content width at
+                        320px once this card's own padding is subtracted — flex-wrap
+                        on a row doesn't help when a single child is the one that's
+                        too wide, only stacking does. Verified live: 14px overflow
+                        with the row layout, 0 once stacked. */}
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <p className="text-sm text-slate-600">
                             Looking for payment, COD, or refund details? Those are covered in full on our Returns &amp; Refunds policy.
                         </p>
-                        <Link href="/returns" className="inline-flex items-center gap-2 bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-800 transition-colors flex-shrink-0">
+                        <Link href="/returns" className="inline-flex items-center justify-center gap-2 bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-800 transition-colors w-full sm:w-auto flex-shrink-0">
                             <RotateCcw className="w-4 h-4" /> View Returns &amp; Refunds Policy
                         </Link>
                     </div>
