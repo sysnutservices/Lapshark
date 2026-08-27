@@ -29,18 +29,9 @@ const faqs = [
         q: "Who pays for shipping during warranty service?",
         a: "If warranty service is required for a covered defect, Lapshark covers shipping costs. If the claim is ineligible, you may be responsible for shipping. Please ensure proper packaging when returning a device, as we are not liable for damage caused by improper packaging in transit.",
     },
-    {
-        q: "Do I need to pay in advance for Cash on Delivery?",
-        a: `If you choose Cash on Delivery (COD) as your payment method, you may be required to pay ₹${STORE_POLICIES.codAdvanceAmount} as an advance payment when placing the order.`,
-    },
-    {
-        q: "When does Lapshark issue a refund?",
-        a: "Refunds are processed only when the mistake is from our side, such as the wrong product being delivered, the product being damaged during shipment, or any other issue caused by Lapshark.",
-    },
-    {
-        q: "When will no refund be issued?",
-        a: "No refund is issued if the customer is not present at the delivery address at the time of delivery, refuses to accept the order upon delivery, cannot be contacted by phone or email during delivery attempts, or provided an incorrect or incomplete delivery address.",
-    },
+    // Payment/COD/refund FAQs moved to app/returns/page.tsx — this page's
+    // schema must match what's actually visible on this page (Google
+    // requires that), and that content no longer lives here.
 ];
 
 export default function WarrantyPage() {

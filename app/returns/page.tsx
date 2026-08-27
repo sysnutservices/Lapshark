@@ -44,6 +44,20 @@ const faqs = [
         q: "Does Lapshark charge for return pickup?",
         a: STORE_POLICIES.returnPickupFree ? "No. Pickup is free and Lapshark handles the return logistics." : "Pickup fees may apply — check your return confirmation for details.",
     },
+    // Moved from app/warranty/WarrantyContent.tsx — payment/COD/refund
+    // content belongs on this page, not the warranty page.
+    {
+        q: "Do I need to pay in advance for Cash on Delivery?",
+        a: `If you choose Cash on Delivery (COD) as your payment method, you may be required to pay ₹${STORE_POLICIES.codAdvanceAmount} as an advance payment when placing the order.`,
+    },
+    {
+        q: "When does Lapshark issue a refund for a wrong or damaged order?",
+        a: "Separately from the return process above: if the wrong product was delivered, the product was damaged during shipment, or another issue was caused by Lapshark, we issue a full refund.",
+    },
+    {
+        q: "When will no refund be issued?",
+        a: "No refund is issued if the customer is not present at the delivery address at the time of delivery, refuses to accept the order upon delivery, cannot be contacted by phone or email during delivery attempts, or provided an incorrect or incomplete delivery address.",
+    },
 ];
 
 export default function Returns() {
@@ -130,6 +144,9 @@ export default function Returns() {
                                     If you receive a damaged or defective product, please notify us immediately (within 24 hours) at <strong>support@lapshark.com</strong> with photos/video of the unboxing. We will arrange an immediate replacement.
                                 </p>
                             </div>
+                            <p className="text-slate-600 mt-4">
+                                A full refund instead of a replacement applies if the wrong product was delivered, the product was damaged during shipment, or another issue was caused by Lapshark.
+                            </p>
                         </section>
 
                         <section>
@@ -137,6 +154,33 @@ export default function Returns() {
                             <p className="text-slate-600">
                                 You can cancel your order for a full refund before it has been shipped. Once shipped, the order falls under the Return Policy.
                             </p>
+                        </section>
+
+                        {/* Moved from app/warranty/WarrantyContent.tsx — payment/COD and
+                            refund-eligibility content belongs here, not on the warranty page. */}
+                        <section>
+                            <h2 className="text-2xl font-bold text-slate-900 mb-4">Cash on Delivery (COD)</h2>
+                            <p className="text-slate-600">
+                                If you choose Cash on Delivery (COD) as your payment method, you may be required to pay <strong>₹{STORE_POLICIES.codAdvanceAmount}</strong> as an advance payment when placing the order — the remainder is collected on delivery.
+                            </p>
+                        </section>
+
+                        <section>
+                            <h2 className="text-2xl font-bold text-slate-900 mb-4">When No Refund Is Issued</h2>
+                            <p className="text-slate-600 mb-3">No refund is issued if:</p>
+                            <ul className="space-y-3">
+                                {[
+                                    "The customer is not present at the delivery address at the time of delivery",
+                                    "The customer refuses to accept the order upon delivery",
+                                    "The customer cannot be contacted by phone or email during delivery attempts",
+                                    "The customer provided an incorrect or incomplete delivery address",
+                                ].map((item, i) => (
+                                    <li key={i} className="flex items-start gap-3 text-slate-700">
+                                        <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                                        <span>{item}</span>
+                                    </li>
+                                ))}
+                            </ul>
                         </section>
                     </div>
                 </div>
