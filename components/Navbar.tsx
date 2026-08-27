@@ -11,6 +11,7 @@ import { Logo } from './Logo';
 import logo from "../assets/logo.svg";
 import { useAuth } from '@/context/AuthContext';
 import { trackEvent } from '@/lib/analytics';
+import { SUPPORT_PHONE, SUPPORT_PHONE_DISPLAY, openWhatsApp } from '@/lib/whatsapp';
 
 export const Navbar: React.FC = () => {
   const { totalItems } = useCart();
@@ -247,13 +248,13 @@ export const Navbar: React.FC = () => {
             <div className="bg-slate-900 text-white rounded-2xl p-6 shadow-xl relative overflow-hidden mt-auto">
               <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
               <p className="text-sm text-slate-400 mb-1 font-medium uppercase tracking-wide">Need Assistance?</p>
-              <a href="tel:+918971319555" className="text-2xl font-bold block mb-4 tracking-tight flex items-center gap-2">
-                <Phone className="w-5 h-5 text-teal-400" /> +91 897 131 9555
+              <a href={`tel:${SUPPORT_PHONE}`} className="text-2xl font-bold block mb-4 tracking-tight flex items-center gap-2">
+                <Phone className="w-5 h-5 text-teal-400" /> {SUPPORT_PHONE_DISPLAY}
               </a>
               <button
                 onClick={() => {
-                  trackEvent("whatsapp_click", { location: "navbar_mobile_menu" });
-                  window.open("https://wa.me/918971319555", "_blank");
+                  trackEvent("whatsapp_expert_click", { location: "navbar_mobile_menu" });
+                  openWhatsApp("Hi Lapshark, I need help finding the right laptop.");
                 }}
                 className="w-full bg-white text-slate-900 font-bold py-3 rounded-xl hover:bg-teal-50 transition-colors shadow-lg"
               >

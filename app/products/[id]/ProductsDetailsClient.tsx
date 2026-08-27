@@ -6,8 +6,7 @@ import { useStore } from '@/context/StoreContext';
 import { useCart } from '@/context/CartContext';
 import { useUserFeatures } from '@/context/UserFeatureContext';
 import { Category } from '@/types';
-import { Star, Truck, Shield, ShoppingBag, Check, ClipboardCheck, Battery, Plus, ArrowLeft, User } from 'lucide-react';
-import { ProductCard } from '@/components/ProductCard';
+import { Star, Truck, Shield, ShoppingBag, Check, ClipboardCheck, Plus, ArrowLeft, User } from 'lucide-react';
 import { Review } from '@/types';
 import { api } from '@/api/api';
 import { useAuth } from '@/context/AuthContext';
@@ -19,13 +18,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { trackEvent } from '@/lib/analytics';
-import {
-    Carousel,
-    CarouselContent,
-    CarouselItem,
-    CarouselPrevious,
-    CarouselNext,
-} from '@/components/ui/carousel';
+import { STORE_POLICIES } from '@/lib/policies';
+import { BestForLine, ProductTagBadges } from '@/components/ecommerce/ProductBadges';
+import { ProductEMILine, ProductEMIOptions } from '@/components/ecommerce/ProductEMI';
+import { ConditionExplainer } from '@/components/ecommerce/ProductCondition';
+import { ProductQualityReport } from '@/components/ecommerce/ProductQualityReport';
+import { WhatsAppCTA } from '@/components/ecommerce/WhatsAppCTA';
+import { SimilarProducts } from '@/components/ecommerce/SimilarProducts';
 
 // MUST stay at module scope. Declared inside the component, dynamic() produced a
 // new lazy component type on every render, so a client-side transition into this
@@ -139,8 +138,6 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
             <div className="text-center py-32 text-xl font-medium text-slate-500">Product not found</div>
         );
     }
-
-    const relatedProducts = products.filter(p => p.category === product.category && p.id !== product.id).slice(0, 4);
 
     const finalPrice = (product?.finalPrice || 0) + (selectedRam?.price || 0) + (selectedStorage?.price || 0) + (selectedWarranty?.price || 0);
     const originalPrice = (product?.price || 0) + (selectedRam?.price || 0) + (selectedStorage?.price || 0) + (selectedWarranty?.price || 0);
@@ -350,12 +347,19 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
                                     </div>
                                 </div>
                                 <div className="bg-teal-50/50 rounded-2xl md:rounded-3xl p-4 md:p-6 border border-teal-100 flex items-start gap-4">
-                                    <div className="p-2.5 md:p-3 text-teal-600 flex-shrink-0"><Battery className="w-6 h-6 md:w-7 md:h-7" /></div>
+                                    <div className="p-2.5 md:p-3 text-teal-600 flex-shrink-0"><Shield className="w-6 h-6 md:w-7 md:h-7" /></div>
                                     <div>
-                                        <h4 className="font-bold text-slate-900 text-sm md:text-base">80%+ Battery</h4>
-                                        <p className="text-xs md:text-sm text-slate-500 mt-0.5 md:mt-1">Guaranteed health & performance.</p>
+                                        <h4 className="font-bold text-slate-900 text-sm md:text-base">{STORE_POLICIES.warrantyLabel}</h4>
+                                        <p className="text-xs md:text-sm text-slate-500 mt-0.5 md:mt-1">{STORE_POLICIES.returnLabel}, doorstep delivery.</p>
                                     </div>
                                 </div>
+                            </div>
+
+                            <div className="hidden md:block mt-6">
+                                <ProductQualityReport
+                                    productId={product.productId || product.id || product._id || ""}
+                                    qualityReport={product.qualityReport}
+                                />
                             </div>
 
                             <div className="hidden md:block prose prose-slate max-w-none px-1 md:px-0 mt-6">
@@ -402,15 +406,22 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
                                     </Badge>
                                 )}
                             </div>
+                            <ProductEMILine price={finalPrice} className="mt-2" />
+                            <BestForLine useCases={product.useCases} className="mt-2" />
+                            <ProductTagBadges tags={product.tags} className="mt-2" />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3 mb-6 md:mb-8">
+                        <div className="grid grid-cols-2 gap-3 mb-4">
                             {Object.entries((product.specs || {}) as Record<string, string>).slice(0, 4).map(([key, value]) => (
                                 <div key={`spec-${key}`} className="bg-slate-50 p-3 rounded-xl border border-slate-100">
                                     <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block mb-1">{key}</span>
                                     <span className="text-base font-semibold text-slate-900 truncate block">{value}</span>
                                 </div>
                             ))}
+                        </div>
+
+                        <div className="mb-6 md:mb-8">
+                            <ConditionExplainer condition={product.condition} />
                         </div>
 
                         <div className="mb-2">
@@ -464,12 +475,29 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
                                 </div>
                             </div>
                             <div className="bg-teal-50/50 rounded-2xl p-4 border border-teal-100 flex items-start gap-4">
-                                <div className="p-2.5 text-teal-600 flex-shrink-0"><Battery className="w-6 h-6" /></div>
+                                <div className="p-2.5 text-teal-600 flex-shrink-0"><Shield className="w-6 h-6" /></div>
                                 <div>
-                                    <h4 className="font-bold text-slate-900 text-sm">80%+ Battery</h4>
-                                    <p className="text-xs text-slate-500 mt-0.5">Guaranteed health & performance.</p>
+                                    <h4 className="font-bold text-slate-900 text-sm">{STORE_POLICIES.warrantyLabel}</h4>
+                                    <p className="text-xs text-slate-500 mt-0.5">{STORE_POLICIES.returnLabel}, doorstep delivery.</p>
                                 </div>
                             </div>
+                        </div>
+
+                        <div className="md:hidden mt-2 mb-6">
+                            <ProductQualityReport
+                                productId={product.productId || product.id || product._id || ""}
+                                qualityReport={product.qualityReport}
+                            />
+                        </div>
+
+                        <WhatsAppCTA
+                            product={product}
+                            location="product_page"
+                            className="md:hidden w-full justify-center mb-6"
+                        />
+
+                        <div className="md:hidden mb-6">
+                            <ProductEMIOptions price={finalPrice} />
                         </div>
 
                         <div className="md:hidden prose prose-slate max-w-none mt-2 mb-6">
@@ -489,9 +517,19 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
                         {/* Desktop CTA (in normal flow) */}
                         <ActionButtons className="hidden md:block mt-4" />
 
+                        <WhatsAppCTA
+                            product={product}
+                            location="product_page"
+                            className="hidden md:flex w-full justify-center mt-3"
+                        />
+
                         <div className="hidden md:flex justify-center gap-6 mt-6 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                             <span className="flex items-center"><Truck className="w-3 h-3 mr-1.5" /> Free Shipping</span>
-                            <span className="flex items-center"><Shield className="w-3 h-3 mr-1.5" /> Returns Accepted</span>
+                            <span className="flex items-center"><Shield className="w-3 h-3 mr-1.5" /> {STORE_POLICIES.returnLabel}</span>
+                        </div>
+
+                        <div className="mt-6 md:mt-8">
+                            <ProductEMIOptions price={finalPrice} />
                         </div>
                     </div>
                 </div>
@@ -685,24 +723,9 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
                     </div>
                 </div>
 
-                {/* Related Products */}
-                {relatedProducts.length > 0 && (
-                    <div className="border-t border-slate-100 pt-12 md:pt-16">
-                        <h2 className="text-2xl md:text-3xl font-bold text-slate-900 mb-6 md:mb-10">Similar Models</h2>
-
-                        <Carousel opts={{ align: "start" }}>
-                            <CarouselContent>
-                                {relatedProducts.map((p) => (
-                                    <CarouselItem key={`related-${p.id}`} className="basis-[260px] md:basis-1/3 lg:basis-1/4">
-                                        <ProductCard product={p} />
-                                    </CarouselItem>
-                                ))}
-                            </CarouselContent>
-                            <CarouselPrevious className="hidden md:flex -left-4" />
-                            <CarouselNext className="hidden md:flex -right-4" />
-                        </Carousel>
-                    </div>
-                )}
+                {/* Similar Laptops — brand/budget/use-case/performance overlap,
+                    same logic used for out-of-stock alternatives (Section 19). */}
+                <SimilarProducts products={products} reference={product} title="Similar Models" />
             </div>
 
             {/* Mobile Sticky CTA */}

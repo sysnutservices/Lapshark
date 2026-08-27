@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Star, ShoppingBag, Heart, Eye, X, Truck, Shield, ShieldCheck, ArrowRight, ArrowLeftRight } from 'lucide-react';
+import { Star, ShoppingBag, Heart, Eye, X, Truck, Shield, ShieldCheck, ArrowRight, ArrowLeftRight, RotateCcw } from 'lucide-react';
+import { BestForLine } from '@/components/ecommerce/ProductBadges';
+import { ProductEMILine } from '@/components/ecommerce/ProductEMI';
 import { Product, Category } from '../types';
 import { useCart } from '../context/CartContext';
 import { useUserFeatures } from '../context/UserFeatureContext';
@@ -10,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { trackEvent } from '@/lib/analytics';
+import { STORE_POLICIES } from '@/lib/policies';
 
 interface ProductCardProps {
   product: Product;
@@ -244,7 +247,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             </h3>
           </Link>
 
-          <div className="flex items-center gap-1 mb-2 md:mb-3">
+          <div className="flex items-center gap-1 mb-1.5">
             <div className="flex text-amber-400">
               {[...Array(5)].map((_, i) => (
                 <Star key={i} className={`w-3 h-3 md:w-3.5 md:h-3.5 ${i < Math.round(product.rating) ? 'fill-current' : 'text-slate-200'}`} />
@@ -252,6 +255,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             </div>
             <span className="text-[10px] md:text-xs text-slate-400 font-medium ml-1">({product.reviews})</span>
           </div>
+
+          <BestForLine useCases={product.useCases} className="mb-2 md:mb-3 line-clamp-1" />
 
           {specPills.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-2 md:mb-3">
@@ -291,18 +296,34 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               </Badge>
             )}
           </div>
+          {product.discountPercent > 0 && (
+            <p className="text-[10px] md:text-xs font-semibold text-emerald-600 mt-0.5">
+              You save ₹{(product.price - product.finalPrice).toLocaleString('en-IN')}
+            </p>
+          )}
+          <ProductEMILine price={product.finalPrice} className="mt-1" />
 
-          <div className="flex items-center gap-1.5 text-[10px] md:text-xs text-slate-500 font-medium mt-2 mb-3">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-            6-Month Warranty
+          <div className="flex items-center gap-3 text-[10px] md:text-xs text-slate-500 font-medium mt-2 mb-3">
+            <span className="flex items-center gap-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> {STORE_POLICIES.warrantyLabel}
+            </span>
+            <span className="flex items-center gap-1">
+              <RotateCcw className="w-3.5 h-3.5 text-emerald-600" /> {STORE_POLICIES.returnLabel}
+            </span>
           </div>
 
-          <Button
-            onClick={handleAddToCart}
-            className="w-full h-auto rounded-lg md:rounded-xl bg-teal-600 py-2.5 md:py-3 text-xs md:text-sm font-bold text-white hover:bg-teal-700"
-          >
-            <ShoppingBag className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1.5" /> Add to Cart
-          </Button>
+          {product.stock <= 0 ? (
+            <Button disabled className="w-full h-auto rounded-lg md:rounded-xl bg-slate-100 py-2.5 md:py-3 text-xs md:text-sm font-bold text-slate-400 cursor-not-allowed">
+              Out of Stock
+            </Button>
+          ) : (
+            <Button
+              onClick={handleAddToCart}
+              className="w-full h-auto rounded-lg md:rounded-xl bg-teal-600 py-2.5 md:py-3 text-xs md:text-sm font-bold text-white hover:bg-teal-700"
+            >
+              <ShoppingBag className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1.5" /> Add to Cart
+            </Button>
+          )}
         </div>
       </div>
 
@@ -367,9 +388,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                 <div className="grid grid-cols-2 gap-4">
                   <button
                     onClick={handleAddToCart}
-                    className="col-span-1 bg-teal-600 text-white py-3 md:py-3.5 rounded-xl md:rounded-2xl font-bold transition-all hover:bg-teal-700 flex items-center justify-center gap-2 active:scale-95 text-sm md:text-base"
+                    disabled={product.stock <= 0}
+                    className="col-span-1 bg-teal-600 text-white py-3 md:py-3.5 rounded-xl md:rounded-2xl font-bold transition-all hover:bg-teal-700 flex items-center justify-center gap-2 active:scale-95 text-sm md:text-base disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
                   >
-                    <ShoppingBag className="w-4 h-4 md:w-5 md:h-5" /> Add to Cart
+                    <ShoppingBag className="w-4 h-4 md:w-5 md:h-5" /> {product.stock > 0 ? 'Add to Cart' : 'Out of Stock'}
                   </button>
                   <Link
                     href={`/products/${product.slug}`}

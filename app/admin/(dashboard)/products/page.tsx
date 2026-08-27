@@ -52,6 +52,17 @@ const DEFAULT_CONFIG_OPTIONS: IConfigOptions = {
     ],
 };
 
+// Mirrors backend USE_CASES (lapshark_backend/src/models/Product.ts) — the
+// controlled vocabulary lib/product-recommendation.ts filters on.
+const USE_CASE_OPTIONS = [
+    { value: 'student', label: 'Student' },
+    { value: 'office', label: 'Office & Business' },
+    { value: 'programming', label: 'Programming' },
+    { value: 'design', label: 'Design & Editing' },
+    { value: 'gaming', label: 'Gaming' },
+    { value: 'everyday', label: 'Everyday Use' },
+];
+
 export default function ProductsPage() {
     const { products, addProduct, updateProduct, deleteProduct } = useStore();
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -428,6 +439,9 @@ export default function ProductsPage() {
 
             formData.append('specs', JSON.stringify(specs));
             formData.append('configOptions', JSON.stringify(configOptions));
+            formData.append('useCases', JSON.stringify((editingProduct as any).useCases || []));
+            formData.append('tags', JSON.stringify((editingProduct as any).tags || []));
+            if ((editingProduct as any).performanceTier) formData.append('performanceTier', (editingProduct as any).performanceTier);
 
             // ✅ Use existing productId when updating, generate new one when creating
             if (editingProduct.productId) {
@@ -856,6 +870,53 @@ export default function ProductsPage() {
                                             <option value="Good">Good (Grade B)</option>
                                             <option value="New">New</option>
                                         </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Best For (used by "Find Your Perfect Laptop" &amp; Shop by Need)</label>
+                                        <div className="flex flex-wrap gap-3">
+                                            {USE_CASE_OPTIONS.map(opt => (
+                                                <label key={opt.value} className="flex items-center gap-1.5 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={(editingProduct.useCases || []).includes(opt.value)}
+                                                        onChange={(e) => {
+                                                            const current: string[] = editingProduct.useCases || [];
+                                                            const next = e.target.checked
+                                                                ? [...current, opt.value]
+                                                                : current.filter(v => v !== opt.value);
+                                                            setEditingProduct({ ...editingProduct, useCases: next } as any);
+                                                        }}
+                                                    />
+                                                    {opt.label}
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Performance Tier</label>
+                                            <select
+                                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                                value={(editingProduct as any).performanceTier || ''}
+                                                onChange={(e) => setEditingProduct({ ...editingProduct, performanceTier: e.target.value || undefined } as any)}
+                                            >
+                                                <option value="">Not set</option>
+                                                <option value="basic">Basic</option>
+                                                <option value="balanced">Balanced</option>
+                                                <option value="high-performance">High Performance</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Tags (comma-separated, e.g. best-value, portable)</label>
+                                            <input
+                                                type="text"
+                                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                                value={((editingProduct as any).tags || []).join(', ')}
+                                                onChange={(e) => setEditingProduct({ ...editingProduct, tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) } as any)}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
 

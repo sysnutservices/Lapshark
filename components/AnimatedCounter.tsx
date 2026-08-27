@@ -20,11 +20,14 @@ export function AnimatedCounter({
     const motionValue = useMotionValue(0);
 
     useEffect(() => {
-        if (!isInView) return;
-        if (shouldReduceMotion) {
-            if (ref.current) ref.current.textContent = `${prefix}${value}${suffix}`;
-            return;
-        }
+        // isInView starts false on every render (including the first, before
+        // the observer has measured anything) — with a literal "0" as the
+        // resting DOM content, that made every stat render "0-Month",
+        // "0-Day", etc. on first paint, SSR, no-JS, and to crawlers, until
+        // scroll + a full animation cycle corrected it. The resting content
+        // is now the real value (below); this effect only ever animates
+        // count-up as a decoration once it's actually in view.
+        if (!isInView || shouldReduceMotion) return;
         const controls = animate(motionValue, value, {
             duration: 1.4,
             ease: "easeOut",
@@ -37,7 +40,7 @@ export function AnimatedCounter({
 
     return (
         <span ref={ref} className={className}>
-            {prefix}0{suffix}
+            {prefix}{value}{suffix}
         </span>
     );
 }

@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Mail, Phone, MapPin, Clock, Send, MessageSquare, CheckCircle } from 'lucide-react';
 import { SEO } from '@/components/SEO';
+import { STORE_POLICIES } from '@/lib/policies';
 import {
     Accordion,
     AccordionContent,
@@ -35,10 +36,16 @@ export const ContactClient: React.FC = () => {
         }, 1500);
     };
 
+    // Sourced from STORE_POLICIES / app/warranty & app/returns (the actual
+    // policy pages) rather than restated by hand — this page previously
+    // claimed batteries get a separate 3-month term (the warranty page says
+    // batteries are covered under the same 6-month term, only if fully dead)
+    // and a "No Questions Asked" return policy (the returns page lists real
+    // eligibility conditions — it isn't unconditional).
     const faqs = [
         {
             question: "Do you offer a warranty on refurbished laptops?",
-            answer: "Yes! All our laptops come with a comprehensive 6-month warranty covering hardware defects. Batteries are covered for 3 months."
+            answer: `Yes! All our laptops come with a comprehensive ${STORE_POLICIES.warrantyMonths}-month warranty covering hardware defects. ${STORE_POLICIES.batteryPolicyLabel}`
         },
         {
             question: "How long does shipping take?",
@@ -46,11 +53,11 @@ export const ContactClient: React.FC = () => {
         },
         {
             question: "Can I return the product if I don't like it?",
-            answer: "Absolutely. We offer a 14-day 'No Questions Asked' return policy, provided the device remains in its original condition."
+            answer: `Yes — you have ${STORE_POLICIES.returnDays} days from delivery to request a return, as long as the device is in its original condition with all accessories and the warranty seal intact.`
         },
         {
             question: "Are these laptops quality tested?",
-            answer: "Every device undergoes a rigorous 40-point quality inspection by certified technicians before being listed."
+            answer: `Every device undergoes a rigorous ${STORE_POLICIES.qualityCheckPoints}-point quality inspection by certified technicians before being listed.`
         }
     ];
 

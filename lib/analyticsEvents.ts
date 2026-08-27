@@ -14,10 +14,20 @@ export const ANALYTICS_EVENTS = [
   "sort_used",
   "search",
   "whatsapp_click",
+  "whatsapp_expert_click",
+  "whatsapp_product_click",
   "begin_checkout",
   "coupon_applied",
   "checkout_payment_failed",
   "login",
+  "remove_from_cart",
+  "view_item_list",
+  "select_item",
+  "laptop_recommendation_started",
+  "laptop_recommendation_completed",
+  "emi_info_viewed",
+  "quality_report_viewed",
+  "compare_product",
 ] as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENTS)[number];
@@ -78,6 +88,53 @@ export interface WhatsappClickProperties {
   location: string;
 }
 
+export interface WhatsappProductClickProperties {
+  productId: string;
+  title: string;
+  location: string;
+}
+
+export interface RemoveFromCartProperties {
+  productId: string;
+  title: string;
+  quantity: number;
+}
+
+export interface ViewItemListProperties {
+  listName: string;
+  itemCount: number;
+}
+
+export interface SelectItemProperties {
+  productId: string;
+  title: string;
+  listName?: string;
+}
+
+export interface RecommendationStartedProperties {
+  entryPoint: string;
+}
+
+export interface RecommendationCompletedProperties {
+  useCase: string;
+  budget: string;
+  performanceTier?: string;
+  resultCount: number;
+}
+
+export interface EmiInfoViewedProperties {
+  productId: string;
+}
+
+export interface QualityReportViewedProperties {
+  productId: string;
+}
+
+export interface CompareProductProperties {
+  productId: string;
+  title: string;
+}
+
 export interface BeginCheckoutProperties {
   finalTotal: number;
   paymentMethod: string;
@@ -110,6 +167,16 @@ export interface AnalyticsEventPayloads {
   sort_used: SortUsedProperties;
   search: SearchProperties;
   whatsapp_click: WhatsappClickProperties;
+  whatsapp_expert_click: WhatsappClickProperties;
+  whatsapp_product_click: WhatsappProductClickProperties;
+  remove_from_cart: RemoveFromCartProperties;
+  view_item_list: ViewItemListProperties;
+  select_item: SelectItemProperties;
+  laptop_recommendation_started: RecommendationStartedProperties;
+  laptop_recommendation_completed: RecommendationCompletedProperties;
+  emi_info_viewed: EmiInfoViewedProperties;
+  quality_report_viewed: QualityReportViewedProperties;
+  compare_product: CompareProductProperties;
   begin_checkout: BeginCheckoutProperties;
   coupon_applied: CouponAppliedProperties;
   checkout_payment_failed: CheckoutPaymentFailedProperties;

@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import WarrantyContent from "./WarrantyContent";
+import { STORE_POLICIES } from "@/lib/policies";
 
 export const metadata: Metadata = {
     title: "Warranty Policy",
-    description:
-        "Comprehensive 6-month warranty coverage for your refurbished device from Lapshark.",
+    description: `Comprehensive ${STORE_POLICIES.warrantyMonths}-month warranty coverage for your refurbished device from Lapshark.`,
     alternates: {
         canonical: "https://lapshark.com/warranty",
     },
@@ -31,7 +31,7 @@ const faqs = [
     },
     {
         q: "Do I need to pay in advance for Cash on Delivery?",
-        a: "If you choose Cash on Delivery (COD) as your payment method, you may be required to pay ₹500 as an advance payment when placing the order.",
+        a: `If you choose Cash on Delivery (COD) as your payment method, you may be required to pay ₹${STORE_POLICIES.codAdvanceAmount} as an advance payment when placing the order.`,
     },
     {
         q: "When does Lapshark issue a refund?",
