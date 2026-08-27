@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Mail, Phone, MapPin, Clock, Send, MessageSquare, CheckCircle } from 'lucide-react';
 import { SEO } from '@/components/SEO';
 import { STORE_POLICIES } from '@/lib/policies';
+import { api } from '@/api/api';
 import {
     Accordion,
     AccordionContent,
@@ -20,20 +21,29 @@ export const ContactClient: React.FC = () => {
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
+    const [submitError, setSubmitError] = useState('');
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    // Was a fake setTimeout — nothing was ever sent anywhere. POST /contact
+    // saves the message (ContactMessage in the DB) and best-effort alerts
+    // admin via WhatsApp; a WhatsApp-side failure there doesn't fail this
+    // request, so a customer's "sent" confirmation is never a false one.
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setSubmitError('');
         setIsSubmitting(true);
-        // Simulate API call
-        setTimeout(() => {
-            setIsSubmitting(false);
+        try {
+            await api.post('/contact', formData);
             setIsSuccess(true);
             setFormData({ name: '', email: '', subject: '', message: '' });
-        }, 1500);
+        } catch (err: any) {
+            setSubmitError(err.response?.data?.message || 'Could not send your message. Please try again or reach us on WhatsApp.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     // Sourced from STORE_POLICIES / app/warranty & app/returns (the actual
@@ -216,6 +226,12 @@ export const ContactClient: React.FC = () => {
                                         onChange={handleChange}
                                     />
                                 </div>
+
+                                {submitError && (
+                                    <p className="text-sm font-medium text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+                                        {submitError}
+                                    </p>
+                                )}
 
                                 <button
                                     type="submit"
