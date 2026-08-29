@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Package, ShoppingCart, Users, Monitor, Settings, Ticket, LogOut, Globe, Menu, X, MessageCircle, BarChart3, Mail } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingCart, Users, Monitor, Settings, Ticket, LogOut, Globe, Menu, X, MessageCircle, BarChart3, Mail, Sparkles } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { WHATSAPP_URL } from '@/api/api';
 
@@ -52,6 +52,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
         { icon: Users, label: 'Customers', path: '/admin/users' },
         { icon: Mail, label: 'Messages', path: '/admin/messages' },
         { icon: BarChart3, label: 'Analytics', path: '/admin/analytics' },
+        { icon: Sparkles, label: 'AI Image Usage', path: '/admin/ai-usage' },
         { icon: Ticket, label: 'Coupons', path: '/admin/coupons' },
         { icon: MessageCircle, label: 'Whatsapp', path: 'whatsapp-auth' },
         { icon: Monitor, label: 'Site Editor', path: '/admin/editor' },

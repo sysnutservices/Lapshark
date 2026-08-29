@@ -6,14 +6,16 @@ import { Product, Category } from '@/types';
 import { Edit, Trash2, Plus, X, AlertCircle, Check, Search, Upload, Image as ImageIcon, Cpu, HardDrive, Monitor, Zap, Settings, Loader2, RefreshCw, Sparkles, Camera } from 'lucide-react';
 import { API_URL } from '@/api/api';
 import { STORE_POLICIES } from '@/lib/policies';
+import { ensureUploadableImage } from '@/lib/convertHeic';
 import router from 'next/router';
 import dynamic from 'next/dynamic';
+import ProductImageWorkflow from '@/components/admin/ProductImageWorkflow';
 const MDEditor = dynamic(
     () => import('@uiw/react-md-editor'),
     { ssr: false }
 );
 
-// Status of the automatic PhotoRoom background-removal + studio-compositing
+// Status of the automatic OpenAI GPT Image 2 background-removal + studio-compositing
 // step that runs the instant an image is picked in the Media & Details
 // section, before the product itself is saved.
 type ImgStatus = 'idle' | 'processing' | 'done' | 'error';
@@ -98,7 +100,7 @@ export default function ProductsPage() {
     const [isSaving, setIsSaving] = useState(false);
 
     // Auto background-removal state. mainImageProcessedUrl / galleryFileProcessedUrl
-    // hold the already-hosted ImageKit URL once PhotoRoom + compositing succeeds
+    // hold the already-hosted ImageKit URL once the OpenAI edit + compositing succeeds
     // for a given picked file, so handleSave can send it as imageUrl/imageUrls
     // instead of re-uploading the raw file.
     const [mainImageStatus, setMainImageStatus] = useState<ImgStatus>('idle');
@@ -245,8 +247,8 @@ export default function ProductsPage() {
         }));
     };
 
-    // Uploads a picked file to the backend, which runs it through PhotoRoom
-    // background removal + white-studio compositing and hosts the result on
+    // Uploads a picked file to the backend, which runs it through OpenAI GPT Image 2
+    // editing + white-studio compositing and hosts the result on
     // ImageKit. Returns that hosted URL — handleSave sends it as imageUrl/
     // imageUrls instead of re-uploading the raw file.
     const processImageFile = async (file: File): Promise<{ url: string; width: number; height: number }> => {
@@ -296,20 +298,23 @@ export default function ProductsPage() {
         }
     };
 
-    const handleMainImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            setMainImageFile(file);
-            setMainImageProcessedUrl('');
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setMainImagePreview(reader.result as string);
-            };
-            reader.readAsDataURL(file);
-            setErrors(prev => ({ ...prev, image: '' }));
-            processMainImage(file);
-        }
+    const handleMainImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const rawFile = e.target.files?.[0];
         e.target.value = ''; // allow re-picking the same file/photo again (camera retakes reuse names)
+        if (!rawFile) return;
+        // iPhone photos default to HEIC, which neither the browser preview
+        // nor the backend (multer's file filter, then Sharp) can handle —
+        // convert to JPEG here so both work.
+        const file = await ensureUploadableImage(rawFile);
+        setMainImageFile(file);
+        setMainImageProcessedUrl('');
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setMainImagePreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+        setErrors(prev => ({ ...prev, image: '' }));
+        processMainImage(file);
     };
 
     const reprocessMainImage = async () => {
@@ -344,25 +349,27 @@ export default function ProductsPage() {
         }
     };
 
-    const handleGalleryImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = Array.from(e.target.files || []);
-        if (files.length > 0) {
-            const startIdx = galleryFiles.length;
-            setGalleryFiles(prev => [...prev, ...files]);
-            setGalleryFileStatus(prev => [...prev, ...files.map(() => 'idle' as ImgStatus)]);
-            setGalleryFileError(prev => [...prev, ...files.map(() => null)]);
-            setGalleryFileProcessedUrl(prev => [...prev, ...files.map(() => null)]);
-
-            files.forEach((file, i) => {
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                    setGalleryPreviews(prev => [...prev, reader.result as string]);
-                };
-                reader.readAsDataURL(file as File);
-                processGalleryFile(file, startIdx + i);
-            });
-        }
+    const handleGalleryImagesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const rawFiles = Array.from(e.target.files || []);
         e.target.value = ''; // allow re-picking the same file/photo again (camera retakes reuse names)
+        if (rawFiles.length === 0) return;
+        // Same HEIC->JPEG conversion as the main image — iPhone gallery
+        // photos hit the same backend/browser incompatibility.
+        const files = await Promise.all(rawFiles.map(ensureUploadableImage));
+        const startIdx = galleryFiles.length;
+        setGalleryFiles(prev => [...prev, ...files]);
+        setGalleryFileStatus(prev => [...prev, ...files.map(() => 'idle' as ImgStatus)]);
+        setGalleryFileError(prev => [...prev, ...files.map(() => null)]);
+        setGalleryFileProcessedUrl(prev => [...prev, ...files.map(() => null)]);
+
+        files.forEach((file, i) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setGalleryPreviews(prev => [...prev, reader.result as string]);
+            };
+            reader.readAsDataURL(file);
+            processGalleryFile(file, startIdx + i);
+        });
     };
 
     const reprocessExistingGalleryImage = async (idx: number) => {
@@ -1445,6 +1452,20 @@ export default function ProductsPage() {
                                         {errors.image && <p className="text-xs text-red-500 mt-1 flex items-center"><AlertCircle className="w-3 h-3 mr-1" /> {errors.image}</p>}
                                         <p className="text-xs text-gray-500 mt-1">Background is removed and a white studio background applied automatically.</p>
                                     </div>
+
+                                    {/* AI Ecommerce Image Workflow (OpenAI GPT Image 2 + Sharp) — only
+                                        available once the product exists, since approve/publish/reorder
+                                        are inherently product-scoped. New products keep using the
+                                        OpenAI flow above until saved once. */}
+                                    {editingProduct._id && (
+                                        <div className="border-t border-gray-100 pt-5">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <label className="block text-sm font-medium text-gray-700">AI Ecommerce Images</label>
+                                                <span className="text-xs text-gray-400">Powered by OpenAI GPT Image 2</span>
+                                            </div>
+                                            <ProductImageWorkflow productId={editingProduct._id} />
+                                        </div>
+                                    )}
 
                                     {/* Gallery Images Upload */}
                                     <div>

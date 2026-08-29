@@ -320,7 +320,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             )}
             {product.discountPercent > 0 && (
               <Badge className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] md:text-xs font-bold text-emerald-700 hover:bg-emerald-50">
-                {product.discountPercent}% off
+                {Math.round(product.discountPercent)}% off
               </Badge>
             )}
           </div>

@@ -420,7 +420,7 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
                                 )}
                                 {product.discountPercent > 0 && (
                                     <Badge className="h-auto rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 hover:bg-emerald-50">
-                                        {product.discountPercent}% off
+                                        {Math.round(product.discountPercent)}% off
                                     </Badge>
                                 )}
                             </div>
