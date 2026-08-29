@@ -33,7 +33,7 @@ function buildPicks(products: Product[]): Pick[] {
     // was just picked as Best Overall so the section doesn't repeat itself.
     const bestValue = [...inStock].filter((p) => !used.has(key(p))).sort((a, b) => b.discountPercent - a.discountPercent)[0];
     if (bestValue) {
-        picks.push({ icon: Wallet, label: "Best Value", reason: `${bestValue.discountPercent}% off list price — the deepest current discount.`, product: bestValue });
+        picks.push({ icon: Wallet, label: "Best Value", reason: `${Math.round(bestValue.discountPercent)}% off list price — the deepest current discount.`, product: bestValue });
         used.add(key(bestValue));
     }
 

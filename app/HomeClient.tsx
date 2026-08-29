@@ -534,7 +534,7 @@ export default function Home({
                                         <Card className="h-full gap-0 rounded-2xl md:rounded-3xl bg-slate-800/50 p-5 md:p-6 ring-slate-700 backdrop-blur-sm hover:ring-slate-500 transition-all duration-300 group">
                                             <div className="flex justify-between items-start mb-6">
                                                 <Badge className="rounded-md bg-rose-500 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white hover:bg-rose-500">
-                                                    Save {product.discountPercent}%
+                                                    Save {Math.round(product.discountPercent)}%
                                                 </Badge>
                                             </div>
 
