@@ -161,12 +161,29 @@ export default function ProductImageWorkflow({ productId }: { productId: string 
         load();
     };
 
-    const handleDelete = async (slot: Slot) => {
+    const handleDeleteSlot = async (slot: Slot) => {
         if (!window.confirm('Delete this image and all its AI versions? This cannot be undone.')) return;
         setError(null);
         try {
             await api.delete(`/products/images/${slot.rootImageId}`, { headers: authHeaders() });
             setSlots((prev) => prev.filter((s) => s.rootImageId !== slot.rootImageId));
+        } catch (err: any) {
+            setError(err?.response?.data?.message || 'Failed to delete image');
+        }
+    };
+
+    // Removes one bad AI attempt without touching the original or other
+    // versions under the same slot — for "reprocess again, but I don't want
+    // to keep looking at this one."
+    const handleDeleteVersion = async (slot: Slot, versionId: string) => {
+        if (!window.confirm("Delete this generated image? This cannot be undone.")) return;
+        setError(null);
+        try {
+            await api.delete(`/products/images/versions/${versionId}`, { headers: authHeaders() });
+            setSlots((prev) => prev.map((s) => s.rootImageId !== slot.rootImageId ? s : {
+                ...s,
+                versions: s.versions.filter((v) => v.id !== versionId),
+            }));
         } catch (err: any) {
             setError(err?.response?.data?.message || 'Failed to delete image');
         }
@@ -226,7 +243,7 @@ export default function ProductImageWorkflow({ productId }: { productId: string 
                             {!slot.legacy && (
                                 <button
                                     type="button"
-                                    onClick={() => handleDelete(slot)}
+                                    onClick={() => handleDeleteSlot(slot)}
                                     title="Delete this image"
                                     className="absolute top-2 right-2 z-10 bg-white/90 hover:bg-red-50 text-gray-400 hover:text-red-600 p-1.5 rounded-full border border-gray-200"
                                 >
@@ -291,21 +308,35 @@ export default function ProductImageWorkflow({ productId }: { productId: string 
                                                     <button type="button" onClick={() => handleReject(version.id)} className="flex-1 flex items-center justify-center gap-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium py-2 rounded-md">
                                                         <X className="w-4 h-4" /> Reject
                                                     </button>
+                                                    <button type="button" onClick={() => handleDeleteVersion(slot, version.id)} title="Delete this attempt" className="flex items-center justify-center bg-gray-100 hover:bg-red-50 text-gray-500 hover:text-red-600 px-3 rounded-md">
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
                                                 </div>
                                             ) : (
                                                 <div className="flex items-center justify-between text-xs">
                                                     <span className="text-green-600 font-medium">Approved</span>
-                                                    <button type="button" onClick={() => handleReturnToReview(version.id)} className="text-gray-400 hover:text-gray-600 underline">Return to review</button>
+                                                    <div className="flex items-center gap-2">
+                                                        <button type="button" onClick={() => handleReturnToReview(version.id)} className="text-gray-400 hover:text-gray-600 underline">Return to review</button>
+                                                        <button type="button" onClick={() => handleDeleteVersion(slot, version.id)} title="Delete this attempt" className="text-gray-400 hover:text-red-600">
+                                                            <Trash2 className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             )}
                                         </>
                                     )}
 
                                     {version?.status === 'REJECTED' && (
-                                        <p className="text-xs text-red-500">Rejected{version.rejectionReason ? `: ${version.rejectionReason}` : ''}</p>
+                                        <p className="text-xs text-red-500 flex items-center justify-between gap-2">
+                                            <span>Rejected{version.rejectionReason ? `: ${version.rejectionReason}` : ''}</span>
+                                            <button type="button" onClick={() => handleDeleteVersion(slot, version.id)} className="underline flex-shrink-0">Delete</button>
+                                        </p>
                                     )}
                                     {version?.status === 'PROCESSING_FAILED' && (
-                                        <p className="text-xs text-red-500">Processing failed{version.rejectionReason ? `: ${version.rejectionReason}` : ''}. You can try again.</p>
+                                        <p className="text-xs text-red-500 flex items-center justify-between gap-2">
+                                            <span>Processing failed{version.rejectionReason ? `: ${version.rejectionReason}` : ''}. You can try again.</span>
+                                            <button type="button" onClick={() => handleDeleteVersion(slot, version.id)} className="underline flex-shrink-0">Delete</button>
+                                        </p>
                                     )}
                                     {version?.qualityWarning && version.status !== 'PROCESSING_FAILED' && (
                                         <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-md p-2 flex items-start gap-1">
