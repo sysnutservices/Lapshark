@@ -15,9 +15,9 @@ const MDEditor = dynamic(
     { ssr: false }
 );
 
-// Status of the automatic OpenAI GPT Image 2 background-removal + studio-compositing
-// step that runs the instant an image is picked in the Media & Details
-// section, before the product itself is saved.
+// Status of the automatic background-removal + studio-compositing step that
+// runs the instant an image is picked in the Media & Details section, before
+// the product itself is saved.
 type ImgStatus = 'idle' | 'processing' | 'done' | 'error';
 
 interface IConfigOption {
@@ -100,9 +100,9 @@ export default function ProductsPage() {
     const [isSaving, setIsSaving] = useState(false);
 
     // Auto background-removal state. mainImageProcessedUrl / galleryFileProcessedUrl
-    // hold the already-hosted ImageKit URL once the OpenAI edit + compositing succeeds
-    // for a given picked file, so handleSave can send it as imageUrl/imageUrls
-    // instead of re-uploading the raw file.
+    // hold the already-hosted ImageKit URL once background removal + compositing
+    // succeeds for a given picked file, so handleSave can send it as
+    // imageUrl/imageUrls instead of re-uploading the raw file.
     const [mainImageStatus, setMainImageStatus] = useState<ImgStatus>('idle');
     const [mainImageError, setMainImageError] = useState('');
     const [mainImageProcessedUrl, setMainImageProcessedUrl] = useState('');
@@ -247,10 +247,10 @@ export default function ProductsPage() {
         }));
     };
 
-    // Uploads a picked file to the backend, which runs it through OpenAI GPT Image 2
-    // editing + white-studio compositing and hosts the result on
-    // ImageKit. Returns that hosted URL — handleSave sends it as imageUrl/
-    // imageUrls instead of re-uploading the raw file.
+    // Uploads a picked file to the backend, which runs background removal +
+    // white-studio compositing and hosts the result on ImageKit. Returns
+    // that hosted URL — handleSave sends it as imageUrl/imageUrls instead of
+    // re-uploading the raw file.
     const processImageFile = async (file: File): Promise<{ url: string; width: number; height: number }> => {
         const fd = new FormData();
         fd.append('image', file);
@@ -1453,15 +1453,14 @@ export default function ProductsPage() {
                                         <p className="text-xs text-gray-500 mt-1">Background is removed and a white studio background applied automatically.</p>
                                     </div>
 
-                                    {/* AI Ecommerce Image Workflow (OpenAI GPT Image 2 + Sharp) — only
+                                    {/* Ecommerce Image Workflow (local segmentation + Sharp) — only
                                         available once the product exists, since approve/publish/reorder
                                         are inherently product-scoped. New products keep using the
-                                        OpenAI flow above until saved once. */}
+                                        simpler flow above until saved once. */}
                                     {editingProduct._id && (
                                         <div className="border-t border-gray-100 pt-5">
                                             <div className="flex items-center justify-between mb-3">
-                                                <label className="block text-sm font-medium text-gray-700">AI Ecommerce Images</label>
-                                                <span className="text-xs text-gray-400">Powered by OpenAI GPT Image 2</span>
+                                                <label className="block text-sm font-medium text-gray-700">Ecommerce Images</label>
                                             </div>
                                             <ProductImageWorkflow productId={editingProduct._id} />
                                         </div>

@@ -46,8 +46,6 @@ interface Version {
     rejectionReason?: string;
     qualityWarning?: string | null;
     occupancyPercent?: number | null;
-    estimatedCost: number | null;
-    estimatedCostIsApproximate: boolean;
 }
 
 interface Slot {
@@ -73,7 +71,6 @@ export default function ProductImageWorkflow({ productId }: { productId: string 
     const [uploading, setUploading] = useState(false);
     const [processingSlotId, setProcessingSlotId] = useState<string | null>(null);
     const [viewTypeBySlot, setViewTypeBySlot] = useState<Record<string, string>>({});
-    const [modeBySlot, setModeBySlot] = useState<Record<string, 'catalogue_safe' | 'ai_edit'>>({});
     const [brightnessModeBySlot, setBrightnessModeBySlot] = useState<Record<string, 'auto' | 'original'>>({});
     const [reflectionModeBySlot, setReflectionModeBySlot] = useState<Record<string, 'off' | 'auto' | 'on'>>({});
     const [settingsBySlot, setSettingsBySlot] = useState<Record<string, ImageSettings>>({});
@@ -94,7 +91,7 @@ export default function ProductImageWorkflow({ productId }: { productId: string 
 
     useEffect(() => { load(); }, [load]);
 
-    // Selecting a file only saves the original — no OpenAI call happens here
+    // Selecting a file only saves the original — no processing happens here
     // (Phase 21/25A #2).
     const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -122,10 +119,9 @@ export default function ProductImageWorkflow({ productId }: { productId: string 
         setError(null);
         try {
             const viewType = viewTypeBySlot[slot.rootImageId] ?? activeVersion(slot)?.viewType ?? 'custom';
-            const mode = modeBySlot[slot.rootImageId] ?? 'catalogue_safe';
             const brightnessMode = brightnessModeBySlot[slot.rootImageId] ?? 'auto';
             const reflectionMode = reflectionModeBySlot[slot.rootImageId] ?? 'auto';
-            await api.post(`/products/images/${slot.rootImageId}/process`, { viewType, mode, brightnessMode, reflectionMode, settings: settingsBySlot[slot.rootImageId] }, { headers: authHeaders() });
+            await api.post(`/products/images/${slot.rootImageId}/process`, { viewType, brightnessMode, reflectionMode, settings: settingsBySlot[slot.rootImageId] }, { headers: authHeaders() });
             load();
         } catch (err: any) {
             setError(err?.response?.data?.message || 'Image processing failed');
@@ -134,7 +130,7 @@ export default function ProductImageWorkflow({ productId }: { productId: string 
         }
     };
 
-    // Sharp-only recompute — debounced, never calls OpenAI (Phase 25A #4/#6).
+    // Sharp-only recompute — debounced, no segmentation re-run (Phase 25A #4/#6).
     const handleSettingsChange = (slot: Slot, versionId: string, settings: ImageSettings) => {
         setSettingsBySlot((prev) => ({ ...prev, [slot.rootImageId]: settings }));
         const key = versionId;
@@ -174,7 +170,7 @@ export default function ProductImageWorkflow({ productId }: { productId: string 
     };
 
     const handleDeleteSlot = async (slot: Slot) => {
-        if (!window.confirm('Delete this image and all its AI versions? This cannot be undone.')) return;
+        if (!window.confirm('Delete this image and all its processed versions? This cannot be undone.')) return;
         setError(null);
         try {
             await api.delete(`/products/images/${slot.rootImageId}`, { headers: authHeaders() });
@@ -184,9 +180,9 @@ export default function ProductImageWorkflow({ productId }: { productId: string 
         }
     };
 
-    // Removes one bad AI attempt without touching the original or other
-    // versions under the same slot — for "reprocess again, but I don't want
-    // to keep looking at this one."
+    // Removes one bad processing attempt without touching the original or
+    // other versions under the same slot — for "reprocess again, but I don't
+    // want to keep looking at this one."
     const handleDeleteVersion = async (slot: Slot, versionId: string) => {
         if (!window.confirm("Delete this generated image? This cannot be undone.")) return;
         setError(null);
@@ -266,7 +262,7 @@ export default function ProductImageWorkflow({ productId }: { productId: string 
                                 <>
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img src={version?.thumbnailImageUrl ?? ''} alt="" className="w-full aspect-square object-contain bg-gray-50 rounded-lg" />
-                                    <p className="text-xs text-gray-400">Existing image — upload a new original to enable AI editing.</p>
+                                    <p className="text-xs text-gray-400">Existing image — upload a new original to enable processing.</p>
                                 </>
                             ) : (
                                 <>
@@ -306,17 +302,6 @@ export default function ProductImageWorkflow({ productId }: { productId: string 
                                         {VIEW_TYPES.map((vt) => <option key={vt.value} value={vt.value}>{vt.label}</option>)}
                                     </select>
 
-                                    <select
-                                        value={modeBySlot[slot.rootImageId] ?? 'catalogue_safe'}
-                                        onChange={(e) => setModeBySlot((prev) => ({ ...prev, [slot.rootImageId]: e.target.value as 'catalogue_safe' | 'ai_edit' }))}
-                                        disabled={isProcessing}
-                                        title="Catalogue Safe never touches product pixels (real segmentation of the original photo). AI Edit lets OpenAI edit the background first — it can alter the product, and always needs closer review."
-                                        className="w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm"
-                                    >
-                                        <option value="catalogue_safe">Catalogue Safe (recommended)</option>
-                                        <option value="ai_edit">AI Edit (experimental)</option>
-                                    </select>
-
                                     <div className="grid grid-cols-2 gap-2">
                                         <select
                                             value={brightnessModeBySlot[slot.rootImageId] ?? 'auto'}
@@ -332,7 +317,7 @@ export default function ProductImageWorkflow({ productId }: { productId: string 
                                             value={reflectionModeBySlot[slot.rootImageId] ?? 'auto'}
                                             onChange={(e) => setReflectionModeBySlot((prev) => ({ ...prev, [slot.rootImageId]: e.target.value as 'off' | 'auto' | 'on' }))}
                                             disabled={isProcessing}
-                                            title="Auto only flags possible glare for your review, no pixels change. On also asks OpenAI to reduce the glare (Catalogue Safe mode only, one extra API call) and flags it if the correction touched too much. Off skips glare detection entirely."
+                                            title="Detects possible glare and flags it for your review — no pixels change either way. Off skips glare detection entirely."
                                             className="w-full border border-gray-200 rounded-md px-2 py-1.5 text-xs"
                                         >
                                             <option value="off">Reflections: Off</option>
@@ -403,10 +388,7 @@ export default function ProductImageWorkflow({ productId }: { productId: string 
                                     )}
                                     {typeof version?.occupancyPercent === 'number' && version.status !== 'PROCESSING_FAILED' && (
                                         <p className="text-xs text-gray-400">
-                                            Product occupancy: {version.occupancyPercent}% · Background: #FFFFFF ·{' '}
-                                            {version.processingModel === 'gpt-image-2' ? '1024×1024' : '2000×2000'}
-                                            {version.processingModel === 'local-segmentation' && ' · Catalogue Safe'}
-                                            {version.processingModel === 'gpt-image-2' && ' · AI Edit'}
+                                            Product occupancy: {version.occupancyPercent}% · Background: #FFFFFF · 2000×2000
                                         </p>
                                     )}
                                 </>
