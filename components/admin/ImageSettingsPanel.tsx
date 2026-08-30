@@ -3,7 +3,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 
 // Basic settings always visible; Advanced collapsed by default (Phase 30 —
 // "do not overwhelm the user"). Every change here is Sharp-only — the parent
-// debounces these into a settings-only PATCH, never an OpenAI call
+// debounces these into a settings-only PATCH, no segmentation re-run
 // (Phase 25A #4/#6).
 export interface ImageSettings {
     scale?: number;
