@@ -468,19 +468,11 @@ export default function ProductsPage() {
     const handleDelete = async (mongoId: string) => {  // ✅ Renamed parameter for clarity
         if (window.confirm('Are you sure you want to delete this product?')) {
             try {
-                const response = await fetch(`${API_URL}/products/${mongoId}`, {  // ✅ Use MongoDB _id
-                    method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                    },
-                });
-
-                if (!response.ok) {
-                    throw new Error('Failed to delete product');
-                }
-
-                deleteProduct(mongoId);  // ✅ Pass MongoDB _id
+                // deleteProduct (StoreContext) already does the DELETE request
+                // and updates local state — calling fetch here too meant a
+                // second DELETE hit an already-removed product, 404'd, and
+                // skipped the state update, so the row never left the list.
+                await deleteProduct(mongoId);  // ✅ Pass MongoDB _id
                 alert('Product deleted successfully!');
 
             } catch (error) {
