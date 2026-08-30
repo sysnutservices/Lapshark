@@ -54,6 +54,9 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
     const [selectedStorage, setSelectedStorage] = useState<any>(null);
     const [selectedWarranty, setSelectedWarranty] = useState<any>(null);
     const [activeImage, setActiveImage] = useState<string>('');
+    // Hover-to-zoom on the main product image: x/y are the cursor position as
+    // a % of the image box, used as transform-origin so zoom tracks the cursor.
+    const [zoom, setZoom] = useState({ active: false, x: 50, y: 50 });
     const [showLogin, setShowLogin] = useState(false);
     // CheckoutLogin is shared with the buy-now flow, which always wants to land
     // on /checkout after login — writing a review doesn't, so this steers
@@ -315,7 +318,18 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
                     {/* Left column - Product images */}
                     <div className="lg:col-span-7">
                         <div className="lg:sticky lg:top-24 space-y-4">
-                            <div className="bg-slate-50 rounded-[2rem] md:rounded-[2.5rem] relative min-h-[300px] md:min-h-[500px] overflow-hidden">
+                            <div
+                                className="bg-slate-50 rounded-[2rem] md:rounded-[2.5rem] relative min-h-[300px] md:min-h-[500px] overflow-hidden cursor-zoom-in"
+                                onMouseMove={(e) => {
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    setZoom({
+                                        active: true,
+                                        x: ((e.clientX - rect.left) / rect.width) * 100,
+                                        y: ((e.clientY - rect.top) / rect.height) * 100,
+                                    });
+                                }}
+                                onMouseLeave={() => setZoom((z) => ({ ...z, active: false }))}
+                            >
                                 {/* next/image + priority: this is the LCP element on the
                                     highest-value page in the funnel — same reasoning as
                                     ProductCard's gallery image, but this one should load
@@ -326,7 +340,12 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
                                     fill
                                     priority
                                     sizes="(max-width: 1024px) 100vw, 55vw"
-                                    className="object-contain p-6 md:p-12 mix-blend-multiply transition-all duration-500 ease-in-out"
+                                    className="object-contain p-6 md:p-12 mix-blend-multiply"
+                                    style={{
+                                        transformOrigin: `${zoom.x}% ${zoom.y}%`,
+                                        transform: zoom.active ? 'scale(2)' : 'scale(1)',
+                                        transition: zoom.active ? 'transform 0s' : 'transform 300ms ease-out',
+                                    }}
                                 />
                                 {product.condition && (
                                     <Badge className="absolute top-4 left-4 md:top-8 md:left-8 h-auto gap-2 rounded-full bg-white/80 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-900 shadow-sm backdrop-blur-md hover:bg-white/80 md:px-4 md:py-2 md:text-xs">
