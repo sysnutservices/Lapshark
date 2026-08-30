@@ -1,13 +1,17 @@
 import { Product } from "@/types";
+import { GraduationCap, BriefcaseBusiness, Code2, Palette, Gamepad2, House } from "lucide-react";
 
-// Mirrors backend USE_CASES (lapshark_backend/src/models/Product.ts).
+// Mirrors backend USE_CASES (lapshark_backend/src/models/Product.ts). `icon`
+// is the single shared source for every place a use-case renders an icon
+// (Shop by Need, the laptop finder, the products filter) — one component per
+// category, not a per-component emoji/icon copy.
 export const USE_CASES = [
-    { value: "student", label: "Student", emoji: "🎓" },
-    { value: "office", label: "Office & Business", emoji: "💼" },
-    { value: "programming", label: "Programming", emoji: "👨‍💻" },
-    { value: "design", label: "Design & Editing", emoji: "🎨" },
-    { value: "gaming", label: "Gaming", emoji: "🎮" },
-    { value: "everyday", label: "Everyday Use", emoji: "🏠" },
+    { value: "student", label: "Student", icon: GraduationCap },
+    { value: "office", label: "Office & Business", icon: BriefcaseBusiness },
+    { value: "programming", label: "Programming", icon: Code2 },
+    { value: "design", label: "Design & Editing", icon: Palette },
+    { value: "gaming", label: "Gaming", icon: Gamepad2 },
+    { value: "everyday", label: "Everyday Use", icon: House },
 ] as const;
 export type UseCase = (typeof USE_CASES)[number]["value"];
 

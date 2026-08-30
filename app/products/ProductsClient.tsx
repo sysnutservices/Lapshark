@@ -332,8 +332,8 @@ export default function ShopClient({
                             {USE_CASES.map((uc) => (
                                 <label key={uc.value} className="flex items-center gap-3 cursor-pointer py-1.5">
                                     <RadioGroupItem value={uc.value} />
-                                    <span className={`text-sm ${selectedUseCase === uc.value ? "text-slate-900 font-bold" : "text-slate-600 font-medium"}`}>
-                                        {uc.emoji} {uc.label}
+                                    <span className={`flex items-center gap-1.5 text-sm ${selectedUseCase === uc.value ? "text-slate-900 font-bold" : "text-slate-600 font-medium"}`}>
+                                        <uc.icon className="w-4 h-4" strokeWidth={1.75} aria-hidden /> {uc.label}
                                     </span>
                                 </label>
                             ))}
