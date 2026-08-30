@@ -333,7 +333,7 @@ export default function ShopClient({
                                 <label key={uc.value} className="flex items-center gap-3 cursor-pointer py-1.5">
                                     <RadioGroupItem value={uc.value} />
                                     <span className={`flex items-center gap-1.5 text-sm ${selectedUseCase === uc.value ? "text-slate-900 font-bold" : "text-slate-600 font-medium"}`}>
-                                        <uc.icon className="w-4 h-4" strokeWidth={1.75} aria-hidden /> {uc.label}
+                                        <uc.icon className="w-4 h-4 text-teal-600" strokeWidth={1.75} aria-hidden /> {uc.label}
                                     </span>
                                 </label>
                             ))}
