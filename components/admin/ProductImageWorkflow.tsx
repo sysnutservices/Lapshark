@@ -74,6 +74,8 @@ export default function ProductImageWorkflow({ productId }: { productId: string 
     const [processingSlotId, setProcessingSlotId] = useState<string | null>(null);
     const [viewTypeBySlot, setViewTypeBySlot] = useState<Record<string, string>>({});
     const [modeBySlot, setModeBySlot] = useState<Record<string, 'catalogue_safe' | 'ai_edit'>>({});
+    const [brightnessModeBySlot, setBrightnessModeBySlot] = useState<Record<string, 'auto' | 'original'>>({});
+    const [reflectionModeBySlot, setReflectionModeBySlot] = useState<Record<string, 'off' | 'auto' | 'on'>>({});
     const [settingsBySlot, setSettingsBySlot] = useState<Record<string, ImageSettings>>({});
     const [error, setError] = useState<string | null>(null);
     const [publishing, setPublishing] = useState(false);
@@ -121,7 +123,9 @@ export default function ProductImageWorkflow({ productId }: { productId: string 
         try {
             const viewType = viewTypeBySlot[slot.rootImageId] ?? activeVersion(slot)?.viewType ?? 'custom';
             const mode = modeBySlot[slot.rootImageId] ?? 'catalogue_safe';
-            await api.post(`/products/images/${slot.rootImageId}/process`, { viewType, mode, settings: settingsBySlot[slot.rootImageId] }, { headers: authHeaders() });
+            const brightnessMode = brightnessModeBySlot[slot.rootImageId] ?? 'auto';
+            const reflectionMode = reflectionModeBySlot[slot.rootImageId] ?? 'auto';
+            await api.post(`/products/images/${slot.rootImageId}/process`, { viewType, mode, brightnessMode, reflectionMode, settings: settingsBySlot[slot.rootImageId] }, { headers: authHeaders() });
             load();
         } catch (err: any) {
             setError(err?.response?.data?.message || 'Image processing failed');
@@ -312,6 +316,30 @@ export default function ProductImageWorkflow({ productId }: { productId: string 
                                         <option value="catalogue_safe">Catalogue Safe (recommended)</option>
                                         <option value="ai_edit">AI Edit (experimental)</option>
                                     </select>
+
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <select
+                                            value={brightnessModeBySlot[slot.rootImageId] ?? 'auto'}
+                                            onChange={(e) => setBrightnessModeBySlot((prev) => ({ ...prev, [slot.rootImageId]: e.target.value as 'auto' | 'original' }))}
+                                            disabled={isProcessing}
+                                            title="Auto applies a small, capped brightness/contrast correction only when the photo actually needs it. Original skips this entirely. To set a value yourself, use the Brightness/Contrast sliders below after processing."
+                                            className="w-full border border-gray-200 rounded-md px-2 py-1.5 text-xs"
+                                        >
+                                            <option value="auto">Brightness: Auto</option>
+                                            <option value="original">Brightness: Original</option>
+                                        </select>
+                                        <select
+                                            value={reflectionModeBySlot[slot.rootImageId] ?? 'auto'}
+                                            onChange={(e) => setReflectionModeBySlot((prev) => ({ ...prev, [slot.rootImageId]: e.target.value as 'off' | 'auto' | 'on' }))}
+                                            disabled={isProcessing}
+                                            title="Auto only flags possible glare for your review, no pixels change. On also asks OpenAI to reduce the glare (Catalogue Safe mode only, one extra API call) and flags it if the correction touched too much. Off skips glare detection entirely."
+                                            className="w-full border border-gray-200 rounded-md px-2 py-1.5 text-xs"
+                                        >
+                                            <option value="off">Reflections: Off</option>
+                                            <option value="auto">Reflections: Auto</option>
+                                            <option value="on">Reflections: On</option>
+                                        </select>
+                                    </div>
 
                                     <button
                                         type="button"
