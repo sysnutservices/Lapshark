@@ -99,6 +99,8 @@ export default function ProductsPage() {
     const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
     const [existingGalleryImages, setExistingGalleryImages] = useState<string[]>([]);
     const [isSaving, setIsSaving] = useState(false);
+    const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
+    const [descriptionGenError, setDescriptionGenError] = useState('');
 
     // Manual background-removal state (never auto-triggered on a fresh pick —
     // see handleMainImageChange/handleGalleryImagesChange). mainImageProcessedUrl
@@ -144,6 +146,8 @@ export default function ProductsPage() {
             setExistingGalleryImages([]);
             setSpecs({ processor: '', ram: '', storage: '', display: '', graphics: '' });
             setConfigOptions(DEFAULT_CONFIG_OPTIONS);
+            setIsGeneratingDescription(false);
+            setDescriptionGenError('');
             setMainImageStatus('idle');
             setMainImageError('');
             setMainImageProcessedUrl('');
@@ -227,6 +231,48 @@ export default function ProductsPage() {
 
     const handleSpecChange = (field: string, value: string) => {
         setSpecs(prev => ({ ...prev, [field]: value }));
+    };
+
+    // Sends whatever's already filled in (title/brand/category/condition/
+    // specs) to OpenAI and drops the result straight into the Description
+    // editor — one explicit click, never automatic, and never runs without
+    // at least a title and brand since the prompt has nothing to write from
+    // otherwise. Overwrites the current description; there's no separate
+    // "insert" vs "replace" — the editor is the draft, undo (ctrl+z) inside
+    // it if the previous version is still wanted.
+    const handleGenerateDescription = async () => {
+        setDescriptionGenError('');
+        if (!editingProduct.title || !editingProduct.brand) {
+            setDescriptionGenError('Add a title and brand first.');
+            return;
+        }
+        setIsGeneratingDescription(true);
+        try {
+            const res = await fetch(`${API_URL}/products/generate-description`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${localStorage.getItem('token')}`,
+                },
+                body: JSON.stringify({
+                    title: editingProduct.title,
+                    brand: editingProduct.brand,
+                    category: editingProduct.category,
+                    condition: editingProduct.condition,
+                    specs,
+                    performanceTier: (editingProduct as any).performanceTier,
+                    useCases: (editingProduct as any).useCases,
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || 'Description generation failed');
+            setEditingProduct(prev => ({ ...prev, description: data.description }));
+            setErrors(prev => ({ ...prev, description: '' }));
+        } catch (err) {
+            setDescriptionGenError(err instanceof Error ? err.message : 'Description generation failed');
+        } finally {
+            setIsGeneratingDescription(false);
+        }
     };
 
     const addConfigOption = (type: keyof IConfigOptions) => {
@@ -1575,7 +1621,19 @@ export default function ProductsPage() {
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Description *</label>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <label className="block text-sm font-medium text-gray-700">Description *</label>
+                                            <button
+                                                type="button"
+                                                onClick={handleGenerateDescription}
+                                                disabled={isGeneratingDescription}
+                                                title="Write a description from the title, brand, category, condition and specs already filled in above"
+                                                className="flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-700 disabled:opacity-50 border border-indigo-200 hover:bg-indigo-50 px-2.5 py-1 rounded-md"
+                                            >
+                                                {isGeneratingDescription ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                                                {isGeneratingDescription ? 'Writing...' : 'Generate Description'}
+                                            </button>
+                                        </div>
                                         <MDEditor
                                             value={editingProduct.description || ''}
                                             onChange={(value) =>
@@ -1588,6 +1646,9 @@ export default function ProductsPage() {
                                             preview="edit"
                                         />
 
+                                        {descriptionGenError && (
+                                            <p className="text-xs text-amber-600 mt-1 flex items-center"><AlertCircle className="w-3.5 h-3.5 mr-1 flex-shrink-0" /> {descriptionGenError}</p>
+                                        )}
                                         {errors.description && <p className="text-xs text-red-500 mt-1">{errors.description}</p>}
                                     </div>
                                 </div>
