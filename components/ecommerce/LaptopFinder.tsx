@@ -80,7 +80,7 @@ export function LaptopFinder({ products }: { products: Product[] }) {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {USE_CASES.map((uc) => (
                             <OptionButton key={uc.value} onClick={() => selectUseCase(uc.value)}>
-                                <span className="mr-2">{uc.emoji}</span>{uc.label}
+                                <uc.icon className="inline-block w-4 h-4 mr-2 -mt-0.5" strokeWidth={1.75} aria-hidden />{uc.label}
                             </OptionButton>
                         ))}
                     </div>
