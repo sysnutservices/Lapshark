@@ -15,9 +15,10 @@ const MDEditor = dynamic(
     { ssr: false }
 );
 
-// Status of the automatic background-removal + studio-compositing step that
-// runs the instant an image is picked in the Media & Details section, before
-// the product itself is saved.
+// Status of the optional background-removal + studio-compositing step —
+// manual only (the Reprocess ✨ button on an existing saved image, or the
+// gallery's per-image retry). A freshly picked, not-yet-saved file is never
+// auto-processed; it's saved exactly as uploaded.
 type ImgStatus = 'idle' | 'processing' | 'done' | 'error';
 
 interface IConfigOption {
@@ -99,10 +100,14 @@ export default function ProductsPage() {
     const [existingGalleryImages, setExistingGalleryImages] = useState<string[]>([]);
     const [isSaving, setIsSaving] = useState(false);
 
-    // Auto background-removal state. mainImageProcessedUrl / galleryFileProcessedUrl
-    // hold the already-hosted ImageKit URL once background removal + compositing
-    // succeeds for a given picked file, so handleSave can send it as
-    // imageUrl/imageUrls instead of re-uploading the raw file.
+    // Manual background-removal state (never auto-triggered on a fresh pick —
+    // see handleMainImageChange/handleGalleryImagesChange). mainImageProcessedUrl
+    // / galleryFileProcessedUrl hold the already-hosted ImageKit URL once
+    // background removal + compositing succeeds for a given file, so
+    // handleSave can send it as imageUrl/imageUrls instead of re-uploading
+    // the raw file — that only happens now if something manually triggered
+    // processing before Save (there's no in-flow trigger for a brand-new
+    // file, only the existing-image Reprocess/retry buttons).
     const [mainImageStatus, setMainImageStatus] = useState<ImgStatus>('idle');
     const [mainImageError, setMainImageError] = useState('');
     const [mainImageProcessedUrl, setMainImageProcessedUrl] = useState('');
@@ -308,13 +313,18 @@ export default function ProductsPage() {
         const file = await ensureUploadableImage(rawFile);
         setMainImageFile(file);
         setMainImageProcessedUrl('');
+        setMainImageStatus('idle');
         const reader = new FileReader();
         reader.onloadend = () => {
             setMainImagePreview(reader.result as string);
         };
         reader.readAsDataURL(file);
         setErrors(prev => ({ ...prev, image: '' }));
-        processMainImage(file);
+        // No automatic processing — the picked file is saved exactly as
+        // uploaded (handleSave's raw-file fallback, always there for a
+        // processing failure/never-finished case, is now the only path).
+        // Background removal is available afterward, manually, via the
+        // Reprocess (✨) button on an existing product's saved image.
     };
 
     const reprocessMainImage = async () => {
@@ -362,13 +372,13 @@ export default function ProductsPage() {
         setGalleryFileError(prev => [...prev, ...files.map(() => null)]);
         setGalleryFileProcessedUrl(prev => [...prev, ...files.map(() => null)]);
 
+        // No automatic processing — same reasoning as handleMainImageChange.
         files.forEach((file, i) => {
             const reader = new FileReader();
             reader.onloadend = () => {
                 setGalleryPreviews(prev => [...prev, reader.result as string]);
             };
             reader.readAsDataURL(file);
-            processGalleryFile(file, startIdx + i);
         });
     };
 
@@ -1450,7 +1460,7 @@ export default function ProductsPage() {
                                             </p>
                                         )}
                                         {errors.image && <p className="text-xs text-red-500 mt-1 flex items-center"><AlertCircle className="w-3 h-3 mr-1" /> {errors.image}</p>}
-                                        <p className="text-xs text-gray-500 mt-1">Background is removed and a white studio background applied automatically.</p>
+                                        <p className="text-xs text-gray-500 mt-1">Saved exactly as uploaded — no automatic processing. Background removal is available separately, on demand, after saving.</p>
                                     </div>
 
                                     {/* Ecommerce Image Workflow (local segmentation + Sharp) — only
