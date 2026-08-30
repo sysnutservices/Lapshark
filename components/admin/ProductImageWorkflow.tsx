@@ -403,9 +403,10 @@ export default function ProductImageWorkflow({ productId }: { productId: string 
                                     )}
                                     {typeof version?.occupancyPercent === 'number' && version.status !== 'PROCESSING_FAILED' && (
                                         <p className="text-xs text-gray-400">
-                                            Product occupancy: {version.occupancyPercent}% · Background: #FFFFFF · 2000×2000
+                                            Product occupancy: {version.occupancyPercent}% · Background: #FFFFFF ·{' '}
+                                            {version.processingModel === 'gpt-image-2' ? '1024×1024' : '2000×2000'}
                                             {version.processingModel === 'local-segmentation' && ' · Catalogue Safe'}
-                                            {version.processingModel === 'gpt-image-2+local-segmentation' && ' · AI Edit'}
+                                            {version.processingModel === 'gpt-image-2' && ' · AI Edit'}
                                         </p>
                                     )}
                                 </>
