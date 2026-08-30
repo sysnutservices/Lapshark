@@ -1,18 +1,20 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Upload, Loader2, Check, X, RefreshCw, AlertCircle, Camera, ZoomIn, Trash2 } from 'lucide-react';
+import { Upload, Loader2, Check, X, RefreshCw, AlertCircle, Camera, ZoomIn, Trash2, Layers } from 'lucide-react';
 import { api } from '@/api/api';
 import { ensureUploadableImage } from '@/lib/convertHeic';
 import BeforeAfterSlider from './BeforeAfterSlider';
 import ImageSettingsPanel, { ImageSettings } from './ImageSettingsPanel';
 import ImageSlotCard from './ImageSlotCard';
 
-// The OpenAI-backed workflow: upload original -> pick view type ->
-// "Create Ecommerce Image" -> review -> approve -> publish. Only mounted in
+// The AI Ecommerce Images workflow: upload original -> pick view type ->
+// "Create Ecommerce Image" -> review -> approve -> publish. Background
+// removal is local segmentation (never touches product pixels — see
+// processingModel on each version), not a generative model. Only mounted in
 // edit mode (a real productId is required — Approve/Publish/Reorder are
 // inherently product-scoped). The create-new-product modal's Main Image/
-// Gallery boxes use a separate, simpler OpenAI-backed endpoint
-// (productController.processImage) that skips versioning/review since no
-// product exists yet to attach a ProductImage history to.
+// Gallery boxes use a separate, simpler endpoint (productController.
+// processImage) that skips versioning/review since no product exists yet to
+// attach a ProductImage history to.
 
 const VIEW_TYPES: { value: string; label: string }[] = [
     { value: 'open_front', label: 'Open Front' },
@@ -35,6 +37,7 @@ interface Version {
     isActive: boolean;
     isApproved: boolean;
     isPublished: boolean;
+    transparentMasterUrl?: string | null;
     masterImageUrl: string | null;
     productImageUrl: string | null;
     thumbnailImageUrl: string | null;
@@ -42,6 +45,7 @@ interface Version {
     processingSettings: ImageSettings | null;
     rejectionReason?: string;
     qualityWarning?: string | null;
+    occupancyPercent?: number | null;
     estimatedCost: number | null;
     estimatedCostIsApproximate: boolean;
 }
@@ -69,10 +73,11 @@ export default function ProductImageWorkflow({ productId }: { productId: string 
     const [uploading, setUploading] = useState(false);
     const [processingSlotId, setProcessingSlotId] = useState<string | null>(null);
     const [viewTypeBySlot, setViewTypeBySlot] = useState<Record<string, string>>({});
+    const [modeBySlot, setModeBySlot] = useState<Record<string, 'catalogue_safe' | 'ai_edit'>>({});
     const [settingsBySlot, setSettingsBySlot] = useState<Record<string, ImageSettings>>({});
     const [error, setError] = useState<string | null>(null);
     const [publishing, setPublishing] = useState(false);
-    const [zoomUrl, setZoomUrl] = useState<string | null>(null);
+    const [zoom, setZoom] = useState<{ url: string; checkerboard: boolean } | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const settingsDebounce = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
     const dragIndex = useRef<number | null>(null);
@@ -115,7 +120,8 @@ export default function ProductImageWorkflow({ productId }: { productId: string 
         setError(null);
         try {
             const viewType = viewTypeBySlot[slot.rootImageId] ?? activeVersion(slot)?.viewType ?? 'custom';
-            await api.post(`/products/images/${slot.rootImageId}/process`, { viewType, settings: settingsBySlot[slot.rootImageId] }, { headers: authHeaders() });
+            const mode = modeBySlot[slot.rootImageId] ?? 'catalogue_safe';
+            await api.post(`/products/images/${slot.rootImageId}/process`, { viewType, mode, settings: settingsBySlot[slot.rootImageId] }, { headers: authHeaders() });
             load();
         } catch (err: any) {
             setError(err?.response?.data?.message || 'Image processing failed');
@@ -136,10 +142,12 @@ export default function ProductImageWorkflow({ productId }: { productId: string 
                     ...s,
                     versions: s.versions.map((v) => v.id !== versionId ? v : {
                         ...v,
+                        transparentMasterUrl: res.data.image.transparentUrl,
                         masterImageUrl: res.data.image.masterUrl,
                         productImageUrl: res.data.image.processedUrl,
                         thumbnailImageUrl: res.data.image.thumbnailUrl,
                         qualityWarning: res.data.image.qualityWarning,
+                        occupancyPercent: res.data.image.occupancyPercent,
                     }),
                 }));
             } catch {
@@ -263,12 +271,22 @@ export default function ProductImageWorkflow({ productId }: { productId: string 
                                             <BeforeAfterSlider beforeUrl={slot.originalImageUrl!} afterUrl={version.productImageUrl!} />
                                             <button
                                                 type="button"
-                                                onClick={() => setZoomUrl(version.masterImageUrl)}
+                                                onClick={() => setZoom({ url: version.masterImageUrl!, checkerboard: false })}
                                                 title="Inspect at full size — check screen, keyboard, trackpad, logos, ports"
                                                 className="absolute bottom-10 right-2 bg-black/60 hover:bg-black/80 text-white p-1.5 rounded-full"
                                             >
                                                 <ZoomIn className="w-3.5 h-3.5" />
                                             </button>
+                                            {version.transparentMasterUrl && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setZoom({ url: version.transparentMasterUrl!, checkerboard: true })}
+                                                    title="View the transparent cutout"
+                                                    className="absolute bottom-10 right-10 bg-black/60 hover:bg-black/80 text-white p-1.5 rounded-full"
+                                                >
+                                                    <Layers className="w-3.5 h-3.5" />
+                                                </button>
+                                            )}
                                         </div>
                                     ) : (
                                         // eslint-disable-next-line @next/next/no-img-element
@@ -282,6 +300,17 @@ export default function ProductImageWorkflow({ productId }: { productId: string 
                                         className="w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm"
                                     >
                                         {VIEW_TYPES.map((vt) => <option key={vt.value} value={vt.value}>{vt.label}</option>)}
+                                    </select>
+
+                                    <select
+                                        value={modeBySlot[slot.rootImageId] ?? 'catalogue_safe'}
+                                        onChange={(e) => setModeBySlot((prev) => ({ ...prev, [slot.rootImageId]: e.target.value as 'catalogue_safe' | 'ai_edit' }))}
+                                        disabled={isProcessing}
+                                        title="Catalogue Safe never touches product pixels (real segmentation of the original photo). AI Edit lets OpenAI edit the background first — it can alter the product, and always needs closer review."
+                                        className="w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm"
+                                    >
+                                        <option value="catalogue_safe">Catalogue Safe (recommended)</option>
+                                        <option value="ai_edit">AI Edit (experimental)</option>
                                     </select>
 
                                     <button
@@ -344,6 +373,13 @@ export default function ProductImageWorkflow({ productId }: { productId: string 
                                             Needs a closer look: {version.qualityWarning}
                                         </p>
                                     )}
+                                    {typeof version?.occupancyPercent === 'number' && version.status !== 'PROCESSING_FAILED' && (
+                                        <p className="text-xs text-gray-400">
+                                            Product occupancy: {version.occupancyPercent}% · Background: #FFFFFF · 2000×2000
+                                            {version.processingModel === 'local-segmentation' && ' · Catalogue Safe'}
+                                            {version.processingModel === 'gpt-image-2+local-segmentation' && ' · AI Edit'}
+                                        </p>
+                                    )}
                                 </>
                             )}
                         </div>
@@ -394,16 +430,25 @@ export default function ProductImageWorkflow({ productId }: { productId: string 
                 </div>
             )}
 
-            {zoomUrl && (
+            {zoom && (
                 <div
                     className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 overflow-auto"
-                    onClick={() => setZoomUrl(null)}
+                    onClick={() => setZoom(null)}
                 >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={zoomUrl} alt="Full size" className="max-w-none" style={{ imageRendering: 'auto' }} />
+                    <img
+                        src={zoom.url}
+                        alt="Full size"
+                        className="max-w-none"
+                        style={zoom.checkerboard ? {
+                            imageRendering: 'auto',
+                            backgroundImage: 'repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%)',
+                            backgroundSize: '20px 20px',
+                        } : { imageRendering: 'auto' }}
+                    />
                     <button
                         type="button"
-                        onClick={() => setZoomUrl(null)}
+                        onClick={() => setZoom(null)}
                         className="fixed top-4 right-4 bg-white/90 hover:bg-white text-gray-900 p-2 rounded-full"
                     >
                         <X className="w-5 h-5" />
