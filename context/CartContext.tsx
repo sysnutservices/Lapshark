@@ -210,9 +210,17 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
+      // The backend route is PUT /cart/update with productId in the body
+      // (updateCartItem reads req.body.productId, not a URL param) — the
+      // extra /${productId} segment here never matched anything, so
+      // req.body.productId was always undefined server-side. That made
+      // cart.items.find(...) fail silently and the handler no-op with a
+      // 200, which fetchCart() then faithfully reflected back as "nothing
+      // changed" — every quantity +/- for a logged-in customer was a
+      // silent no-op.
       await api.put(
-        `/cart/update/${productId}`,
-        { quantity: qty },
+        `/cart/update`,
+        { productId, quantity: qty },
         authHeader()
       );
       fetchCart();
