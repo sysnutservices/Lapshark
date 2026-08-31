@@ -15,6 +15,7 @@ import { Slider } from "@/components/ui/slider";
 import { trackEvent } from "@/lib/analytics";
 import { STORE_POLICIES } from "@/lib/policies";
 import { USE_CASES, UseCase, productUseCases } from "@/lib/product-recommendation";
+import { isExtraOfferActive } from "@/lib/pricing";
 import {
     Accordion,
     AccordionContent,
@@ -140,6 +141,7 @@ export default function ShopClient({
     const [selectedProcessor, setSelectedProcessor] = useState<string[]>([]);
     const [selectedStorage, setSelectedStorage] = useState<string[]>([]);
     const [selectedDisplay, setSelectedDisplay] = useState<string[]>([]);
+    const [offersOnly, setOffersOnly] = useState<boolean>(false);
 
     useEffect(() => {
         setSelectedCategory(initialCategory);
@@ -224,6 +226,8 @@ export default function ShopClient({
                     return productSize >= size && productSize < size + 1;
                 });
 
+            const matchOffers = !offersOnly || isExtraOfferActive(product.extraOffer);
+
             return (
                 matchSearch &&
                 matchCategory &&
@@ -233,7 +237,8 @@ export default function ShopClient({
                 matchRam &&
                 matchProcessor &&
                 matchStorage &&
-                matchDisplay
+                matchDisplay &&
+                matchOffers
             );
         })
         .sort((a, b) => {
@@ -253,6 +258,7 @@ export default function ShopClient({
         setSelectedProcessor([]);
         setSelectedStorage([]);
         setSelectedDisplay([]);
+        setOffersOnly(false);
     };
 
     // Fires once per distinct list view (category/use-case change), not on
@@ -274,7 +280,8 @@ export default function ShopClient({
         selectedStorage.length +
         selectedDisplay.length +
         (selectedUseCase ? 1 : 0) +
-        (priceRange[1] < MAX_PRICE || priceRange[0] > 0 ? 1 : 0);
+        (priceRange[1] < MAX_PRICE || priceRange[0] > 0 ? 1 : 0) +
+        (offersOnly ? 1 : 0);
 
     const FilterPanel = (
         <>
@@ -291,6 +298,11 @@ export default function ShopClient({
                     <RotateCcw className="w-3 h-3" /> Clear All
                 </Button>
             </div>
+
+            <label className="flex items-center gap-3 cursor-pointer py-2 mb-2 border-b border-slate-100">
+                <Checkbox checked={offersOnly} onCheckedChange={(v) => { setOffersOnly(!!v); trackEvent("filter_used", { filterType: "offersOnly", value: String(!!v) }); }} />
+                <span className={`text-sm ${offersOnly ? "text-slate-900 font-bold" : "text-slate-600 font-medium"}`}>Special Offers</span>
+            </label>
 
             <Accordion
                 multiple

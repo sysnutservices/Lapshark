@@ -2,6 +2,9 @@
 
 import React, { useEffect, useState } from "react";
 import { useCart } from "@/context/CartContext";
+import { useStore } from "@/context/StoreContext";
+import { priceCartItem } from "@/lib/pricing";
+import { ProductPromotionBadge } from "@/components/ecommerce/ProductPromotionBadge";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -19,11 +22,19 @@ import { CheckoutLogin } from "@/components/LoginComponent";
 import { STORE_POLICIES } from "@/lib/policies";
 
 export default function CartContent() {
-    const { cart, updateQuantity, removeFromCart, clearCart, totalPrice } =
-        useCart();
+    const { cart, updateQuantity, removeFromCart, clearCart } = useCart();
+    const { products } = useStore();
     const router = useRouter();
     const [showLogin, setShowLogin] = useState(false);
     const { addresses } = useUserFeatures();
+
+    // Live-priced, not the stale add-to-cart snapshot — an Extra Product
+    // Offer can start/change/expire while an item sits in the cart. One
+    // calculation (priceCartItem) shared with CheckoutContent.
+    const pricedCart = cart.map((item) => priceCartItem(item, products));
+    const totalPrice = pricedCart.reduce((sum, i) => sum + i.livePrice * i.quantity, 0);
+    const totalOfferSavings = pricedCart.reduce((sum, i) => sum + (i.offer ? (i.originalSellingPrice - i.livePrice) * i.quantity : 0), 0);
+
     // Mock shipping logic: Free shipping over ₹10,000
     const shippingThreshold = 10000;
     const shippingCost = totalPrice > shippingThreshold ? 0 : 500;
@@ -123,7 +134,7 @@ export default function CartContent() {
                         <div className="flex-1">
                             {/* Mobile View (Card Grid Style) */}
                             <div className="md:hidden space-y-4">
-                                {cart.map((item) => (
+                                {pricedCart.map((item) => (
                                     <div
                                         key={item.productId}
                                         className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 relative"
@@ -151,9 +162,19 @@ export default function CartContent() {
                                                 </div>
 
                                                 <div className="flex items-end justify-between mt-3">
-                                                    <span className="font-bold text-base text-slate-900">
-                                                        ₹{item.finalPrice.toLocaleString("en-IN")}
-                                                    </span>
+                                                    <div className="flex flex-col">
+                                                        <div className="flex items-baseline gap-1.5">
+                                                            <span className="font-bold text-base text-slate-900">
+                                                                ₹{item.livePrice.toLocaleString("en-IN")}
+                                                            </span>
+                                                            {item.offer && (
+                                                                <span className="text-[10px] text-slate-400 line-through">
+                                                                    ₹{item.originalSellingPrice.toLocaleString("en-IN")}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        {item.offer && <ProductPromotionBadge offer={item.offer} className="mt-1" />}
+                                                    </div>
 
                                                     <div className="flex items-center border border-slate-200 rounded-lg shadow-sm h-7">
                                                         <button
@@ -195,7 +216,7 @@ export default function CartContent() {
                                 </div>
 
                                 <div className="divide-y divide-slate-100">
-                                    {cart.map((item) => (
+                                    {pricedCart.map((item) => (
                                         <div key={item.productId} className="p-4 md:p-6">
                                             <div className="grid grid-cols-12 gap-6 items-center">
                                                 <div className="col-span-6 w-full flex items-center gap-6">
@@ -237,9 +258,17 @@ export default function CartContent() {
                                                 </div>
 
                                                 <div className="col-span-2 text-center">
-                                                    <span className="font-medium text-slate-900">
-                                                        ₹{item.finalPrice.toLocaleString("en-IN")}
-                                                    </span>
+                                                    <div className="flex flex-col items-center gap-1">
+                                                        <span className="font-medium text-slate-900">
+                                                            ₹{item.livePrice.toLocaleString("en-IN")}
+                                                        </span>
+                                                        {item.offer && (
+                                                            <>
+                                                                <span className="text-[10px] text-slate-400 line-through">₹{item.originalSellingPrice.toLocaleString("en-IN")}</span>
+                                                                <ProductPromotionBadge offer={item.offer} />
+                                                            </>
+                                                        )}
+                                                    </div>
                                                 </div>
 
                                                 <div className="col-span-2 flex justify-center">
@@ -264,7 +293,7 @@ export default function CartContent() {
 
                                                 <div className="col-span-2 text-center md:text-right font-bold text-slate-900">
                                                     ₹
-                                                    {(item.finalPrice * item.quantity).toLocaleString(
+                                                    {(item.livePrice * item.quantity).toLocaleString(
                                                         "en-IN"
                                                     )}
                                                 </div>
@@ -346,6 +375,12 @@ export default function CartContent() {
                                         <span>Subtotal</span>
                                         <span>₹{totalPrice.toLocaleString("en-IN")}</span>
                                     </div>
+                                    {totalOfferSavings > 0 && (
+                                        <div className="flex justify-between text-slate-600">
+                                            <span>Product Offer</span>
+                                            <span className="font-medium text-emerald-600">-₹{totalOfferSavings.toLocaleString("en-IN")}</span>
+                                        </div>
+                                    )}
                                     <div className="flex justify-between text-slate-600">
                                         <span>Shipping Estimate</span>
                                         <span

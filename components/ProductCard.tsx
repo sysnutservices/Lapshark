@@ -15,9 +15,16 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { trackEvent } from '@/lib/analytics';
 import { STORE_POLICIES, LOW_STOCK_THRESHOLD } from '@/lib/policies';
+import { calculateProductPrice } from '@/lib/pricing';
+import { ProductPromotionBadge } from '@/components/ecommerce/ProductPromotionBadge';
 
 interface ProductCardProps {
   product: Product;
+  // This card is shared between /products (and Similar Products, Compare,
+  // Wishlist, ...) and the homepage sections — the two have independent
+  // showOnListing/showOnHomepage offer-visibility flags, so callers on the
+  // homepage pass "homepage" explicitly. Defaults to "listing".
+  context?: "listing" | "homepage";
 }
 
 const CATEGORY_TAG: Record<string, string> = {
@@ -35,7 +42,7 @@ const normalizeConfigValue = (value: string | undefined | null): string => {
   return value.replace(/\s+/g, '').toLowerCase();
 };
 
-export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
+export const ProductCard: React.FC<ProductCardProps> = ({ product, context = "listing" }) => {
   const { addToCart } = useCart();
   const { addToWishlist, removeFromWishlist, isInWishlist, addToCompare, removeFromCompare, isInCompare } = useUserFeatures();
   const router = useRouter();
@@ -70,9 +77,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       const defaultStorage = product.configOptions?.storage?.[0];
       const defaultWarranty = product.configOptions?.warranty?.[0];
 
-      // Calculate prices with default configs
-      const finalPrice = (product.finalPrice || 0) + (defaultRam?.price || 0) + (defaultStorage?.price || 0) + (defaultWarranty?.price || 0);
-      const originalPrice = (product.price || 0) + (defaultRam?.price || 0) + (defaultStorage?.price || 0) + (defaultWarranty?.price || 0);
+      // Calculate prices with default configs. Extra Product Offer applies
+      // only to the base selling price, never to config addon cost.
+      const configCost = (defaultRam?.price || 0) + (defaultStorage?.price || 0) + (defaultWarranty?.price || 0);
+      const finalPrice = calculateProductPrice(product.finalPrice || 0, product.extraOffer).finalPrice + configCost;
+      const originalPrice = (product.price || 0) + configCost;
 
       // ✅ CREATE NORMALIZED COMPOSITE ID (same logic as ProductDetails)
       const compositeId = `${product.productId}-${normalizeConfigValue(defaultRam?.value)}-${normalizeConfigValue(defaultStorage?.value)}-${normalizeConfigValue(defaultWarranty?.value)}`;
@@ -130,7 +139,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
       const cartProduct = {
         ...product,
-        id: product.productId // ✅ Simple products use productId directly
+        id: product.productId, // ✅ Simple products use productId directly
+        finalPrice: calculateProductPrice(product.finalPrice || 0, product.extraOffer).finalPrice,
       };
 
       addToCart(cartProduct);
@@ -185,6 +195,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const categoryTag = CATEGORY_TAG[product.category] ?? product.category;
   const specPills = [product.specs?.processor, product.specs?.ram, product.specs?.storage, product.specs?.os].filter(Boolean);
   const gallery = product.images && product.images.length > 1 ? product.images : null;
+  // Extra Product Offer — respects showOnListing/showOnHomepage per `context`.
+  const pricing = calculateProductPrice(product.finalPrice, product.extraOffer);
+  const offerVisible = context === "homepage" ? product.extraOffer?.showOnHomepage !== false : product.extraOffer?.showOnListing !== false;
+  const hasOffer = !!pricing.offer && offerVisible;
 
   return (
     <>
@@ -314,22 +328,26 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           </div>
 
           <div className="mt-auto flex items-baseline flex-wrap gap-x-2 gap-y-1">
-            <span className="text-base md:text-xl font-bold text-slate-900">₹{product.finalPrice.toLocaleString('en-IN')}</span>
-            {product.discountPercent > 0 && (
+            <span className="text-base md:text-xl font-bold text-slate-900">₹{pricing.finalPrice.toLocaleString('en-IN')}</span>
+            {hasOffer ? (
+              <span className="text-[10px] md:text-xs text-slate-400 line-through font-medium">₹{product.finalPrice.toLocaleString('en-IN')}</span>
+            ) : product.discountPercent > 0 ? (
               <span className="text-[10px] md:text-xs text-slate-400 line-through font-medium">₹{product.price.toLocaleString('en-IN')}</span>
-            )}
-            {product.discountPercent > 0 && (
+            ) : null}
+            {hasOffer ? (
+              <ProductPromotionBadge offer={pricing.offer} />
+            ) : product.discountPercent > 0 ? (
               <Badge className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] md:text-xs font-bold text-emerald-700 hover:bg-emerald-50">
                 {Math.round(product.discountPercent)}% off
               </Badge>
-            )}
+            ) : null}
           </div>
-          {product.discountPercent > 0 && (
+          {!hasOffer && product.discountPercent > 0 && (
             <p className="text-[10px] md:text-xs font-semibold text-emerald-600 mt-0.5">
               You save ₹{(product.price - product.finalPrice).toLocaleString('en-IN')}
             </p>
           )}
-          <ProductEMILine price={product.finalPrice} className="mt-1" />
+          <ProductEMILine price={pricing.finalPrice} className="mt-1" />
 
           <div className="flex items-center gap-3 text-[10px] md:text-xs text-slate-500 font-medium mt-2 mb-3">
             <span className="flex items-center gap-1">
@@ -413,12 +431,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               </div>
 
               <div className="mt-auto border-t border-slate-100 pt-6">
-                <div className="flex items-end gap-3 mb-6">
-                  <span className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight">₹{product.finalPrice.toLocaleString('en-IN')}</span>
-                  {product.discountPercent > 0 && (
+                <div className="flex items-end gap-3 mb-2">
+                  <span className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight">₹{pricing.finalPrice.toLocaleString('en-IN')}</span>
+                  {hasOffer ? (
+                    <span className="text-base md:text-lg text-slate-400 line-through font-medium mb-1.5">₹{product.finalPrice.toLocaleString('en-IN')}</span>
+                  ) : product.discountPercent > 0 ? (
                     <span className="text-base md:text-lg text-slate-400 line-through font-medium mb-1.5">₹{product.price.toLocaleString('en-IN')}</span>
-                  )}
+                  ) : null}
                 </div>
+                {hasOffer && <ProductPromotionBadge offer={pricing.offer} className="mb-4" />}
 
                 <div className="grid grid-cols-2 gap-4">
                   <button

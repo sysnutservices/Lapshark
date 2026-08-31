@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { API_URL } from "@/api/api";
 import { STORE_POLICIES } from "@/lib/policies";
 import ProductDetailsClient from "./ProductsDetailsClient";
+import { calculateProductPrice } from "@/lib/pricing";
 
 // Markdown -> plain text for meta descriptions.
 function plainText(md?: string) {
@@ -133,7 +134,10 @@ export default async function ProductPage({ params }) {
                             "@type": "Offer",
                             url: `https://lapshark.com/products/${product.slug}`,
                             priceCurrency: "INR",
-                            price: product.finalPrice,
+                            // Reflects an active Extra Product Offer — Google's own
+                            // guidance is that `price` should be the actual current
+                            // price, not a pre-discount one.
+                            price: calculateProductPrice(product.finalPrice, product.extraOffer).finalPrice,
                             // Date.UTC, not a local-time Date: toISOString() would
                             // shift an IST date back a day and emit Dec 30.
                             priceValidUntil: new Date(
