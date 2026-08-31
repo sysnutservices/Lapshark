@@ -234,7 +234,9 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   // rejected the change, leaving the UI out of sync with what's actually true.
   // Callers see the failure via the rejected promise.
   const updateOrderStatus = async (orderId: string, status: Order["status"]) => {
-    const res = await api.put(`/orders/${orderId}/status`, { status });
+    // PUT /orders/:id/status is protect+admin — was missing the header, so
+    // every "Update Status" click on the admin order page 401'd.
+    const res = await api.put(`/orders/${orderId}/status`, { status }, { headers: authHeaders() });
     const updated = res.data.order as Order;
     setOrders(prev => prev.map(o => (o.orderId === orderId ? updated : o)));
     return updated;

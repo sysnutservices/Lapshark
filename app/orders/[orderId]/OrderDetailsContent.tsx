@@ -20,7 +20,12 @@ export default function OrderDetailsContent() {
         const fetchOrder = async () => {
             try {
                 setLoading(true);
-                const response = await api.get(`/orders/${orderId}`);
+                // GET /orders/:id is protect (ownership checked server-side) —
+                // was missing the header, so this page 401'd for every order.
+                const token = localStorage.getItem('token');
+                const response = await api.get(`/orders/${orderId}`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
                 setOrder(response.data.order);
             } catch (error) {
                 console.error('Error fetching order:', error);
