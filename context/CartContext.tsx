@@ -48,8 +48,11 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (isLoggedIn) {
-      syncGuestCart();
-      fetchCart();
+      // Sequenced, not fire-and-forget in parallel: fetchCart() used to run
+      // concurrently with the merge POST, so it usually won the race and
+      // rendered the pre-merge cart — the guest's items were merged
+      // server-side but nothing on screen showed it until a manual refresh.
+      syncGuestCart().then(fetchCart);
     } else {
       const saved = localStorage.getItem(CART_KEY);
       if (saved) {
