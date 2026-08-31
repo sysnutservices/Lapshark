@@ -110,8 +110,13 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
             : api.get("/blogs").catch(() => ({ data: [] })),
           api.get("/site-config").catch(() => ({ data: null })),
           customerOrdersPromise,
-          isAdminRoute ? api.get("/orders").catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
-          isAdminRoute ? api.get("/coupons").catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+          // Both /orders and /coupons are protect+admin on the backend, same
+          // as /users just below — these two were missing the Authorization
+          // header (the /users one already has it), so every admin session
+          // has been silently 401ing into an empty list here and never
+          // finding out (the .catch swallows it).
+          isAdminRoute ? api.get("/orders", { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+          isAdminRoute ? api.get("/coupons", { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
           isAdminRoute ? api.get("/users", { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
         ]);
 
@@ -119,7 +124,12 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         setProducts(productsRes.data);
         setBlogs(blogsRes.data);
         setOrders(ordersRes.data.orders || ordersRes.data);
-        setCoupons(couponsRes.data);
+        // Same _id-vs-id gap as the /users fix above: the backend returns
+        // Mongoose docs (_id only), but the Coupon type declares `id` as
+        // required and the admin Coupons page keys/deletes/updates by it —
+        // unmapped, every coupon.id was undefined, so Delete called
+        // DELETE /coupons/undefined.
+        setCoupons((couponsRes.data || []).map((c: any) => ({ ...c, id: c._id })));
         // GET /users returns raw Mongoose docs (_id only) — the User type
         // declares `id` as required, but nothing ever populated it, so
         // customer.id was undefined everywhere this list is used. Block/
@@ -239,19 +249,19 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const addCoupon = async (coupon: Coupon) => {
-    const res = await api.post("/coupons", coupon);
-    setCoupons((prev) => [...prev, res.data]);
+    const res = await api.post("/coupons", coupon, { headers: authHeaders() });
+    setCoupons((prev) => [...prev, { ...res.data, id: res.data._id }]);
   };
 
   const updateCoupon = async (coupon: Coupon) => {
-    const res = await api.put(`/coupons/${coupon.id}`, coupon);
+    const res = await api.put(`/coupons/${coupon.id}`, coupon, { headers: authHeaders() });
     setCoupons((prev) =>
-      prev.map((c) => (c.id === coupon.id ? res.data : c))
+      prev.map((c) => (c.id === coupon.id ? { ...res.data, id: res.data._id } : c))
     );
   };
 
   const deleteCoupon = async (id: string) => {
-    await api.delete(`/coupons/${id}`);
+    await api.delete(`/coupons/${id}`, { headers: authHeaders() });
     setCoupons((prev) => prev.filter((c) => c.id !== id));
   };
 

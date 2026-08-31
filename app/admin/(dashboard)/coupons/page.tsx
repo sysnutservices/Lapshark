@@ -20,9 +20,12 @@ export default function CouponManager() {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        // id comes back from the server response (addCoupon maps _id -> id)
+        // — a client-generated one here was never anything but a placeholder
+        // that got silently overwritten, and the mismatch briefly showed a
+        // coupon with the wrong id in the list before that round-trip.
         const newCoupon = {
             ...formData,
-            id: Math.random().toString(36).substr(2, 9),
             usedCount: 0
         } as Coupon;
         addCoupon(newCoupon);
