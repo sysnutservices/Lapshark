@@ -14,6 +14,8 @@ import confetti from "canvas-confetti"
 import { CheckoutLogin } from '@/components/LoginComponent';
 import { trackEvent, generateEventId, trackPurchaseConversion } from '@/lib/analytics';
 import { STORE_POLICIES } from '@/lib/policies';
+import { priceCartItem } from '@/lib/pricing';
+import { ProductPromotionBadge } from '@/components/ecommerce/ProductPromotionBadge';
 
 // Declare Razorpay on window object to avoid TS errors
 declare global {
@@ -23,10 +25,15 @@ declare global {
 }
 
 export default function CheckoutContent() {
-    const { cart, totalPrice, clearCart } = useCart();
-    const finalCart = cart;
+    const { cart, clearCart } = useCart();
+    const { products, placeOrder, validateCoupon } = useStore();
+    // Live-priced, not the stale add-to-cart snapshot — same shared
+    // calculation CartContent uses, so the number shown here never drifts
+    // from what the cart page just showed.
+    const finalCart = cart.map((item) => priceCartItem(item, products));
+    const totalPrice = finalCart.reduce((sum, i) => sum + i.livePrice * i.quantity, 0);
+    const totalOfferSavings = finalCart.reduce((sum, i) => sum + (i.offer ? (i.originalSellingPrice - i.livePrice) * i.quantity : 0), 0);
     const { getSelectedAddress, fetchAddresses } = useUserFeatures();
-    const { placeOrder, validateCoupon } = useStore();
     const router = useRouter();
     const [isProcessing, setIsProcessing] = useState(false);
     const [discount, setDiscount] = useState(0);
@@ -268,7 +275,13 @@ export default function CheckoutContent() {
                         ram: item.config?.ram,
                         storage: item.config?.storage,
                         warranty: item.config?.warranty,
-                    }
+                    },
+                    // What the customer actually saw on screen just before
+                    // paying — the server compares this against its own
+                    // fresh calculation and rejects (instead of silently
+                    // charging a different amount) if a product offer
+                    // changed underneath the cart.
+                    expectedFinalPrice: item.livePrice,
                 }))
 
             })
@@ -312,6 +325,17 @@ export default function CheckoutContent() {
             // fall straight through into `new window.Razorpay({key:
             // undefined, ...})` and open a broken payment modal with no
             // explanation.
+            if (orderData?.priceChanged) {
+                setIsProcessing(false);
+                MySwal.fire({
+                    title: "Product offer has expired",
+                    text: orderData.message || "The price has been updated. Please review your order and try again.",
+                    icon: "warning",
+                    confirmButtonText: "Refresh prices",
+                }).then(() => window.location.reload());
+                return;
+            }
+
             if (!orderData?.success || !orderData?.razorpayOrderId) {
                 MySwal.fire({
                     title: "Couldn't place order",
@@ -467,9 +491,10 @@ export default function CheckoutContent() {
                                                 <div className="flex flex-1 flex-col justify-center">
                                                     <div className="flex justify-between text-sm font-medium text-slate-900">
                                                         <h3 className="line-clamp-1 mr-4">{item.title}</h3>
-                                                        <p className="whitespace-nowrap font-bold">₹{(item.finalPrice * item.quantity).toLocaleString('en-IN')}</p>
+                                                        <p className="whitespace-nowrap font-bold">₹{(item.livePrice * item.quantity).toLocaleString('en-IN')}</p>
                                                     </div>
                                                     <p className="text-xs text-slate-500 truncate">{item.specs.processor} • {item.specs.ram}</p>
+                                                    {item.offer && <ProductPromotionBadge offer={item.offer} className="mt-1 self-start" />}
                                                 </div>
                                             </div>
                                         ))}
@@ -491,6 +516,12 @@ export default function CheckoutContent() {
                                             <span>Subtotal</span>
                                             <span>₹{totalPrice.toLocaleString('en-IN')}</span>
                                         </div>
+                                        {totalOfferSavings > 0 && (
+                                            <div className="flex justify-between text-slate-500">
+                                                <span>Product Offer</span>
+                                                <span className="font-bold text-emerald-600"> - ₹{totalOfferSavings.toLocaleString('en-IN')}</span>
+                                            </div>
+                                        )}
                                         <div className="flex justify-between text-slate-500">
                                             <span>Shipping</span>
                                             <span className={shippingCost === 0 ? 'text-green-600 font-bold' : ''}>
@@ -654,9 +685,10 @@ export default function CheckoutContent() {
                                             <div className="flex flex-1 flex-col justify-center">
                                                 <div className="flex justify-between items-start">
                                                     <h3 className="text-sm font-bold text-slate-900 line-clamp-2 pr-4 leading-relaxed">{item.title}</h3>
-                                                    <p className="text-sm font-bold text-slate-900 whitespace-nowrap">₹{(item.finalPrice * item.quantity).toLocaleString('en-IN')}</p>
+                                                    <p className="text-sm font-bold text-slate-900 whitespace-nowrap">₹{(item.livePrice * item.quantity).toLocaleString('en-IN')}</p>
                                                 </div>
                                                 <p className="mt-1 text-xs text-slate-500 font-medium">{item.specs.processor} • {item.specs.ram}</p>
+                                                {item.offer && <ProductPromotionBadge offer={item.offer} className="mt-1.5 self-start" />}
                                             </div>
                                         </div>
                                     ))}
@@ -682,6 +714,12 @@ export default function CheckoutContent() {
                                             <span className="font-medium">Subtotal</span>
                                             <span className="font-bold text-slate-900">₹{totalPrice.toLocaleString('en-IN')}</span>
                                         </div>
+                                        {totalOfferSavings > 0 && (
+                                            <div className="flex items-center justify-between text-sm text-slate-600">
+                                                <span className="font-medium">Product Offer</span>
+                                                <span className="font-bold text-emerald-600">-₹{totalOfferSavings.toLocaleString('en-IN')}</span>
+                                            </div>
+                                        )}
                                         <div className="flex items-center justify-between text-sm text-slate-600">
                                             <span className="font-medium">Shipping</span>
                                             <span className={shippingCost === 0 ? 'text-green-600 font-bold flex items-center' : 'font-bold text-slate-900'}>

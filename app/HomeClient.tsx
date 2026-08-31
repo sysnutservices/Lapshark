@@ -316,7 +316,7 @@ export default function Home({
                                 viewport={{ once: true, margin: "-40px" }}
                                 transition={{ duration: 0.4, delay: Math.min(i * 0.06, 0.3), ease: "easeOut" }}
                             >
-                                <ProductCard product={p} />
+                                <ProductCard product={p} context="homepage" />
                             </motion.div>
                         ))}
                     </div>
@@ -509,7 +509,7 @@ export default function Home({
                                 viewport={{ once: true, margin: "-40px" }}
                                 transition={{ duration: 0.4, delay: Math.min(i * 0.06, 0.3), ease: "easeOut" }}
                             >
-                                <ProductCard product={p} />
+                                <ProductCard product={p} context="homepage" />
                             </motion.div>
                         ))}
                     </div>

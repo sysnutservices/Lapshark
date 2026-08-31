@@ -10,6 +10,8 @@ import { ensureUploadableImage } from '@/lib/convertHeic';
 import router from 'next/router';
 import dynamic from 'next/dynamic';
 import ProductImageWorkflow from '@/components/admin/ProductImageWorkflow';
+import ExtraOfferSection from '@/components/admin/ExtraOfferSection';
+import { calculateProductPrice, getExtraOfferStatus } from '@/lib/pricing';
 const MDEditor = dynamic(
     () => import('@uiw/react-md-editor'),
     { ssr: false }
@@ -743,10 +745,26 @@ export default function ProductsPage() {
                             </div>
                             <div className="flex items-center justify-between mt-2">
                                 <div>
-                                    <span className="font-bold text-blue-600">₹{product.finalPrice.toLocaleString('en-IN')}</span>
-                                    {product.discountPercent > 0 && (
-                                        <span className="text-xs text-red-500 line-through ml-2">₹{product.price.toLocaleString('en-IN')}</span>
-                                    )}
+                                    {(() => {
+                                        const pricing = calculateProductPrice(product.finalPrice, product.extraOffer);
+                                        if (pricing.offer) {
+                                            return (
+                                                <>
+                                                    <span className="font-bold text-blue-600">₹{pricing.finalPrice.toLocaleString('en-IN')}</span>
+                                                    <span className="text-xs text-red-500 line-through ml-2">₹{product.finalPrice.toLocaleString('en-IN')}</span>
+                                                    <span className="ml-2 inline-flex items-center rounded-full bg-rose-50 px-1.5 py-0.5 text-[10px] font-bold text-rose-700">Offer</span>
+                                                </>
+                                            );
+                                        }
+                                        return (
+                                            <>
+                                                <span className="font-bold text-blue-600">₹{product.finalPrice.toLocaleString('en-IN')}</span>
+                                                {product.discountPercent > 0 && (
+                                                    <span className="text-xs text-red-500 line-through ml-2">₹{product.price.toLocaleString('en-IN')}</span>
+                                                )}
+                                            </>
+                                        );
+                                    })()}
                                     <span className="text-xs text-gray-500 ml-2">Stock: {product.stock}</span>
                                 </div>
                                 <div className="flex gap-1">
@@ -782,7 +800,9 @@ export default function ProductsPage() {
                                 <th className="px-6 py-4">Product</th>
                                 <th className="px-6 py-4">Status</th>
                                 <th className="px-6 py-4">Condition</th>
-                                <th className="px-6 py-4">Price</th>
+                                <th className="px-6 py-4">Selling Price</th>
+                                <th className="px-6 py-4">Extra Offer</th>
+                                <th className="px-6 py-4">Final Price</th>
                                 <th className="px-6 py-4">Stock</th>
                                 <th className="px-6 py-4 text-right">Actions</th>
                             </tr>
@@ -820,6 +840,24 @@ export default function ProductsPage() {
                                         {product.discountPercent > 0 && (
                                             <div className="text-xs text-red-500 line-through">₹{product.price.toLocaleString('en-IN')}</div>
                                         )}
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        {(() => {
+                                            const status = getExtraOfferStatus(product.extraOffer as any);
+                                            if (status === 'none') return <span className="text-gray-400">—</span>;
+                                            const offer = product.extraOffer!;
+                                            const label = offer.discountType === 'percentage' ? `${offer.discountValue}% OFF` : offer.discountType === 'specialPrice' ? `₹${offer.discountValue.toLocaleString('en-IN')}` : `₹${offer.discountValue.toLocaleString('en-IN')} OFF`;
+                                            const STATUS_STYLE: Record<string, string> = { active: 'text-green-600', scheduled: 'text-amber-600', expired: 'text-gray-400', disabled: 'text-red-500' };
+                                            return (
+                                                <div className="flex flex-col gap-1">
+                                                    <span className="inline-flex w-fit items-center rounded-full bg-rose-50 px-2 py-0.5 text-xs font-bold text-rose-700">{label}</span>
+                                                    <span className={`text-[10px] font-bold capitalize ${STATUS_STYLE[status]}`}>{status}</span>
+                                                </div>
+                                            );
+                                        })()}
+                                    </td>
+                                    <td className="px-6 py-4 font-bold text-gray-900">
+                                        ₹{calculateProductPrice(product.finalPrice, product.extraOffer).finalPrice.toLocaleString('en-IN')}
                                     </td>
                                     <td className="px-6 py-4 text-gray-600">{product.stock}</td>
                                     <td className="px-6 py-4 text-right space-x-2">
@@ -1124,6 +1162,22 @@ export default function ProductsPage() {
                                         </span>
                                     </div>
                                 </div>
+
+                                {/* Extra Product Offer — needs a saved product to attach to, same
+                                    gate as ProductImageWorkflow below. */}
+                                {editingProduct._id ? (
+                                    <ExtraOfferSection
+                                        product={editingProduct as Product}
+                                        onSaved={(updated) => {
+                                            setEditingProduct(updated);
+                                            updateProduct(updated);
+                                        }}
+                                    />
+                                ) : (
+                                    <div className="bg-gray-50 rounded-xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500">
+                                        Save this product first, then come back here to add a promotional offer.
+                                    </div>
+                                )}
 
                                 {/* Section 3: Technical Specifications */}
                                 <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6 space-y-5 shadow-sm">

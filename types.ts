@@ -57,6 +57,22 @@ export interface Product {
   // admin actually enters real numbers for that listing. See the backend
   // schema comment (Product.ts) for why this is architected per-listing,
   // not per physical unit.
+  // Product-level "Extra Product Offer" — see lapshark_backend/src/models/
+  // Product.ts's IExtraOffer for the authoritative shape/comments. Absent
+  // entirely on a product with no offer set.
+  extraOffer?: {
+    discountType: "fixed" | "percentage" | "specialPrice";
+    discountValue: number;
+    offerLabel?: string;
+    startAt?: string | null;
+    endAt?: string | null;
+    isActive: boolean;
+    showOnProduct: boolean;
+    showOnListing: boolean;
+    showOnHomepage: boolean;
+    minimumMarginPercent?: number;
+  };
+
   qualityReport?: {
     batteryHealthPercent?: number;
     storageHealthPercent?: number;
@@ -79,6 +95,12 @@ export interface Product {
 export interface CartItem extends Product {
   quantity: number;
   selectedConfig?: any;
+  // Present only on an Order's items (this type doubles as the order-item
+  // shape too) — the Extra Product Offer snapshot frozen at purchase time.
+  // See lapshark_backend/src/models/Order.ts's IOrder.items comment.
+  originalPrice?: number;
+  extraOfferDiscount?: number;
+  extraOfferLabel?: string;
 }
 
 export interface User {

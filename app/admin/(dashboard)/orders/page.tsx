@@ -209,10 +209,29 @@ export default function OrderManager() {
                                                     <td className="px-4 py-3">
                                                         <div className="flex items-center gap-3">
                                                             <img src={item.image} className="w-8 h-8 rounded object-cover    " alt="" />
-                                                            <span className="font-medium text-gray-900">{item.title}</span>
+                                                            <div>
+                                                                <span className="font-medium text-gray-900">{item.title}</span>
+                                                                {/* Snapshot frozen at purchase time — never recomputed
+                                                                    from the live product, so this stays accurate even
+                                                                    after the offer expires or is edited/removed. */}
+                                                                {item.extraOfferDiscount ? (
+                                                                    <div className="text-xs text-rose-600 font-medium">
+                                                                        {item.extraOfferLabel || 'Product Offer'}: -₹{item.extraOfferDiscount.toLocaleString('en-IN')}
+                                                                    </div>
+                                                                ) : null}
+                                                            </div>
                                                         </div>
                                                     </td>
-                                                    <td className="px-4 py-3 text-right">₹{item.finalPrice.toLocaleString('en-IN')}</td>
+                                                    <td className="px-4 py-3 text-right">
+                                                        {item.originalPrice ? (
+                                                            <>
+                                                                <div className="text-xs text-gray-400 line-through">₹{item.originalPrice.toLocaleString('en-IN')}</div>
+                                                                <div>₹{item.finalPrice.toLocaleString('en-IN')}</div>
+                                                            </>
+                                                        ) : (
+                                                            <>₹{item.finalPrice.toLocaleString('en-IN')}</>
+                                                        )}
+                                                    </td>
                                                     <td className="px-4 py-3 text-right">{item.quantity}</td>
                                                     <td className="px-4 py-3 text-right font-medium">₹{(item.finalPrice * item.quantity).toLocaleString('en-IN')}</td>
                                                 </tr>
@@ -221,8 +240,12 @@ export default function OrderManager() {
                                     </table>
                                 </div>
                                 <div className="flex justify-end mt-4">
-                                    <div className="text-right">
-                                        <p className="text-sm text-gray-500">Subtotal: ₹{selectedOrder.total.toLocaleString('en-IN')}</p>
+                                    <div className="text-right space-y-0.5">
+                                        {(selectedOrder as any).couponValue > 0 && (
+                                            <p className="text-sm text-gray-500">
+                                                Coupon{(selectedOrder as any).coupon ? ` (${(selectedOrder as any).coupon})` : ''}: <span className="text-rose-600 font-medium">-₹{(selectedOrder as any).couponValue.toLocaleString('en-IN')}</span>
+                                            </p>
+                                        )}
                                         <p className="text-xl font-bold text-gray-900 mt-1">Total: ₹{selectedOrder.total.toLocaleString('en-IN')}</p>
                                     </div>
                                 </div>

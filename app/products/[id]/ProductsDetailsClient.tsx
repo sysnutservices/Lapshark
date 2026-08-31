@@ -21,6 +21,8 @@ import { cn } from '@/lib/utils';
 import { trackEvent } from '@/lib/analytics';
 import { STORE_POLICIES, LOW_STOCK_THRESHOLD } from '@/lib/policies';
 import { BestForLine, ProductTagBadges } from '@/components/ecommerce/ProductBadges';
+import { ProductPromotionBadge, ProductPromotionExpiry } from '@/components/ecommerce/ProductPromotionBadge';
+import { calculateProductPrice } from '@/lib/pricing';
 import { ProductEMILine, ProductEMIOptions } from '@/components/ecommerce/ProductEMI';
 import { ConditionExplainer } from '@/components/ecommerce/ProductCondition';
 import { ProductQualityReport } from '@/components/ecommerce/ProductQualityReport';
@@ -143,8 +145,15 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
         );
     }
 
-    const finalPrice = (product?.finalPrice || 0) + (selectedRam?.price || 0) + (selectedStorage?.price || 0) + (selectedWarranty?.price || 0);
-    const originalPrice = (product?.price || 0) + (selectedRam?.price || 0) + (selectedStorage?.price || 0) + (selectedWarranty?.price || 0);
+    // Extra Product Offer applies to the base selling price only, never to
+    // config addon cost — same split every other price-computing call site
+    // (ProductCard, createOrder) uses.
+    const configAddonCost = (selectedRam?.price || 0) + (selectedStorage?.price || 0) + (selectedWarranty?.price || 0);
+    const offerPricing = calculateProductPrice(product?.finalPrice || 0, product?.extraOffer);
+    const finalPrice = offerPricing.finalPrice + configAddonCost;
+    const originalPrice = (product?.price || 0) + configAddonCost;
+    const sellingPriceWithConfig = offerPricing.sellingPrice + configAddonCost;
+    const hasOffer = !!offerPricing.offer && product?.extraOffer?.showOnProduct !== false;
 
     const galleryImages = [product.image, ...(product.images || [])].filter((img, index, self) => self.indexOf(img) === index);
     // Computed only from the live-fetched reviews, not product.rating — a
@@ -434,15 +443,20 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
 
                             <div className="flex items-baseline gap-3 md:gap-4 flex-wrap">
                                 <span className="text-4xl font-extrabold text-slate-900 tracking-tight">₹{finalPrice.toLocaleString('en-IN')}</span>
-                                {product.discountPercent > 0 && (
+                                {hasOffer ? (
+                                    <span className="text-lg md:text-xl text-slate-400 line-through font-medium">₹{sellingPriceWithConfig.toLocaleString('en-IN')}</span>
+                                ) : product.discountPercent > 0 ? (
                                     <span className="text-lg md:text-xl text-slate-400 line-through font-medium">₹{originalPrice.toLocaleString('en-IN')}</span>
-                                )}
-                                {product.discountPercent > 0 && (
+                                ) : null}
+                                {hasOffer ? (
+                                    <ProductPromotionBadge offer={offerPricing.offer} className="h-auto px-2.5 py-1" />
+                                ) : product.discountPercent > 0 ? (
                                     <Badge className="h-auto rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 hover:bg-emerald-50">
                                         {Math.round(product.discountPercent)}% off
                                     </Badge>
-                                )}
+                                ) : null}
                             </div>
+                            {hasOffer && <ProductPromotionExpiry product={product} className="mt-1" />}
                             <ProductEMILine price={finalPrice} className="mt-2" />
                             {product.stock > 0 && product.stock <= LOW_STOCK_THRESHOLD && (
                                 <p className="text-xs md:text-sm font-bold text-amber-700 mt-2">
