@@ -100,7 +100,13 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         // Admin-only data (orders, coupons, users) is never consumed by the
         // storefront — skip it there so customer pages aren't blocked on it.
         const [productsRes, blogsRes, siteRes, customerOrdersRes, ordersRes, couponsRes, usersRes] = await Promise.all([
-          api.get("/products").catch(() => ({ data: [] })),
+          // GET /products carries `public, max-age=60, stale-while-revalidate=300`
+          // for the storefront, so the admin panel was reading the browser-cached
+          // catalogue: an extra offer saved or removed in the Pricing & Offers
+          // section came back looking unchanged for minutes after a reload (no
+          // Remove button, empty form), which reads as "delete/edit does nothing".
+          // Cache-bust the admin copy only; the storefront keeps its cache.
+          api.get(isAdminRoute ? `/products?_=${Date.now()}` : "/products").catch(() => ({ data: [] })),
           // In the admin panel, pull the draft-inclusive feed so unpublished
           // posts are editable; the storefront gets the cached public one.
           isAdminRoute && token
