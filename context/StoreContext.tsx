@@ -10,6 +10,7 @@ import React, {
 
 import { Product, Order, Coupon, User, SiteConfig, BlogPost } from "../types";
 import { api } from "../api/api";
+import { useAuth } from "./AuthContext";
 
 interface StoreContextType {
   products: Product[];
@@ -83,6 +84,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const [siteConfig, setSiteConfig] = useState<SiteConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [blogs, setBlogs] = useState<BlogPost[]>([]);
+  const { user, isAdmin } = useAuth();
 
   // Initial Load from API
   useEffect(() => {
@@ -153,7 +155,15 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     };
 
     fetchAll();
-  }, []);
+    // StoreProvider mounts once at the root layout, above /admin/login — so
+    // this ran before login with no token, cached empty orders/coupons/users,
+    // and never re-ran after a successful admin login (SPA nav via
+    // router.push, no remount): the token AuthContext just saved was never
+    // picked up, so the admin Orders page stayed empty until a hard refresh.
+    // Re-running whenever auth state changes (login/logout/restore-on-reload)
+    // fixes that at the source instead of every caller of login having to
+    // remember to trigger a refetch.
+  }, [user, isAdmin]);
 
   // ------------------------
   // PRODUCT ACTIONS
