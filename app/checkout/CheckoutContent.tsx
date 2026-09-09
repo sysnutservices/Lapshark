@@ -384,7 +384,7 @@ export default function CheckoutContent() {
 
                         trackPurchaseConversion({
                             eventId: metaEventId,
-                            orderId: orderData.razorpayOrderId,
+                            orderId: orderData.order.orderId,
                             total: finalTotal,
                             items: finalCart.map(item => ({
                                 productId: item.productId,
@@ -397,7 +397,11 @@ export default function CheckoutContent() {
 
                         setIsProcessing(false);
                         clearCart();
-                        router.push(`/order-success/${orderData.razorpayOrderId}`);
+                        // The order's own orderId (LS-YYYYMMDD-NN), not
+                        // Razorpay's order_xxxxxxxxxxxxxx id — that's what
+                        // getOrderById looks up by, and what the customer
+                        // should see on the success/order-detail pages.
+                        router.push(`/order-success/${orderData.order.orderId}`);
                     } catch (verifyError) {
                         console.error("Payment verification error:", verifyError);
                         setIsProcessing(false);
