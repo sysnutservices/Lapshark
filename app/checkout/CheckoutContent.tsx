@@ -650,10 +650,10 @@ export default function CheckoutContent() {
 
                             <div className="md:hidden max-w-3xl mx-auto bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
                                 <div className="flex items-center justify-center gap-4 mb-4 md:hidden">
-                                    <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" className="h-5" alt="MC" />
-                                    <img src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" className="h-5" alt="Visa" />
-                                    <img src="https://upload.wikimedia.org/wikipedia/commons/6/6f/UPI_logo.svg" className="h-5" alt="UPI" />
-                                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/RuPay.svg/640px-RuPay.svg.png" className="h-5" alt="RuPay" />
+                                    <img src="/payment-icons/mastercard.svg" className="h-5" alt="MC" />
+                                    <img src="/payment-icons/visa.svg" className="h-5" alt="Visa" />
+                                    <img src="/payment-icons/upi.svg" className="h-5" alt="UPI" />
+                                    <img src="/payment-icons/rupay.svg" className="h-5" alt="RuPay" />
                                 </div>
                                 <button
                                     onClick={handleRazorpayPayment}
@@ -787,10 +787,10 @@ export default function CheckoutContent() {
                                         </button>
 
                                         <div className="hidden md:flex items-center justify-center gap-6 mt-6">
-                                            <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" className="h-6" alt="MC" />
-                                            <img src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" className="h-6" alt="Visa" />
-                                            <img src="https://upload.wikimedia.org/wikipedia/commons/6/6f/UPI_logo.svg" className="h-6" alt="UPI" />
-                                            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/RuPay.svg/640px-RuPay.svg.png" className="h-6" alt="RuPay" />
+                                            <img src="/payment-icons/mastercard.svg" className="h-6" alt="MC" />
+                                            <img src="/payment-icons/visa.svg" className="h-6" alt="Visa" />
+                                            <img src="/payment-icons/upi.svg" className="h-6" alt="UPI" />
+                                            <img src="/payment-icons/rupay.svg" className="h-6" alt="RuPay" />
                                         </div>
                                     </div>
                                 </div>
