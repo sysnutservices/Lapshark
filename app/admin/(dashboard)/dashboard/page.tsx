@@ -1,19 +1,24 @@
 "use client";
 
 import React from 'react';
-import { BarChart, Bar, XAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { BarChart, Bar, XAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { DollarSign, ShoppingCart, Package, Users, TrendingUp, AlertTriangle } from 'lucide-react';
 import { useStore } from '@/context/StoreContext';
+import { Order } from '@/types';
 
-const data = [
-    { name: 'Mon', sales: 400000 },
-    { name: 'Tue', sales: 300000 },
-    { name: 'Wed', sales: 200000 },
-    { name: 'Thu', sales: 278000 },
-    { name: 'Fri', sales: 189000 },
-    { name: 'Sat', sales: 239000 },
-    { name: 'Sun', sales: 349000 },
-];
+// Last 7 calendar days' real order totals, grouped by day — same
+// all-orders-regardless-of-status convention as stats.totalRevenue below,
+// so this card and that stat agree with each other.
+function weeklySales(orders: Order[]) {
+    return Array.from({ length: 7 }, (_, i) => {
+        const day = new Date();
+        day.setDate(day.getDate() - (6 - i));
+        const sales = orders
+            .filter((o) => new Date(o.date).toDateString() === day.toDateString())
+            .reduce((sum, o) => sum + o.total, 0);
+        return { name: day.toLocaleDateString('en-IN', { weekday: 'short' }), sales };
+    });
+}
 
 const StatCard = ({ title, value, icon: Icon, bgColor, color, trend }: any) => (
     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center">
@@ -29,7 +34,8 @@ const StatCard = ({ title, value, icon: Icon, bgColor, color, trend }: any) => (
 );
 
 export default function Dashboard() {
-    const { stats, orders } = useStore();
+    const { stats, orders, customers } = useStore();
+    const data = weeklySales(orders);
 
     return (
         <div className="space-y-6">
@@ -70,43 +76,27 @@ export default function Dashboard() {
                 ) : (
                     <StatCard
                         title="Customers"
-                        value="8,432"
+                        value={customers.length}
                         icon={Users}
                         color="text-orange-500"
                         bgColor="bg-orange-100"
-                        trend="+2%"
                     />
                 )}
             </div>
 
-            {/* Charts */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h3 className="font-bold text-gray-800 mb-4">Weekly Sales (₹)</h3>
-                    <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={data}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                                <Tooltip formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Sales']} />
-                                <Bar dataKey="sales" fill="#3B82F6" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h3 className="font-bold text-gray-800 mb-4">Visitor Traffic</h3>
-                    <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={data}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                                <Tooltip />
-                                <Line type="monotone" dataKey="sales" stroke="#10B981" strokeWidth={3} dot={{ r: 4 }} />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </div>
+            {/* Chart — visitor traffic already has its own real page at
+                /admin/analytics/visitors, so it isn't duplicated here. */}
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <h3 className="font-bold text-gray-800 mb-4">Weekly Sales (₹)</h3>
+                <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={data}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                            <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                            <Tooltip formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Sales']} />
+                            <Bar dataKey="sales" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                    </ResponsiveContainer>
                 </div>
             </div>
 
