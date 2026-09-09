@@ -5,7 +5,7 @@ import { useCart } from '@/context/CartContext';
 import { useStore } from '@/context/StoreContext';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, CreditCard, Lock, Truck, CheckCircle, ChevronDown, ChevronUp, ShoppingBag, MapPin, Mail, Phone, User, ShieldCheck, Edit2 } from 'lucide-react';
+import { ArrowLeft, CreditCard, Lock, Truck, CheckCircle, ChevronDown, ChevronUp, ShoppingBag, MapPin, Mail, Phone, User, ShieldCheck, Edit2, Trash2 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 import { useUserFeatures } from '@/context/UserFeatureContext';
@@ -25,7 +25,7 @@ declare global {
 }
 
 export default function CheckoutContent() {
-    const { cart, clearCart } = useCart();
+    const { cart, clearCart, removeFromCart } = useCart();
     const { products, placeOrder, validateCoupon } = useStore();
     // Live-priced, not the stale add-to-cart snapshot — same shared
     // calculation CartContent uses, so the number shown here never drifts
@@ -498,7 +498,15 @@ export default function CheckoutContent() {
                                                         <p className="whitespace-nowrap font-bold">₹{(item.livePrice * item.quantity).toLocaleString('en-IN')}</p>
                                                     </div>
                                                     <p className="text-xs text-slate-500 truncate">{item.specs.processor} • {item.specs.ram}</p>
-                                                    {item.offer && <ProductPromotionBadge offer={item.offer} className="mt-1 self-start" />}
+                                                    <div className="flex items-center justify-between mt-1">
+                                                        {item.offer ? <ProductPromotionBadge offer={item.offer} className="self-start" /> : <span />}
+                                                        <button
+                                                            onClick={() => removeFromCart(item.productId?.toString() || '')}
+                                                            className="text-red-500 text-xs font-medium hover:underline flex items-center flex-shrink-0"
+                                                        >
+                                                            <Trash2 className="w-3 h-3 mr-1" /> Remove
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         ))}
@@ -692,7 +700,15 @@ export default function CheckoutContent() {
                                                     <p className="text-sm font-bold text-slate-900 whitespace-nowrap">₹{(item.livePrice * item.quantity).toLocaleString('en-IN')}</p>
                                                 </div>
                                                 <p className="mt-1 text-xs text-slate-500 font-medium">{item.specs.processor} • {item.specs.ram}</p>
-                                                {item.offer && <ProductPromotionBadge offer={item.offer} className="mt-1.5 self-start" />}
+                                                <div className="flex items-center justify-between mt-1.5">
+                                                    {item.offer ? <ProductPromotionBadge offer={item.offer} className="self-start" /> : <span />}
+                                                    <button
+                                                        onClick={() => removeFromCart(item.productId?.toString() || '')}
+                                                        className="text-red-500 text-xs font-medium hover:underline flex items-center flex-shrink-0"
+                                                    >
+                                                        <Trash2 className="w-3 h-3 mr-1" /> Remove
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     ))}
