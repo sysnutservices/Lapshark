@@ -357,6 +357,23 @@ export default function CheckoutContent() {
                 key: orderData.key,
                 amount: orderData.amount,
                 order_id: orderData.razorpayOrderId,
+                // Without this, Razorpay's Standard Checkout has no idea who
+                // the customer is and always shows its own "enter your
+                // number" screen before the OTP step — even though we
+                // already collected it on the address form. Doesn't skip
+                // Razorpay's own OTP verification (that's their security
+                // step, not ours to remove), just the redundant re-typing.
+                // Stored address phone numbers aren't consistently
+                // formatted (some have +91, spaces, etc.) — normalize to
+                // bare digits and take the last 10 before adding +91, same
+                // approach the backend's Ekart integration uses.
+                prefill: {
+                    name: selectedAddress?.name || undefined,
+                    email: selectedAddress?.email || undefined,
+                    contact: selectedAddress?.phone
+                        ? `+91${selectedAddress.phone.replace(/\D/g, "").slice(-10)}`
+                        : undefined,
+                },
                 handler: async function (response: any) {
                     // Money has already left the customer's account at this
                     // point — Razorpay's own modal confirmed the charge.
