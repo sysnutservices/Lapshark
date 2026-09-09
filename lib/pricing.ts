@@ -124,3 +124,16 @@ export function extraOfferBadgeText(offer: ExtraOfferSnapshot): string {
   if (offer.discountType === "percentage") return `EXTRA ${offer.discountValue}% OFF`;
   return `EXTRA ₹${offer.discountAmount.toLocaleString("en-IN")} OFF`;
 }
+
+// ---- Shipping ----
+// Same split as the pricing functions above: this is the one place Cart
+// and Checkout both get these two numbers from, so they can't drift from
+// each other the way they used to (each hardcoded its own copy). The
+// backend's createOrder has its own matching copy — that one is
+// authoritative (what's actually charged); this is for display only.
+// Keep both in sync by hand if the rate/threshold ever changes.
+export const SHIPPING_THRESHOLD = 10000;
+export const SHIPPING_FLAT_RATE = 500;
+export function getShippingCost(itemSubtotal: number): number {
+  return itemSubtotal > SHIPPING_THRESHOLD ? 0 : SHIPPING_FLAT_RATE;
+}

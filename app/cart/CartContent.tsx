@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useCart } from "@/context/CartContext";
 import { useStore } from "@/context/StoreContext";
-import { priceCartItem } from "@/lib/pricing";
+import { priceCartItem, getShippingCost, SHIPPING_THRESHOLD } from "@/lib/pricing";
 import { ProductPromotionBadge } from "@/components/ecommerce/ProductPromotionBadge";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -35,9 +35,9 @@ export default function CartContent() {
     const totalPrice = pricedCart.reduce((sum, i) => sum + i.livePrice * i.quantity, 0);
     const totalOfferSavings = pricedCart.reduce((sum, i) => sum + (i.offer ? (i.originalSellingPrice - i.livePrice) * i.quantity : 0), 0);
 
-    // Mock shipping logic: Free shipping over ₹10,000
-    const shippingThreshold = 10000;
-    const shippingCost = totalPrice > shippingThreshold ? 0 : 500;
+    // Shipping — shared with Checkout via lib/pricing.ts instead of each
+    // hardcoding its own copy of the threshold/rate.
+    const shippingCost = getShippingCost(totalPrice);
     const finalTotal = totalPrice + shippingCost;
     const handleLoginSuccess = async () => {
         setShowLogin(false);
@@ -315,7 +315,7 @@ export default function CartContent() {
                                         </h4>
                                         <p className="text-xs text-slate-500">
                                             On all orders over ₹
-                                            {shippingThreshold.toLocaleString("en-IN")}
+                                            {SHIPPING_THRESHOLD.toLocaleString("en-IN")}
                                         </p>
                                     </div>
                                 </div>

@@ -14,7 +14,7 @@ import confetti from "canvas-confetti"
 import { CheckoutLogin } from '@/components/LoginComponent';
 import { trackEvent, generateEventId, trackPurchaseConversion } from '@/lib/analytics';
 import { STORE_POLICIES } from '@/lib/policies';
-import { priceCartItem } from '@/lib/pricing';
+import { priceCartItem, getShippingCost } from '@/lib/pricing';
 import { ProductPromotionBadge } from '@/components/ecommerce/ProductPromotionBadge';
 
 // Declare Razorpay on window object to avoid TS errors
@@ -118,9 +118,9 @@ export default function CheckoutContent() {
         phone: ''
     });
 
-    // Shipping logic matching Cart page
-    const shippingThreshold = 10000;
-    const shippingCost = totalPrice > shippingThreshold ? 0 : 500;
+    // Shipping — shared with the Cart page via lib/pricing.ts instead of
+    // each hardcoding its own copy of the threshold/rate.
+    const shippingCost = getShippingCost(totalPrice);
 
     // Derived, not its own state: the cart hydrates from localStorage/API
     // asynchronously, so `totalPrice` is 0 on CheckoutContent's very first
