@@ -241,6 +241,11 @@ export default function OrderManager() {
                                 </div>
                                 <div className="flex justify-end mt-4">
                                     <div className="text-right space-y-0.5">
+                                        {!!selectedOrder.shippingCost && (
+                                            <p className="text-sm text-gray-500">
+                                                Shipping: <span className="font-medium">₹{selectedOrder.shippingCost.toLocaleString('en-IN')}</span>
+                                            </p>
+                                        )}
                                         {(selectedOrder as any).couponValue > 0 && (
                                             <p className="text-sm text-gray-500">
                                                 Coupon{(selectedOrder as any).coupon ? ` (${(selectedOrder as any).coupon})` : ''}: <span className="text-rose-600 font-medium">-₹{(selectedOrder as any).couponValue.toLocaleString('en-IN')}</span>

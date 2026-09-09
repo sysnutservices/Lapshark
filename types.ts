@@ -126,6 +126,7 @@ export interface Order {
   date: string;
   mapLink: string;
   total: number;
+  shippingCost?: number;
   advanceAmount?: number;
   status: 'Pending' | 'Processing' | 'Shipped' | 'Out for Delivery' | 'Delivered' | 'Cancelled' | 'RTO';
   paymentStatus: 'Paid' | 'Pending' | 'Failed' | 'Refunded';
