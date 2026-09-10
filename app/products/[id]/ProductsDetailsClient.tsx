@@ -342,14 +342,20 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
                                 {/* next/image + priority: this is the LCP element on the
                                     highest-value page in the funnel — same reasoning as
                                     ProductCard's gallery image, but this one should load
-                                    eagerly instead of lazily since it's always above the fold. */}
+                                    eagerly instead of lazily since it's always above the fold.
+                                    No mix-blend-multiply here (unlike the gallery thumbnails
+                                    below): combined with the zoom transform above, it renders
+                                    the whole image invisible in real browsers — confirmed live,
+                                    toggling mix-blend-mode off is what makes it reappear. The
+                                    thumbnails are plain <img>, no transform, so multiply still
+                                    works fine there. */}
                                 <Image
                                     src={activeImage || product.image}
                                     alt={product.title}
                                     fill
                                     priority
                                     sizes="(max-width: 1024px) 100vw, 55vw"
-                                    className="object-contain p-6 md:p-12 mix-blend-multiply"
+                                    className="object-contain p-6 md:p-12"
                                     style={{
                                         transformOrigin: `${zoom.x}% ${zoom.y}%`,
                                         transform: zoom.active ? 'scale(2)' : 'scale(1)',
