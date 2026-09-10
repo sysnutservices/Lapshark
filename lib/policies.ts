@@ -54,7 +54,7 @@ export const STORE_POLICIES = {
   // responds within 2 hours" line in the page hero) was a separate,
   // contradictory, unsourced claim. Standardized on the one real number;
   // flagged to the business owner as needing confirmation, not guessed.
-  supportHoursLabel: "Mon-Sat, 10am - 7pm",
+  supportHoursLabel: "Mon-Sat, 10am - 8:30pm",
   supportResponseLabel: "We typically respond within 2 hours during business hours.",
 } as const;
 
