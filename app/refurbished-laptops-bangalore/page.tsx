@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, ShieldCheck, Sparkles, Battery, Wrench, Truck, Store } from "lucide-react";
 import { STORE_POLICIES } from "@/lib/policies";
-import { STORE_ADDRESS_DISPLAY, STORE_DIRECTIONS_URL, resolveStoreAddressDisplay } from "@/lib/store";
+import { STORE_DIRECTIONS_URL, resolveStoreAddressDisplay } from "@/lib/store";
 import { getProductsServer } from "@/lib/getProductsServer";
 import { getSiteConfigServer } from "@/lib/getSiteConfigServer";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
@@ -34,10 +34,15 @@ const BRAND_PAGES = [
     { brand: "Apple", label: "Apple MacBooks", href: "/refurbished-apple-macbooks-bangalore" },
 ] as const;
 
-const FAQS = [
+// A function, not a static array: STORE_ADDRESS_DISPLAY is only the
+// fallback default — this page's own "Visit Lapshark" block already shows
+// the live admin-saved address (resolveStoreAddressDisplay), so the FAQ
+// answer must use the same resolved value or the two disagree on the same
+// page.
+const getFaqs = (storeAddressDisplay: string) => [
     {
         question: "Where can I buy refurbished laptops in Bangalore?",
-        answer: `At our Banashankari store (${STORE_ADDRESS_DISPLAY}) or online at lapshark.com with delivery across Bangalore.`,
+        answer: `At our Banashankari store (${storeAddressDisplay}) or online at lapshark.com with delivery across Bangalore.`,
     },
     {
         question: "Does Lapshark provide warranty on refurbished laptops?",
@@ -61,6 +66,7 @@ const FAQS = [
     },
 ];
 
+
 export default async function RefurbishedLaptopsBangalorePage() {
     const [products, siteConfig] = await Promise.all([getProductsServer(), getSiteConfigServer()]);
     const inStock = products.filter((p) => p.stock > 0);
@@ -69,6 +75,7 @@ export default async function RefurbishedLaptopsBangalorePage() {
     );
     // Admin-saved address (siteConfig.contact.address) — see lib/store.ts.
     const storeAddressDisplay = resolveStoreAddressDisplay(siteConfig);
+    const faqs = getFaqs(storeAddressDisplay);
 
     return (
         <div className="bg-slate-50/50">
@@ -170,7 +177,7 @@ export default async function RefurbishedLaptopsBangalorePage() {
                 </section>
 
                 {/* FAQs */}
-                <FAQSection heading="Frequently Asked Questions" faqs={FAQS} />
+                <FAQSection heading="Frequently Asked Questions" faqs={faqs} />
             </div>
         </div>
     );
