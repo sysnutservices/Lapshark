@@ -7,10 +7,17 @@ import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/api/api';
 import { useEffect, useState } from 'react';
 import { Order } from '@/types';
+import { trackEvent } from '@/lib/analytics';
+import { resolveSupportPhone, resolveSupportPhoneDisplay } from '@/lib/whatsapp';
+import { useStore } from '@/context/StoreContext';
 export default function OrderDetailsContent() {
     const router = useRouter();
     const params = useParams();
     const orderId = params.orderId as string; // ✅ Get orderId from URL params
+    const { siteConfig } = useStore();
+    // Admin-saved phone (siteConfig.contact.phone) — see lib/whatsapp.ts.
+    const supportPhone = resolveSupportPhone(siteConfig);
+    const supportPhoneDisplay = resolveSupportPhoneDisplay(siteConfig);
 
     const [order, setOrder] = useState<Order | null>(null);
     const [loading, setLoading] = useState(true);
@@ -323,9 +330,13 @@ export default function OrderDetailsContent() {
                             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
                             <h3 className="font-bold text-lg mb-2">Need Help?</h3>
                             <p className="text-slate-300 text-sm mb-6">Issues with your order? Our support team is here for you.</p>
-                            <a href="tel:+918971319555" className="flex items-center gap-3 bg-white/10 p-3 rounded-xl hover:bg-white/20 transition-colors mb-2">
+                            <a
+                                href={`tel:${supportPhone}`}
+                                onClick={() => trackEvent("phone_click", { location: "order_details" })}
+                                className="flex items-center gap-3 bg-white/10 p-3 rounded-xl hover:bg-white/20 transition-colors mb-2"
+                            >
                                 <Phone className="w-5 h-5" />
-                                <span className="font-bold">+91 897 131 9555</span>
+                                <span className="font-bold">{supportPhoneDisplay}</span>
                             </a>
                             <a href="mailto:support@lapshark.com" className="flex items-center gap-3 bg-white/10 p-3 rounded-xl hover:bg-white/20 transition-colors">
                                 <Mail className="w-5 h-5" />

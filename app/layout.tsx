@@ -7,7 +7,8 @@ import { cn } from "@/lib/utils";
 import Script from "next/script";
 import { API_URL } from "@/api/api";
 import { STORE_POLICIES } from "@/lib/policies";
-import { SUPPORT_PHONE } from "@/lib/whatsapp";
+import { resolveSupportPhone } from "@/lib/whatsapp";
+import { STORE_ADDRESS, STORE_GEO, STORE_HOURS } from "@/lib/store";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
@@ -82,12 +83,11 @@ export const viewport: Viewport = {
 // max-age on /site-config, so a change shows up within about a minute.
 // The NEXT_PUBLIC_* env vars still work as a fallback for anyone who'd
 // rather set them at deploy time instead.
-async function getAnalyticsConfig() {
+async function getSiteConfig(): Promise<{ analytics?: any; contact?: { phone?: string; address?: string } }> {
     try {
         const res = await fetch(`${API_URL}/site-config`, { next: { revalidate: 60 } });
         if (!res.ok) return {};
-        const data = await res.json();
-        return data?.analytics || {};
+        return await res.json();
     } catch {
         return {};
     }
@@ -98,10 +98,14 @@ export default async function RootLayout({
 }: Readonly<{
     children: React.ReactNode;
 }>) {
-    const analyticsConfig = await getAnalyticsConfig();
+    const siteConfig = await getSiteConfig();
+    const analyticsConfig = siteConfig.analytics || {};
     const GA_MEASUREMENT_ID = analyticsConfig.gaMeasurementId || process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
     const META_PIXEL_ID = analyticsConfig.metaPixelId || process.env.NEXT_PUBLIC_META_PIXEL_ID;
     const CLARITY_PROJECT_ID = analyticsConfig.clarityProjectId || process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID;
+    // Admin-saved phone (siteConfig.contact.phone) previously had no
+    // consumer anywhere on the site — see lib/whatsapp.ts.
+    const storeTelephone = resolveSupportPhone(siteConfig);
 
     return (
         <html lang="en" className={cn("font-sans", geist.variable)}>
@@ -156,21 +160,35 @@ export default async function RootLayout({
                     dangerouslySetInnerHTML={{
                         __html: JSON.stringify({
                             "@context": "https://schema.org",
-                            "@type": "Organization",
+                            // ElectronicsStore is the most specific LocalBusiness subtype
+                            // schema.org offers that actually fits (a physical store
+                            // selling laptops) — was the generic Organization type, which
+                            // carries no local-pack signal at all.
+                            "@type": "ElectronicsStore",
                             name: "Lapshark",
                             legalName: "Sysnut Technologies",
                             url: SITE_URL,
                             logo: `${SITE_URL}/favicon.ico`,
-                            telephone: SUPPORT_PHONE,
+                            image: `${SITE_URL}/favicon.ico`,
+                            telephone: storeTelephone,
+                            // Matches STORE_POLICIES pricing tiers (budget pages run from
+                            // under ₹20,000 up) — not a guess.
+                            priceRange: "₹₹",
                             address: {
                                 "@type": "PostalAddress",
-                                streetAddress:
-                                    "36, near Vidyapeeta Circle, Vidyapeeta Layout, Ashok Nagar, Banashankari 1st Stage",
-                                addressLocality: "Bengaluru",
-                                addressRegion: "Karnataka",
-                                postalCode: "560050",
-                                addressCountry: "IN",
+                                ...STORE_ADDRESS,
                             },
+                            geo: {
+                                "@type": "GeoCoordinates",
+                                latitude: STORE_GEO.latitude,
+                                longitude: STORE_GEO.longitude,
+                            },
+                            openingHoursSpecification: STORE_HOURS.map((h) => ({
+                                "@type": "OpeningHoursSpecification",
+                                dayOfWeek: h.dayOfWeek,
+                                opens: h.opens,
+                                closes: h.closes,
+                            })),
                         }),
                     }}
                 />
@@ -195,7 +213,13 @@ export default async function RootLayout({
                     }}
                 />
                 <Providers>
-                    <LayoutContent>{children}</LayoutContent>
+                    {/* Server-fetched siteConfig as an initial value — StoreContext's
+                        own fetch is client-side (runs after mount), so without this,
+                        every page's footer/nav phone number briefly renders the
+                        SUPPORT_PHONE default before hydration catches up. Same
+                        initialX-prop pattern HomeClient already uses for the same
+                        reason (see app/page.tsx -> initialSiteConfig). */}
+                    <LayoutContent initialSiteConfig={siteConfig}>{children}</LayoutContent>
                 </Providers>
             </body>
         </html>

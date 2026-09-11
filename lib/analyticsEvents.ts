@@ -16,6 +16,8 @@ export const ANALYTICS_EVENTS = [
   "whatsapp_click",
   "whatsapp_expert_click",
   "whatsapp_product_click",
+  "phone_click",
+  "directions_click",
   "begin_checkout",
   "add_payment_info",
   "coupon_applied",
@@ -189,6 +191,10 @@ export interface AnalyticsEventPayloads {
   whatsapp_click: WhatsappClickProperties;
   whatsapp_expert_click: WhatsappClickProperties;
   whatsapp_product_click: WhatsappProductClickProperties;
+  // Same shape as whatsapp_click — a bare "where on the site" tag — so it
+  // reuses that interface instead of a near-duplicate one.
+  phone_click: WhatsappClickProperties;
+  directions_click: WhatsappClickProperties;
   remove_from_cart: RemoveFromCartProperties;
   view_item_list: ViewItemListProperties;
   select_item: SelectItemProperties;

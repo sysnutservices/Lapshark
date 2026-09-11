@@ -13,6 +13,8 @@ import { api } from '@/api/api';
 import { LoanEnquiryAlreadySuccess, LoanEnquirySuccess } from '@/components/Enquiry';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { trackEvent } from '@/lib/analytics';
+import { resolveSupportPhone, resolveSupportPhoneDisplay } from '@/lib/whatsapp';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Reveal } from '@/components/Reveal';
@@ -224,6 +226,17 @@ export default function Home({
             {/* Trust Strip — compact scan, distinct from the stats band below */}
             <Reveal className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <TrustStrip />
+            </Reveal>
+
+            {/* Bangalore local-SEO link — homepage -> Bangalore landing page,
+                the primary internal-linking path for that page. */}
+            <Reveal className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <Link
+                    href="/refurbished-laptops-bangalore"
+                    className="flex items-center justify-center gap-2 rounded-2xl border border-teal-100 bg-teal-50 px-4 py-3 text-sm font-bold text-teal-700 hover:bg-teal-100 transition-colors"
+                >
+                    Based in Bangalore? See laptops, brands, and our Banashankari store <ArrowRight className="w-4 h-4" />
+                </Link>
             </Reveal>
 
             {/* Trust Stats Band */}
@@ -702,13 +715,14 @@ export default function Home({
                         </p>
                         <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
                             <a
-                                href="tel:+918971319555"
+                                href={`tel:${resolveSupportPhone(siteConfig)}`}
+                                onClick={() => trackEvent("phone_click", { location: "homepage_expert_cta" })}
                                 className={cn(
                                     buttonVariants(),
                                     "h-auto w-full sm:w-auto rounded-xl bg-white px-8 py-3.5 text-sm font-bold text-teal-700 hover:bg-teal-50"
                                 )}
                             >
-                                <Phone className="w-4 h-4 mr-2" /> +91 897 131 9555
+                                <Phone className="w-4 h-4 mr-2" /> {resolveSupportPhoneDisplay(siteConfig)}
                             </a>
                             <Link
                                 href="/contact"
