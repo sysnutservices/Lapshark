@@ -1,6 +1,7 @@
 // app/contact/page.tsx
 import type { Metadata } from "next";
 import { ContactClient } from "./ContactClient";
+import { getSiteConfigServer } from "@/lib/getSiteConfigServer";
 export const metadata: Metadata = {
     title: "Contact Us | Lapshark",
     description: "Get in touch with support, inquiries, warranty claims, or general questions.",
@@ -15,10 +16,15 @@ export const metadata: Metadata = {
     },
 };
 
-export default function ContactPage() {
+export default async function ContactPage() {
+    // Server-fetched fallback so the phone/email/address shown on first
+    // paint aren't the hardcoded defaults — see the same pattern on
+    // <LayoutContent> in app/layout.tsx.
+    const siteConfig = await getSiteConfigServer();
+
     return (
         <main>
-            <ContactClient />
+            <ContactClient initialSiteConfig={siteConfig ?? undefined} />
         </main>
     );
 }

@@ -1,9 +1,12 @@
 "use client"
 
 import React, { useState } from 'react';
-import { Mail, Phone, MapPin, Clock, Send, MessageSquare, CheckCircle } from 'lucide-react';
-import { SEO } from '@/components/SEO';
+import { Mail, Phone, MapPin, Clock, Send, MessageSquare, CheckCircle, Navigation } from 'lucide-react';
 import { STORE_POLICIES } from '@/lib/policies';
+import { STORE_DIRECTIONS_URL, resolveStoreAddressDisplay } from '@/lib/store';
+import { resolveSupportPhone, resolveSupportPhoneDisplay } from '@/lib/whatsapp';
+import { trackEvent } from '@/lib/analytics';
+import { useStore } from '@/context/StoreContext';
 import { api } from '@/api/api';
 import {
     Accordion,
@@ -12,7 +15,24 @@ import {
     AccordionTrigger,
 } from '@/components/ui/accordion';
 
-export const ContactClient: React.FC = () => {
+interface ContactClientProps {
+    initialSiteConfig?: { contact?: { phone?: string; address?: string; email?: string } };
+}
+
+export const ContactClient: React.FC<ContactClientProps> = ({ initialSiteConfig }) => {
+    const { siteConfig: storeSiteConfig } = useStore();
+    // storeSiteConfig (client-fetched) wins once loaded; initialSiteConfig
+    // (server-fetched in page.tsx) covers the first paint — see the
+    // <LayoutContent> comment in app/layout.tsx for why this matters.
+    const siteConfig = storeSiteConfig ?? initialSiteConfig;
+    // Admin-saved phone/email/address (siteConfig.contact) — previously
+    // saved from the admin editor but never displayed anywhere, including
+    // here. See lib/whatsapp.ts and lib/store.ts.
+    const supportPhone = resolveSupportPhone(siteConfig);
+    const supportPhoneDisplay = resolveSupportPhoneDisplay(siteConfig);
+    const supportEmail = siteConfig?.contact?.email?.trim() || "support@lapshark.com";
+    const storeAddressDisplay = resolveStoreAddressDisplay(siteConfig);
+
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -98,8 +118,12 @@ export const ContactClient: React.FC = () => {
                                     </div>
                                     <div>
                                         <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Phone Support</p>
-                                        <a href="tel:+918971319555" className="text-lg font-bold text-slate-900 hover:text-teal-600 transition-colors block">
-                                            +91 897 131 9555
+                                        <a
+                                            href={`tel:${supportPhone}`}
+                                            onClick={() => trackEvent("phone_click", { location: "contact_page" })}
+                                            className="text-lg font-bold text-slate-900 hover:text-teal-600 transition-colors block"
+                                        >
+                                            {supportPhoneDisplay}
                                         </a>
                                         <p className="text-sm text-slate-500 mt-1">{STORE_POLICIES.supportHoursLabel}</p>
                                     </div>
@@ -116,8 +140,8 @@ export const ContactClient: React.FC = () => {
                                         Verified live: min-w-0 alone wasn't enough, needed both. */}
                                     <div className="min-w-0">
                                         <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Email Us</p>
-                                        <a href="mailto:support@lapshark.com" className="text-lg font-bold text-slate-900 hover:text-teal-600 transition-colors block wrap-anywhere">
-                                            support@lapshark.com
+                                        <a href={`mailto:${supportEmail}`} className="text-lg font-bold text-slate-900 hover:text-teal-600 transition-colors block wrap-anywhere">
+                                            {supportEmail}
                                         </a>
                                         {/* Was "24/7 Response Time" — contradicted the phone card's real
                                             Mon-Sat hours and the page hero's own "within 2 hours during
@@ -134,11 +158,17 @@ export const ContactClient: React.FC = () => {
                                     <div>
                                         <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Visit Store</p>
                                         <p className="text-base font-bold text-slate-900 leading-snug">
-                                            Sysnut Technologies,<br />
-                                            36, near Vidyapeeta Circle,<br />
-                                            Ashok Nagar, Banashankari 1st Stage,<br />
-                                            Bengaluru, Karnataka 560050
+                                            {storeAddressDisplay}
                                         </p>
+                                        <a
+                                            href={STORE_DIRECTIONS_URL}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            onClick={() => trackEvent("directions_click", { location: "contact_page" })}
+                                            className="inline-flex items-center gap-1.5 text-sm font-bold text-emerald-600 hover:text-emerald-700 mt-2"
+                                        >
+                                            <Navigation className="w-3.5 h-3.5" /> Get Directions
+                                        </a>
                                     </div>
                                 </div>
                             </div>

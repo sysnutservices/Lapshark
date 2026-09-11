@@ -4,6 +4,7 @@ import { API_URL } from "@/api/api";
 import { STORE_POLICIES } from "@/lib/policies";
 import ProductDetailsClient from "./ProductsDetailsClient";
 import { calculateProductPrice } from "@/lib/pricing";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 // Markdown -> plain text for meta descriptions.
 function plainText(md?: string) {
@@ -181,29 +182,13 @@ export default async function ProductPage({ params }) {
                 }}
             ></script>
 
-            {/* Breadcrumb Schema */}
-            <script
-                type="application/ld+json"
-                dangerouslySetInnerHTML={{
-                    __html: JSON.stringify({
-                        "@context": "https://schema.org",
-                        "@type": "BreadcrumbList",
-                        itemListElement: [
-                            {
-                                "@type": "ListItem",
-                                position: 1,
-                                name: "Products",
-                                item: "https://lapshark.com/products",
-                            },
-                            {
-                                "@type": "ListItem",
-                                position: 2,
-                                name: product.title,
-                                item: `https://lapshark.com/products/${id}`,
-                            },
-                        ],
-                    }),
-                }}
+            {/* Visible breadcrumb nav + matching JSON-LD — was schema-only
+                (invisible) before Breadcrumbs existed. */}
+            <Breadcrumbs
+                items={[
+                    { name: "Products", href: "/products" },
+                    { name: product.title },
+                ]}
             />
 
             <ProductDetailsClient productSlug={id} initialProduct={product} />

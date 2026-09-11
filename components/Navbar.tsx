@@ -10,15 +10,30 @@ import { useUserFeatures } from '../context/UserFeatureContext';
 import { Logo } from './Logo';
 import logo from "../assets/logo.svg";
 import { useAuth } from '@/context/AuthContext';
+import { useStore } from '@/context/StoreContext';
 import { trackEvent } from '@/lib/analytics';
-import { SUPPORT_PHONE, SUPPORT_PHONE_DISPLAY, openWhatsApp } from '@/lib/whatsapp';
+import { resolveSupportPhone, resolveSupportPhoneDisplay, openWhatsApp } from '@/lib/whatsapp';
 
-export const Navbar: React.FC = () => {
+interface NavbarProps {
+  initialSiteConfig?: { contact?: { phone?: string; address?: string } };
+}
+
+export const Navbar: React.FC<NavbarProps> = ({ initialSiteConfig }) => {
   const { totalItems } = useCart();
   const { wishlist } = useUserFeatures();
   const router = useRouter();
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const { siteConfig: storeSiteConfig } = useStore();
+  // storeSiteConfig (client-fetched) wins once loaded; initialSiteConfig
+  // (passed down from RootLayout via LayoutContent) covers the first paint
+  // — see the comment on <LayoutContent> in app/layout.tsx.
+  const siteConfig = storeSiteConfig ?? initialSiteConfig;
+  // Admin-saved phone (siteConfig.contact.phone) — see lib/whatsapp.ts.
+  // Named to match the constants they replace so every existing usage below
+  // (tel: hrefs, display text) works unchanged.
+  const SUPPORT_PHONE = resolveSupportPhone(siteConfig);
+  const SUPPORT_PHONE_DISPLAY = resolveSupportPhoneDisplay(siteConfig);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -248,7 +263,11 @@ export const Navbar: React.FC = () => {
             <div className="bg-slate-900 text-white rounded-2xl p-6 shadow-xl relative overflow-hidden mt-auto">
               <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
               <p className="text-sm text-slate-400 mb-1 font-medium uppercase tracking-wide">Need Assistance?</p>
-              <a href={`tel:${SUPPORT_PHONE}`} className="text-2xl font-bold block mb-4 tracking-tight flex items-center gap-2">
+              <a
+                href={`tel:${SUPPORT_PHONE}`}
+                onClick={() => trackEvent("phone_click", { location: "navbar_mobile_menu" })}
+                className="text-2xl font-bold block mb-4 tracking-tight flex items-center gap-2"
+              >
                 <Phone className="w-5 h-5 text-teal-400" /> {SUPPORT_PHONE_DISPLAY}
               </a>
               <button
