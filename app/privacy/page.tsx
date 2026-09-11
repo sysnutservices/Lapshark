@@ -3,7 +3,9 @@ import { Lock, Eye, Database, Globe } from 'lucide-react';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-    title: "Privacy Policy - LAPSHARK",
+    // Root layout's title template already appends " | Lapshark" — this was
+    // rendering "Privacy Policy - LAPSHARK | Lapshark".
+    title: "Privacy Policy",
     description: "We value your privacy. Learn how we collect, use, and protect your personal information.",
     alternates: {
         canonical: "https://lapshark.com/privacy",

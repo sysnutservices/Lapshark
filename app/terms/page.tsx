@@ -3,7 +3,9 @@ import { FileText } from 'lucide-react';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-    title: "Terms of Service - LAPSHARK",
+    // Root layout's title template already appends " | Lapshark" — this was
+    // rendering "Terms of Service - LAPSHARK | Lapshark".
+    title: "Terms of Service",
     description: "Read our terms and conditions regarding the use of our website and purchase of refurbished products.",
     alternates: {
         canonical: "https://lapshark.com/terms",

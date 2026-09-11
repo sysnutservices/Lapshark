@@ -8,7 +8,10 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { id } = await params;
     return {
-        title: `Order #${id} Confirmed | LapShark`,
+        // Root layout's title template already appends " | Lapshark" — this
+        // was rendering "Order #... Confirmed | LapShark | Lapshark" right
+        // after a customer completes checkout.
+        title: `Order #${id} Confirmed`,
         description: 'Thank you for your purchase!',
         robots: { index: false, follow: false },
     };

@@ -4,7 +4,9 @@ import { Metadata } from 'next';
 import { STORE_POLICIES } from '@/lib/policies';
 
 export const metadata: Metadata = {
-    title: "Returns & Refunds - LAPSHARK",
+    // Root layout's title template already appends " | Lapshark" — this was
+    // rendering "Returns & Refunds - LAPSHARK | Lapshark".
+    title: "Returns & Refunds",
     description: `Our hassle-free ${STORE_POLICIES.returnDays}-day return policy ensures you are satisfied with your purchase.`,
     alternates: {
         canonical: "https://lapshark.com/returns",

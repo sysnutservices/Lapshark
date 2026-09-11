@@ -43,8 +43,13 @@ export async function generateMetadata({ params }): Promise<Metadata> {
     const product = await getProduct(id);
 
     if (!product) {
+        // Same template-duplication issue as the found-product title below
+        // (see its comment) — kept consistent even though this branch is
+        // currently unreachable in practice (a missing product triggers
+        // notFound() in the page component itself, which renders
+        // app/not-found.tsx instead of using this metadata).
         return {
-            title: "Product Not Found | Lapshark",
+            title: "Product Not Found",
             description: "This product could not be found.",
         };
     }
