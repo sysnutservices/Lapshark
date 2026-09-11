@@ -6,11 +6,11 @@
 // import from here so the NAP can't drift between pages (drift is exactly
 // what hurts local SEO).
 //
-// Coordinates are not invented: they're the same lat/lng already embedded in
-// the existing Google Maps iframe on /contact (place id
-// 0x3bae3e2a7706d87b:0x6b45566792372579, "Sysnut Technologies"). Confirm
-// against the actual Google Business Profile before relying on precision
-// beyond "right building."
+// Coordinates/place id are the actual "Lapshark" Google Maps listing
+// (https://www.google.com/maps/place/Lapshark/@12.9352243,77.5609329,17z/
+// data=!3m1!4b1!4m6!3m5!1s0x3bae3f347dc55575:0x77cbeaf73b51c0dc), given
+// directly by the business owner — supersedes an earlier, less precise
+// pair pulled from a "Sysnut Technologies" map embed.
 export const STORE_ADDRESS = {
   streetAddress: "36, near Vidyapeeta Circle, Vidyapeeta Layout, Ashok Nagar, Banashankari 1st Stage",
   addressLocality: "Bengaluru",
@@ -33,8 +33,8 @@ export function resolveStoreAddressDisplay(siteConfig?: { contact?: { address?: 
 }
 
 export const STORE_GEO = {
-  latitude: 12.934458315693766,
-  longitude: 77.55394537599723,
+  latitude: 12.9352243,
+  longitude: 77.5609329,
 } as const;
 
 // Real store hours — the only hours claim anywhere in the codebase
@@ -45,8 +45,12 @@ export const STORE_HOURS = [
   { dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], opens: "10:00", closes: "20:30" },
 ] as const;
 
-export const STORE_MAPS_EMBED_URL =
-  "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3888.583907765104!2d77.55394537599723!3d12.934458315693766!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bae3e2a7706d87b%3A0x6b45566792372579!2sSysnut%20Technologies!5e0!3m2!1sen!2sin!4v1709462854035!5m2!1sen!2sin";
+// No Google Maps API key in this project (see the "Map Placeholder" comment
+// in ContactClient.tsx), so this uses the no-key `output=embed` form rather
+// than a hand-built `/maps/embed?pb=...` string (that param is opaque,
+// normally copy-pasted from Maps' own "Share > Embed a map" UI — hand
+// assembling one risks a subtly wrong embed).
+export const STORE_MAPS_EMBED_URL = `https://www.google.com/maps?q=Lapshark,${STORE_GEO.latitude},${STORE_GEO.longitude}&z=17&output=embed`;
 
 // A real "get directions" link (Google Maps directions, not just a passive
 // embed) — dir/?api=1 opens turn-by-turn directions to these coordinates in

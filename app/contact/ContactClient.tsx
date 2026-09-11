@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Mail, Phone, MapPin, Clock, Send, MessageSquare, CheckCircle, Navigation } from 'lucide-react';
 import { STORE_POLICIES } from '@/lib/policies';
-import { STORE_DIRECTIONS_URL, resolveStoreAddressDisplay } from '@/lib/store';
+import { STORE_DIRECTIONS_URL, STORE_MAPS_EMBED_URL, resolveStoreAddressDisplay } from '@/lib/store';
 import { resolveSupportPhone, resolveSupportPhoneDisplay } from '@/lib/whatsapp';
 import { trackEvent } from '@/lib/analytics';
 import { useStore } from '@/context/StoreContext';
@@ -300,11 +300,10 @@ export const ContactClient: React.FC<ContactClientProps> = ({ initialSiteConfig 
                         </Accordion>
                     </div>
 
-                    {/* Map Placeholder */}
+                    {/* Map */}
                     <div className="bg-slate-200 rounded-3xl h-[400px] overflow-hidden relative shadow-inner border border-slate-300">
-                        {/* Using an image placeholder for the map to keep it purely frontend without API keys */}
                         <iframe
-                            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3888.583907765104!2d77.55394537599723!3d12.934458315693766!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bae3e2a7706d87b%3A0x6b45566792372579!2sSysnut%20Technologies!5e0!3m2!1sen!2sin!4v1709462854035!5m2!1sen!2sin"
+                            src={STORE_MAPS_EMBED_URL}
                             width="100%"
                             height="100%"
                             style={{ border: 0 }}
