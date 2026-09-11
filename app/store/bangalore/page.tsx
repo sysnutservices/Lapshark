@@ -34,10 +34,13 @@ const CATEGORY_LINKS = [
     { label: "All Laptops", href: "/products" },
 ];
 
-const FAQS = [
+// A function, not a static array — see the matching comment in
+// app/refurbished-laptops-bangalore/page.tsx: this page's own NAP card
+// already shows the live admin-saved address, so the FAQ answer must match.
+const getFaqs = (storeAddressDisplay: string) => [
     {
         question: "Where exactly is the Lapshark store in Bangalore?",
-        answer: `${STORE_ADDRESS_DISPLAY}.`,
+        answer: `${storeAddressDisplay}.`,
     },
     {
         question: "What are the store's opening hours?",
@@ -62,6 +65,7 @@ export default async function StoreBangalorePage() {
     // Admin-saved phone/address (siteConfig.contact) — see lib/whatsapp.ts
     // and lib/store.ts.
     const storeAddressDisplay = resolveStoreAddressDisplay(siteConfig);
+    const faqs = getFaqs(storeAddressDisplay);
     const supportPhoneDisplay = resolveSupportPhoneDisplay(siteConfig);
 
     return (
@@ -159,7 +163,7 @@ export default async function StoreBangalorePage() {
                     <StoreCTAs location="store_bangalore_page" initialSiteConfig={siteConfig ?? undefined} />
                 </div>
 
-                <FAQSection heading="Store FAQs" faqs={FAQS} />
+                <FAQSection heading="Store FAQs" faqs={faqs} />
             </div>
         </div>
     );
