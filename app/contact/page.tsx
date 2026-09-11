@@ -3,7 +3,11 @@ import type { Metadata } from "next";
 import { ContactClient } from "./ContactClient";
 import { getSiteConfigServer } from "@/lib/getSiteConfigServer";
 export const metadata: Metadata = {
-    title: "Contact Us | Lapshark",
+    // Root layout's title template already appends " | Lapshark" — this was
+    // rendering "Contact Us | Lapshark | Lapshark" in the browser tab.
+    // OpenGraph title below is unaffected (it doesn't go through the
+    // template) and correctly keeps the brand itself.
+    title: "Contact Us",
     description: "Get in touch with support, inquiries, warranty claims, or general questions.",
     openGraph: {
         title: "Contact Us | Lapshark",
