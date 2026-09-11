@@ -38,10 +38,11 @@ export const STORE_GEO = {
 } as const;
 
 // Real store hours — the only hours claim anywhere in the codebase
-// (STORE_POLICIES.supportHoursLabel). Structured here once for schema use;
-// the free-text label stays the source of truth for display copy.
+// (STORE_POLICIES.supportHoursLabel, "Mon-Sun, 10am - 8:30pm" — open all 7
+// days). Structured here once for schema use; the free-text label stays the
+// source of truth for display copy.
 export const STORE_HOURS = [
-  { dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"], opens: "10:00", closes: "20:30" },
+  { dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], opens: "10:00", closes: "20:30" },
 ] as const;
 
 export const STORE_MAPS_EMBED_URL =
