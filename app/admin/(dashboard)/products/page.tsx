@@ -510,7 +510,15 @@ export default function ProductsPage() {
             formData.append('reviews', String(editingProduct.reviews || 0));
             formData.append('slug', editingProduct.slug || '');
 
-            const finalPrice = Math.round((editingProduct.price || 0) * (1 - (editingProduct.discountPercent || 0) / 100));
+            // finalPrice is the authoritative selling price the Selling Price
+            // field above edits directly — sent as-is, never re-derived from
+            // price*(1-discountPercent/100). That derivation is what silently
+            // overwrote the real stored finalPrice on every save (even ones
+            // that never touched pricing), since discountPercent is a rounded
+            // percentage that doesn't invert back to the exact rupee amount.
+            // Falls back to the price*(1-discountPercent/100) calc only for a
+            // brand-new product whose Selling Price field was never touched.
+            const finalPrice = editingProduct.finalPrice ?? Math.round((editingProduct.price || 0) * (1 - (editingProduct.discountPercent || 0) / 100));
             formData.append('finalPrice', String(finalPrice));
 
             formData.append('specs', JSON.stringify(specs));
@@ -1061,7 +1069,20 @@ export default function ProductsPage() {
                                                 type="number"
                                                 className={`w-full p-3 border rounded-lg outline-none ${errors.price ? 'border-red-500' : 'border-gray-300'}`}
                                                 value={editingProduct.price || ''}
-                                                onChange={handleChange}
+                                                onChange={(e) => {
+                                                    const basePrice = Number(e.target.value);
+                                                    // finalPrice (the actual selling price) is left
+                                                    // untouched — raising/lowering the MRP alone doesn't
+                                                    // change what's actually charged. discountPercent is
+                                                    // only the derived "% off" badge, recomputed here so
+                                                    // it doesn't go stale relative to the new base price.
+                                                    const finalPrice = editingProduct.finalPrice ?? 0;
+                                                    const discountPercent = basePrice > 0
+                                                        ? Math.min(100, Math.max(0, ((basePrice - finalPrice) / basePrice) * 100))
+                                                        : 0;
+                                                    setEditingProduct(prev => ({ ...prev, price: basePrice, discountPercent }));
+                                                    validateField('price', e.target.value);
+                                                }}
                                                 placeholder="0"
                                             />
                                             {errors.price && <p className="text-xs text-red-500 mt-1">{errors.price}</p>}
@@ -1073,14 +1094,23 @@ export default function ProductsPage() {
                                                 type="number"
                                                 min="0"
                                                 className="w-full p-3 border border-gray-300 rounded-lg outline-none"
-                                                value={editingProduct.price ? Math.round((editingProduct.price || 0) * (1 - (editingProduct.discountPercent || 0) / 100)) || '' : ''}
+                                                // Reads finalPrice directly — the actual stored/charged
+                                                // price — instead of re-deriving it from price and the
+                                                // (rounded, lossy) discountPercent. Re-deriving is what
+                                                // caused this field to silently disagree with the real
+                                                // product-page price by anywhere from tens to a few
+                                                // hundred rupees across the catalog.
+                                                value={editingProduct.finalPrice ?? ''}
                                                 onChange={(e) => {
                                                     const basePrice = editingProduct.price || 0;
                                                     const sellingPrice = Number(e.target.value);
+                                                    // discountPercent is now purely a derived display
+                                                    // value (the "% off" badge) — finalPrice below is
+                                                    // what actually gets charged/shown.
                                                     const discountPercent = basePrice > 0
                                                         ? Math.min(100, Math.max(0, ((basePrice - sellingPrice) / basePrice) * 100))
                                                         : 0;
-                                                    setEditingProduct(prev => ({ ...prev, discountPercent }));
+                                                    setEditingProduct(prev => ({ ...prev, finalPrice: sellingPrice, discountPercent }));
                                                 }}
                                                 placeholder={String(editingProduct.price || 0)}
                                             />
@@ -1156,9 +1186,9 @@ export default function ProductsPage() {
                                     </div>
 
                                     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg flex justify-between items-center border border-blue-100">
-                                        <span className="text-sm font-medium text-gray-700">Calculated Final Price:</span>
+                                        <span className="text-sm font-medium text-gray-700">Final Price:</span>
                                         <span className="font-bold text-2xl text-blue-600">
-                                            ₹{Math.round((editingProduct.price || 0) * (1 - (editingProduct.discountPercent || 0) / 100)).toLocaleString('en-IN')}
+                                            ₹{(editingProduct.finalPrice ?? 0).toLocaleString('en-IN')}
                                         </span>
                                     </div>
                                 </div>
