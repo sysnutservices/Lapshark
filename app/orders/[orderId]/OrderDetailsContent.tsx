@@ -228,7 +228,7 @@ export default function OrderDetailsContent() {
                                                 </h3>
                                                 <span className="text-lg font-bold text-slate-900 mt-1 md:mt-0 whitespace-nowrap">₹{item.finalPrice.toLocaleString('en-IN')}</span>
                                             </div>
-                                            <p className="text-sm text-slate-500 mb-2">{item?.selectedConfig?.ram} RAM • {item?.selectedConfig?.storage}</p>
+                                            <p className="text-sm text-slate-500 mb-2">{[item?.selectedConfig?.ram && `${item.selectedConfig.ram} RAM`, item?.selectedConfig?.storage].filter(Boolean).join(' • ')}</p>
                                             <div className="flex items-center gap-4 text-sm text-slate-500">
                                                 <span className="font-medium bg-slate-100 px-2 py-0.5 rounded">Qty: {item.quantity}</span>
                                                 <span>Total: <span className="font-bold text-slate-900">₹{(item.finalPrice * item.quantity).toLocaleString('en-IN')}</span></span>
