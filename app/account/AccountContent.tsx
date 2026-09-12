@@ -586,7 +586,7 @@ const OrderDetailsModal: React.FC<{ order: Order; onClose: () => void }> = ({ or
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
             <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full my-8 max-h-[90vh] overflow-y-auto">
                 {/* Header */}
-                <div className="sticky top-0 bg-gradient-to-r from-slate-900 to-slate-800 text-white p-6 rounded-t-2xl flex items-center justify-between z-10">
+                <div className="sticky top-0 bg-gradient-to-r from-slate-900 to-slate-800 text-white p-6 rounded-t-2xl flex items-center justify-between z-20">
                     <div>
                         <h2 className="text-2xl font-bold mb-1">Order Details</h2>
                         <p className="text-slate-300 text-sm font-medium uppercase">#{order.orderId}</p>
@@ -674,7 +674,7 @@ const OrderDetailsModal: React.FC<{ order: Order; onClose: () => void }> = ({ or
                                 </div>
 
                                 {timeline.map((item, index) => (
-                                    <div key={index} className="flex flex-col items-center relative z-10 flex-1">
+                                    <div key={index} className="flex flex-col items-center relative z-10 flex-1 min-w-0">
                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 transition-all ${item.completed
                                             ? 'bg-teal-600 text-white'
                                             : 'bg-white border-2 border-slate-300 text-slate-400'
