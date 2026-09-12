@@ -664,7 +664,7 @@ const OrderDetailsModal: React.FC<{ order: Order; onClose: () => void }> = ({ or
                                 <Truck className="w-5 h-5 text-slate-600" />
                                 Order Timeline
                             </h3>
-                            <div className="flex items-center justify-between relative gap-1">
+                            <div className="flex items-center justify-between relative gap-2">
                                 {/* Progress Line */}
                                 <div className="absolute top-5 left-0 right-0 h-1 bg-slate-200">
                                     <div
