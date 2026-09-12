@@ -151,7 +151,7 @@ export default function WarrantyCardContent() {
                                     <div className="min-w-0">
                                         <p className="font-bold text-slate-900">{item.title}</p>
                                         <p className="text-sm text-slate-500">
-                                            {item.selectedConfig?.ram} • {item.selectedConfig?.storage} • Qty: {item.quantity}
+                                            {[item.selectedConfig?.ram, item.selectedConfig?.storage, `Qty: ${item.quantity}`].filter(Boolean).join(' • ')}
                                         </p>
                                         <p className="text-xs text-slate-400 mt-1">Serial number: assigned at dispatch</p>
                                     </div>
