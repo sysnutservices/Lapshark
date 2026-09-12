@@ -164,6 +164,19 @@ export default function WarrantyCardContent() {
                                         <p className="text-sm text-slate-500">
                                             {[item.selectedConfig?.ram, item.selectedConfig?.storage, `Qty: ${item.quantity}`].filter(Boolean).join(' • ')}
                                         </p>
+                                        {/* Product.specs snapshot, frozen at order-creation time
+                                            (orderController.ts's createOrder) — undefined on any
+                                            order placed before that field existed, so this simply
+                                            doesn't render rather than falling back to a live
+                                            product lookup that could show a spec sheet that's
+                                            since changed. Processor/display/graphics/os only —
+                                            ram/storage are already shown above from the actual
+                                            purchased config, not the base product spec sheet. */}
+                                        {item.specs && (
+                                            <p className="text-xs text-slate-400 mt-1">
+                                                {[item.specs.processor, item.specs.display, item.specs.graphics, item.specs.os].filter(Boolean).join(' • ')}
+                                            </p>
+                                        )}
                                         {/* Nothing in the system captures a real serial today (no
                                             admin flow sets item.serialNumber) — shows the real one
                                             the moment something does, without inventing a value. */}
@@ -172,7 +185,17 @@ export default function WarrantyCardContent() {
                                         </p>
                                     </div>
                                     <div className="text-left sm:text-right flex-shrink-0">
-                                        <span className="inline-flex items-center gap-1.5 bg-teal-50 text-teal-700 border border-teal-200 px-3 py-1 rounded-full text-xs font-bold">
+                                        {/* Same strikethrough-original-price convention as the
+                                            order details page and admin orders page. */}
+                                        {item.originalPrice ? (
+                                            <p className="text-sm">
+                                                <span className="text-slate-400 line-through mr-1.5">₹{item.originalPrice.toLocaleString('en-IN')}</span>
+                                                <span className="font-bold text-slate-900">₹{item.finalPrice.toLocaleString('en-IN')}</span>
+                                            </p>
+                                        ) : (
+                                            <p className="text-sm font-bold text-slate-900">₹{item.finalPrice.toLocaleString('en-IN')}</p>
+                                        )}
+                                        <span className="inline-flex items-center gap-1.5 bg-teal-50 text-teal-700 border border-teal-200 px-3 py-1 rounded-full text-xs font-bold mt-1">
                                             <ShieldCheck className="w-3.5 h-3.5" /> {warrantyLabel}
                                         </span>
                                         <p className="text-xs text-slate-500 mt-1.5">Valid until {formatDate(expiresOn)}</p>
