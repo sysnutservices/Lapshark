@@ -33,7 +33,10 @@ const MarqueeBar = () => {
     ];
 
     return (
-        <div className="bg-teal-600 text-white overflow-hidden py-3 relative z-30">
+        // id targeted by print CSS on pages that need to hide site chrome
+        // (e.g. the warranty card) — this is a plain div, not a <nav>, so a
+        // print rule that only hides <nav>/<footer> misses it.
+        <div id="site-marquee" className="bg-teal-600 text-white overflow-hidden py-3 relative z-30">
             <div className="flex animate-marquee whitespace-nowrap items-center">
                 {[...Array(4)].map((_, i) => (
                     <React.Fragment key={i}>

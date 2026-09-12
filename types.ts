@@ -112,6 +112,9 @@ export interface CartItem extends Product {
   // not to be confused with selectedConfig's raw client-submitted values.
   storage?: ConfigOption;
   warranty?: ConfigOption;
+  // Not set by any existing flow (no admin UI captures it yet) — present so
+  // the warranty card can show the real serial once one exists.
+  serialNumber?: string;
 }
 
 export interface User {

@@ -11,7 +11,9 @@ export const CompareBar: React.FC = () => {
     if (compareList.length === 0) return null;
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-2xl z-50 animate-in slide-in-from-bottom-5">
+        // id targeted by print CSS (e.g. the warranty card) to keep this
+        // fixed-position bar out of printed output.
+        <div id="compare-bar" className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-2xl z-50 animate-in slide-in-from-bottom-5">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
 
                 <div className="flex items-center space-x-6">

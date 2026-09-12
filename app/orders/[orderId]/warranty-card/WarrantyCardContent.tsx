@@ -93,19 +93,30 @@ export default function WarrantyCardContent() {
     const purchaseDate = order.paidAt || order.date;
 
     return (
-        <div className="bg-slate-100 min-h-screen py-8 md:py-12 print:bg-white print:py-0">
-            {/* Site nav/footer live in the root layout, outside this
-                component's DOM — hiding them by tag is the only way to get a
-                clean print without touching every other page. */}
+        <div className="bg-slate-100 min-h-screen py-8 md:py-12 print:bg-white print:py-0 print:min-h-0">
+            {/* Site chrome (marquee/nav/footer/compare bar/cookie banner) lives
+                in the root layout, outside this component's DOM — hiding it by
+                id/tag here is the only way to get a clean print without
+                touching every other page. @page controls the actual sheet:
+                A4, with a modest margin so nothing is clipped and there's no
+                accidental second page from the default browser margin. */}
             <style jsx global>{`
                 @media print {
-                    nav, footer, #warranty-card-toolbar { display: none !important; }
-                    body { background: white !important; }
+                    @page {
+                        size: A4 portrait;
+                        margin: 12mm;
+                    }
+                    nav, footer, #site-marquee, #compare-bar, #cookie-consent { display: none !important; }
+                    html, body { background: white !important; }
+                    .warranty-card-sheet, .warranty-card-sheet * {
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                    }
                 }
             `}</style>
 
-            <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div id="warranty-card-toolbar" className="flex items-center justify-between mb-6 print:hidden">
+            <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 print:max-w-none print:px-0">
+                <div className="flex items-center justify-between mb-6 print:hidden">
                     <button onClick={() => router.push(`/orders/${order.orderId}`)} className="flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-slate-900">
                         <ArrowLeft className="w-4 h-4" /> Back to Order
                     </button>
@@ -114,9 +125,9 @@ export default function WarrantyCardContent() {
                     </button>
                 </div>
 
-                <div className="bg-white rounded-3xl shadow-sm border border-slate-200 print:border-0 print:shadow-none overflow-hidden">
+                <div className="warranty-card-sheet bg-white rounded-3xl shadow-sm border border-slate-200 print:border-0 print:shadow-none print:rounded-none overflow-hidden">
                     {/* Header */}
-                    <div className="bg-slate-900 text-white p-6 md:p-8 flex items-center justify-between">
+                    <div className="bg-slate-900 text-white p-6 md:p-8 print:p-6 flex items-center justify-between print:break-inside-avoid">
                         <div>
                             <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">LAPSHARK</h1>
                             <p className="text-slate-300 text-sm">The Laptop Store</p>
@@ -128,7 +139,7 @@ export default function WarrantyCardContent() {
                     </div>
 
                     {/* Customer & Purchase Info */}
-                    <div className="grid grid-cols-2 gap-6 p-6 md:p-8 border-b border-dashed border-slate-200">
+                    <div className="grid grid-cols-2 gap-6 p-6 md:p-8 print:p-6 border-b border-dashed border-slate-200 print:break-inside-avoid">
                         <div>
                             <p className="text-xs font-bold text-slate-400 uppercase mb-1">Customer</p>
                             <p className="font-bold text-slate-900">{order.customerName}</p>
@@ -147,13 +158,18 @@ export default function WarrantyCardContent() {
                             const expiresOn = addMonths(purchaseDate, months);
                             const warrantyLabel = item.warranty?.label || STORE_POLICIES.warrantyLabel;
                             return (
-                                <div key={idx} className="p-6 md:p-8 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
+                                <div key={idx} className="p-6 md:p-8 print:p-6 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between print:break-inside-avoid">
                                     <div className="min-w-0">
                                         <p className="font-bold text-slate-900">{item.title}</p>
                                         <p className="text-sm text-slate-500">
                                             {[item.selectedConfig?.ram, item.selectedConfig?.storage, `Qty: ${item.quantity}`].filter(Boolean).join(' • ')}
                                         </p>
-                                        <p className="text-xs text-slate-400 mt-1">Serial number: assigned at dispatch</p>
+                                        {/* Nothing in the system captures a real serial today (no
+                                            admin flow sets item.serialNumber) — shows the real one
+                                            the moment something does, without inventing a value. */}
+                                        <p className="text-xs text-slate-400 mt-1">
+                                            {item.serialNumber ? `Serial Number: ${item.serialNumber}` : 'Serial number: assigned at dispatch'}
+                                        </p>
                                     </div>
                                     <div className="text-left sm:text-right flex-shrink-0">
                                         <span className="inline-flex items-center gap-1.5 bg-teal-50 text-teal-700 border border-teal-200 px-3 py-1 rounded-full text-xs font-bold">
@@ -166,24 +182,40 @@ export default function WarrantyCardContent() {
                         })}
                     </div>
 
-                    {/* Coverage summary — reuses STORE_POLICIES so this never
-                        drifts from the actual published warranty policy. */}
-                    <div className="grid sm:grid-cols-2 gap-6 p-6 md:p-8 bg-slate-50 border-t border-slate-100">
+                    {/* Coverage summary. Wording matches the published policy at
+                        /warranty (WarrantyContent.tsx) and STORE_POLICIES —
+                        battery: covered only on complete failure, not
+                        wear-related capacity loss; exclusions match that
+                        page's "What is Not Covered" list — just written in
+                        plainer customer-facing language, not a different
+                        policy. */}
+                    <div className="grid sm:grid-cols-2 gap-6 p-6 md:p-8 print:p-6 bg-slate-50 border-t border-slate-100 print:break-inside-avoid">
                         <div>
                             <h3 className="text-sm font-bold text-green-700 mb-2 flex items-center gap-1.5"><CheckCircle className="w-4 h-4" /> Covered</h3>
-                            <p className="text-xs text-slate-600 leading-relaxed">Screen, motherboard, keyboard, hard drive & RAM, and original accessories against manufacturing defects. {STORE_POLICIES.batteryPolicyLabel}</p>
+                            <p className="text-xs text-slate-600 leading-relaxed">Screen, motherboard, keyboard, SSD/HDD, RAM, charging adapter and supplied accessories against manufacturing defects. Battery is covered for complete failure during the warranty period; normal battery-capacity degradation due to usage is not covered.</p>
                         </div>
                         <div>
                             <h3 className="text-sm font-bold text-red-700 mb-2 flex items-center gap-1.5"><XCircle className="w-4 h-4" /> Not Covered</h3>
-                            <p className="text-xs text-slate-600 leading-relaxed">Physical/liquid damage, unauthorized repairs, removed serial numbers, and normal wear. Full terms at lapshark.com/warranty.</p>
+                            <p className="text-xs text-slate-600 leading-relaxed">Physical, liquid or accidental damage, unauthorized repairs or modifications, tampered or removed serial numbers, normal wear and tear, software/OS issues, viruses, malware and customer-installed software. Full terms at lapshark.com/warranty.</p>
                         </div>
                     </div>
 
-                    {/* Claim / support */}
-                    <div className="p-6 md:p-8 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    {/* Data-loss disclaimer — deliberately small/muted, matches
+                        the same policy already stated on /warranty under
+                        "Your Responsibilities". */}
+                    <p className="px-6 md:px-8 print:px-6 pt-4 text-[11px] text-slate-400 leading-relaxed print:break-inside-avoid">
+                        <strong className="font-semibold text-slate-500">Data:</strong> Customers are responsible for backing up their data before service. Lapshark is not responsible for data loss during diagnosis, repair or replacement.
+                    </p>
+
+                    {/* Claim / support. Shipping line reflects the actual
+                        policy on /warranty's "Shipping & Handling" section —
+                        not invented here. Contact details stay fully dynamic
+                        via resolveSupportPhone/Display (siteConfig), same as
+                        the order details page. */}
+                    <div className="p-6 md:p-8 print:p-6 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:break-inside-avoid">
                         <div className="text-sm text-slate-600">
                             <p className="font-bold text-slate-900 mb-1">To raise a warranty claim</p>
-                            <p>Contact support with this card and your order ID as proof of purchase. Non-transferable — valid for the original purchaser only.</p>
+                            <p>Contact support with this warranty card, your Order ID, and your purchase details as proof of purchase. Non-transferable — valid for the original purchaser only. Lapshark covers shipping for approved warranty claims; return shipping may apply if a claim is found ineligible.</p>
                         </div>
                         <div className="flex flex-col gap-1.5 text-sm flex-shrink-0">
                             <a href={`tel:${supportPhone}`} className="flex items-center gap-2 font-bold text-slate-900"><Phone className="w-4 h-4 text-teal-600" /> {supportPhoneDisplay}</a>
