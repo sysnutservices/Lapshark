@@ -155,7 +155,7 @@ export default function OrderManager() {
                                 <div className="space-y-1">
                                     <label className="text-xs font-bold text-gray-400 uppercase">Customer</label>
                                     <p className="font-medium text-gray-900">{selectedOrder.customerName}</p>
-                                    <p className="text-sm text-gray-500">john@example.com (Mock)</p>
+                                    <p className="text-sm text-gray-500">{selectedOrder.shippingAddress?.phone}</p>
                                 </div>
                                 <div className="space-y-1">
                                     <label className="text-xs font-bold text-gray-400 uppercase">Order Info</label>
