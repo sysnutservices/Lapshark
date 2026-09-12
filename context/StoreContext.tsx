@@ -49,6 +49,7 @@ interface StoreContextType {
   // Orders
   placeOrder: (order: Order) => Promise<void>;
   updateOrderStatus: (id: string, status: Order["status"]) => Promise<Order>;
+  setItemSerialNumber: (orderId: string, itemId: string, serialNumber: string) => Promise<Order>;
 
   // Coupons
   addCoupon: (coupon: Coupon) => Promise<void>;
@@ -258,6 +259,23 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     return updated;
   };
 
+  // Set during fulfillment/dispatch (admin orders page), not at checkout —
+  // a real unit isn't picked for the order yet at order-creation time.
+  // Overwrite protection is the caller's job (the admin UI requires an
+  // explicit "Edit" action before resubmitting an already-assigned value);
+  // this call itself will happily replace an existing value, same as
+  // updateOrderStatus above does for order.status.
+  const setItemSerialNumber = async (orderId: string, itemId: string, serialNumber: string) => {
+    const res = await api.put(
+      `/orders/${orderId}/items/${itemId}/serial-number`,
+      { serialNumber },
+      { headers: authHeaders() }
+    );
+    const updated = res.data.order as Order;
+    setOrders(prev => prev.map(o => (o.orderId === orderId ? updated : o)));
+    return updated;
+  };
+
   // ------------------------
   // COUPONS
   // ------------------------
@@ -362,6 +380,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         deleteProduct,
         placeOrder,
         updateOrderStatus,
+        setItemSerialNumber,
         addCoupon,
         updateCoupon,
         validateCoupon,

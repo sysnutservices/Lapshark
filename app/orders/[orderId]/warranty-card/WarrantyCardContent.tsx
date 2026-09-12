@@ -215,7 +215,7 @@ export default function WarrantyCardContent() {
                     <div className="p-6 md:p-8 print:p-6 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:break-inside-avoid">
                         <div className="text-sm text-slate-600">
                             <p className="font-bold text-slate-900 mb-1">To raise a warranty claim</p>
-                            <p>Contact support with this warranty card, your Order ID, and your purchase details as proof of purchase. Non-transferable — valid for the original purchaser only. Lapshark covers shipping for approved warranty claims; return shipping may apply if a claim is found ineligible.</p>
+                            <p>Contact support with this warranty card, your Order ID, and your purchase details as proof of purchase. Non-transferable — valid for the original purchaser only. If warranty service is required for a covered defect, Lapshark covers shipping costs; if ineligible, you may be responsible.</p>
                         </div>
                         <div className="flex flex-col gap-1.5 text-sm flex-shrink-0">
                             <a href={`tel:${supportPhone}`} className="flex items-center gap-2 font-bold text-slate-900"><Phone className="w-4 h-4 text-teal-600" /> {supportPhoneDisplay}</a>

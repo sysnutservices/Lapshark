@@ -3,14 +3,43 @@
 import React, { useState } from 'react';
 import { useStore } from '@/context/StoreContext';
 import { Order } from '@/types';
-import { Eye, Search, Filter, ChevronDown, Check, X, Clock, Truck, Package } from 'lucide-react';
+import { Eye, Search, Filter, ChevronDown, Check, X, Clock, Truck, Package, Pencil, ShieldCheck } from 'lucide-react';
 
 export default function OrderManager() {
-    const { orders, updateOrderStatus } = useStore();
+    const { orders, updateOrderStatus, setItemSerialNumber } = useStore();
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('All');
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [statusUpdating, setStatusUpdating] = useState(false);
+    // Serial number capture, keyed by item _id — null/undefined means "not
+    // currently editing this row" (shows the saved value + Edit button, or
+    // an empty input if nothing's saved yet).
+    const [editingItemId, setEditingItemId] = useState<string | null>(null);
+    const [serialInput, setSerialInput] = useState('');
+    const [savingSerialItemId, setSavingSerialItemId] = useState<string | null>(null);
+
+    const startEditingSerial = (itemId: string, currentValue?: string) => {
+        setEditingItemId(itemId);
+        setSerialInput(currentValue || '');
+    };
+
+    const saveSerial = async (item: { _id?: string }) => {
+        if (!selectedOrder || !item._id) return;
+        const trimmed = serialInput.trim();
+        if (!trimmed) return;
+        setSavingSerialItemId(item._id);
+        try {
+            const updated = await setItemSerialNumber(selectedOrder.orderId, item._id, trimmed);
+            setSelectedOrder(updated);
+            setEditingItemId(null);
+        } catch (err: any) {
+            // Same pattern as the status-update error handling below —
+            // covers the 409 duplicate-serial response from the backend.
+            alert(err?.response?.data?.message || "Couldn't save serial number");
+        } finally {
+            setSavingSerialItemId(null);
+        }
+    };
 
     const filteredOrders = orders.filter(order => {
         const matchesSearch =
@@ -205,7 +234,8 @@ export default function OrderManager() {
                                         </thead>
                                         <tbody className="divide-y">
                                             {selectedOrder.items.map((item, idx) => (
-                                                <tr key={idx}>
+                                                <React.Fragment key={idx}>
+                                                <tr>
                                                     <td className="px-4 py-3">
                                                         <div className="flex items-center gap-3">
                                                             <img src={item.image} className="w-8 h-8 rounded object-cover    " alt="" />
@@ -235,6 +265,63 @@ export default function OrderManager() {
                                                     <td className="px-4 py-3 text-right">{item.quantity}</td>
                                                     <td className="px-4 py-3 text-right font-medium">₹{(item.finalPrice * item.quantity).toLocaleString('en-IN')}</td>
                                                 </tr>
+                                                {/* Serial number — captured here at fulfillment time, not at
+                                                    order creation, since a real unit isn't picked for the
+                                                    order until now. Keyed to this specific item (item._id),
+                                                    never the whole order, so a multi-item order gets one
+                                                    serial per laptop. Warranty card reads item.serialNumber
+                                                    directly — nothing else to wire up once this saves. */}
+                                                <tr className="bg-gray-50/50">
+                                                    <td colSpan={4} className="px-4 py-2.5">
+                                                        {item.serialNumber && editingItemId !== item._id ? (
+                                                            <div className="flex items-center gap-2 text-sm">
+                                                                <span className="text-gray-500">Serial Number:</span>
+                                                                <span className="font-mono font-medium text-gray-900">{item.serialNumber}</span>
+                                                                <span className="inline-flex items-center gap-1 text-green-600 text-xs font-bold">
+                                                                    <ShieldCheck className="w-3.5 h-3.5" /> Assigned
+                                                                </span>
+                                                                <button
+                                                                    onClick={() => startEditingSerial(item._id!, item.serialNumber)}
+                                                                    className="ml-auto flex items-center gap-1 text-xs font-bold text-gray-500 hover:text-blue-600"
+                                                                >
+                                                                    <Pencil className="w-3.5 h-3.5" /> Edit
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="flex items-center gap-2">
+                                                                <label className="text-sm text-gray-500 flex-shrink-0">Serial Number</label>
+                                                                <input
+                                                                    type="text"
+                                                                    autoFocus={editingItemId === item._id}
+                                                                    placeholder="Scan or type serial number"
+                                                                    value={editingItemId === item._id ? serialInput : ''}
+                                                                    onFocus={() => { if (editingItemId !== item._id) startEditingSerial(item._id!, ''); }}
+                                                                    onChange={(e) => setSerialInput(e.target.value)}
+                                                                    // A USB barcode/QR scanner types the code then sends
+                                                                    // Enter — this saves on Enter with no extra wiring.
+                                                                    onKeyDown={(e) => { if (e.key === 'Enter') saveSerial(item); }}
+                                                                    className="flex-1 px-3 py-1.5 border rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                />
+                                                                <button
+                                                                    onClick={() => saveSerial(item)}
+                                                                    disabled={savingSerialItemId === item._id || !serialInput.trim()}
+                                                                    className="px-3 py-1.5 rounded-lg text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                                                                >
+                                                                    {savingSerialItemId === item._id ? 'Saving...' : 'Save'}
+                                                                </button>
+                                                                {item.serialNumber && (
+                                                                    <button
+                                                                        onClick={() => setEditingItemId(null)}
+                                                                        className="text-xs font-bold text-gray-400 hover:text-gray-600 flex-shrink-0"
+                                                                    >
+                                                                        Cancel
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                                </React.Fragment>
                                             ))}
                                         </tbody>
                                     </table>
