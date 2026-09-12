@@ -171,7 +171,7 @@ export default function OrderDetailsContent() {
                                                             <Clock className="w-5 h-5" />
                                                         )}
                                                     </div>
-                                                    <span className={`text-xs font-bold text-center ${isCompleted ? 'text-slate-900' : 'text-slate-500'
+                                                    <span className={`text-[10px] sm:text-xs font-bold text-center break-words ${isCompleted ? 'text-slate-900' : 'text-slate-500'
                                                         }`}>
                                                         {step}
                                                     </span>
