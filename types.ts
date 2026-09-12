@@ -92,6 +92,13 @@ export interface Product {
   };
 }
 
+// Mirrors the backend's IConfigOption (lapshark_backend/src/models/Product.ts).
+export interface ConfigOption {
+  label: string;
+  value: string;
+  price: number;
+}
+
 export interface CartItem extends Product {
   quantity: number;
   selectedConfig?: any;
@@ -101,6 +108,10 @@ export interface CartItem extends Product {
   originalPrice?: number;
   extraOfferDiscount?: number;
   extraOfferLabel?: string;
+  // Server-verified selection snapshot (orderController.ts's createOrder),
+  // not to be confused with selectedConfig's raw client-submitted values.
+  storage?: ConfigOption;
+  warranty?: ConfigOption;
 }
 
 export interface User {
@@ -124,6 +135,9 @@ export interface Order {
   customerName: string;
   customerEmail?: string;
   date: string;
+  // Set once by markOrderPaid on the backend (Order.ts's IOrder.paidAt) —
+  // absent on any order that hasn't been paid yet.
+  paidAt?: string;
   mapLink: string;
   total: number;
   shippingCost?: number;

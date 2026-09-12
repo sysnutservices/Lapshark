@@ -1,7 +1,7 @@
 
 "use client";
 
-import { ArrowLeft, MapPin, CreditCard, Package, Truck, CheckCircle, Clock, XCircle, ShoppingBag, Phone, HelpCircle, ChevronRight, Copy, Mail, Check } from 'lucide-react';
+import { ArrowLeft, MapPin, CreditCard, Package, Truck, CheckCircle, Clock, XCircle, ShoppingBag, Phone, HelpCircle, ChevronRight, Copy, Mail, Check, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/api/api';
@@ -119,6 +119,11 @@ export default function OrderDetailsContent() {
                         <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors">
                             <HelpCircle className="w-4 h-4" /> Need Help?
                         </button>
+                        {order.paymentStatus === 'Paid' && (
+                            <Link href={`/orders/${order.orderId}/warranty-card`} className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors">
+                                <ShieldCheck className="w-4 h-4" /> Warranty Card
+                            </Link>
+                        )}
                         {order.status === 'Delivered' && (
                             <button className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-bold hover:bg-teal-700 transition-colors shadow-lg shadow-teal-200">
                                 <ShoppingBag className="w-4 h-4" /> Buy Again

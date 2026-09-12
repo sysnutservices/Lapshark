@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
-    Package, MapPin, LogOut, LogIn, Settings, Heart, ShoppingBag, X, CreditCard, Truck, CheckCircle, Clock, XCircle, ChevronRight
+    Package, MapPin, LogOut, LogIn, Settings, Heart, ShoppingBag, X, CreditCard, Truck, CheckCircle, Clock, XCircle, ChevronRight, ShieldCheck
 } from 'lucide-react';
 import { api } from '@/api/api';
 import { CheckoutLogin } from '@/components/LoginComponent';
@@ -693,6 +693,22 @@ const OrderDetailsModal: React.FC<{ order: Order; onClose: () => void }> = ({ or
                                 ))}
                             </div>
                         </div>
+                    )}
+
+                    {/* Warranty Card — same gate markOrderPaid uses server-side
+                        to fire the WhatsApp confirmation, so this only shows
+                        once the order is genuinely paid for. */}
+                    {order.paymentStatus === 'Paid' && (
+                        <Link
+                            href={`/orders/${order.orderId}/warranty-card`}
+                            className="flex items-center justify-between gap-3 bg-teal-50 hover:bg-teal-100 transition-colors rounded-xl p-4 border border-teal-200"
+                        >
+                            <div className="flex items-center gap-3">
+                                <ShieldCheck className="w-5 h-5 text-teal-700" />
+                                <span className="font-bold text-teal-900 text-sm">View Warranty Card</span>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-teal-700" />
+                        </Link>
                     )}
 
                     {/* Cancelled Status */}
