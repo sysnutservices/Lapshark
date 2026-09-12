@@ -154,7 +154,7 @@ export default function OrderDetailsContent() {
                                         style={{ width: `${(currentStepIndex / (steps.length - 1)) * 100}%` }}
                                     ></div>
 
-                                    <div className="flex justify-between">
+                                    <div className="flex justify-between gap-1">
                                         {steps.map((step, index) => {
                                             const isCompleted = index <= currentStepIndex;
                                             const isCurrent = index === currentStepIndex;
