@@ -160,7 +160,7 @@ export default function OrderDetailsContent() {
                                             const isCurrent = index === currentStepIndex;
 
                                             return (
-                                                <div key={index} className="flex flex-col items-center relative z-10 flex-1">
+                                                <div key={index} className="flex flex-col items-center relative z-10 flex-1 min-w-0">
                                                     <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 transition-all ${isCompleted
                                                         ? 'bg-green-500 text-white'
                                                         : 'bg-white border-2 border-slate-300 text-slate-400'
