@@ -34,7 +34,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (token) {
       try {
         const decoded: any = jwtDecode(token);
-        setIsAdmin(decoded?.role === "admin");
+        // jwtDecode only base64-decodes the payload, it never checks exp —
+        // without this, a token past its own expiry still reads as "logged
+        // in" here until some API call happens to fail against the backend
+        // (which does enforce exp). Catch it proactively on mount instead.
+        if (decoded?.exp && decoded.exp * 1000 < Date.now()) {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          setUser(null);
+          setIsAdmin(false);
+        } else {
+          setIsAdmin(decoded?.role === "admin");
+        }
       } catch {
         localStorage.removeItem("token");
       }
