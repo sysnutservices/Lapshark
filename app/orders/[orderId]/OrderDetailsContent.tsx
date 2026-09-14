@@ -10,6 +10,19 @@ import { Order } from '@/types';
 import { trackEvent } from '@/lib/analytics';
 import { resolveSupportPhone, resolveSupportPhoneDisplay } from '@/lib/whatsapp';
 import { useStore } from '@/context/StoreContext';
+
+// Mirrors lapshark_backend/src/utils/cancellation.ts's CANCELLATION_REASONS —
+// keep in sync if that list ever changes.
+const CANCELLATION_REASONS: { value: string; label: string }[] = [
+    { value: 'ordered_by_mistake', label: 'Ordered by mistake' },
+    { value: 'found_better_product', label: 'Found a better product elsewhere' },
+    { value: 'delivery_too_long', label: 'Delivery is taking too long' },
+    { value: 'changed_mind', label: 'Changed my mind' },
+    { value: 'payment_issue', label: 'Payment issue' },
+    { value: 'wrong_product', label: 'Ordered the wrong product' },
+    { value: 'other', label: 'Other' },
+];
+
 export default function OrderDetailsContent() {
     const router = useRouter();
     const params = useParams();
@@ -21,6 +34,11 @@ export default function OrderDetailsContent() {
 
     const [order, setOrder] = useState<Order | null>(null);
     const [loading, setLoading] = useState(true);
+    const [showCancelModal, setShowCancelModal] = useState(false);
+    const [cancelReason, setCancelReason] = useState('');
+    const [cancelNote, setCancelNote] = useState('');
+    const [cancelSubmitting, setCancelSubmitting] = useState(false);
+    const [cancelError, setCancelError] = useState('');
 
     // Fetch order data
     useEffect(() => {
@@ -46,6 +64,26 @@ export default function OrderDetailsContent() {
             fetchOrder();
         }
     }, [orderId]);
+
+    const submitCancelRequest = async () => {
+        if (!order || !cancelReason) return;
+        setCancelSubmitting(true);
+        setCancelError('');
+        try {
+            const token = localStorage.getItem('token');
+            const res = await api.put(
+                `/orders/${order.orderId}/cancel`,
+                { reason: cancelReason, note: cancelNote.trim() || undefined },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setOrder(res.data.order);
+            setShowCancelModal(false);
+        } catch (err: any) {
+            setCancelError(err?.response?.data?.message || "Couldn't submit cancellation request");
+        } finally {
+            setCancelSubmitting(false);
+        }
+    };
 
     // Loading state
     if (loading) {
@@ -80,6 +118,10 @@ export default function OrderDetailsContent() {
     // RTO (courier sent the shipment back) is a terminal exception like
     // Cancelled, not a further step down the same timeline.
     const isRTO = order.status === 'RTO';
+    // Mirrors lapshark_backend/src/utils/cancellation.ts's
+    // CUSTOMER_CANCELLABLE_STATUSES — the backend is the source of truth and
+    // re-validates this on submit regardless, but keeps the button honest.
+    const canRequestCancel = ['Pending', 'Processing'].includes(order.status) && order.cancellation?.status !== 'Requested';
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -129,6 +171,19 @@ export default function OrderDetailsContent() {
                                 <ShoppingBag className="w-4 h-4" /> Buy Again
                             </button>
                         )}
+                        {canRequestCancel && (
+                            <button
+                                onClick={() => setShowCancelModal(true)}
+                                className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold text-red-600 hover:bg-red-50 transition-colors"
+                            >
+                                <XCircle className="w-4 h-4" /> Cancel Order
+                            </button>
+                        )}
+                        {order.cancellation?.status === 'Requested' && (
+                            <span className="flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-200 rounded-lg text-sm font-bold text-amber-700">
+                                <Clock className="w-4 h-4" /> Cancellation Requested
+                            </span>
+                        )}
                     </div>
                 </div>
 
@@ -149,6 +204,12 @@ export default function OrderDetailsContent() {
                                                 ? "This shipment couldn't be delivered and was sent back. Please contact support."
                                                 : 'This order has been cancelled. If you have any questions, please contact support.'}
                                         </p>
+                                        {!isRTO && order.cancellation?.status === 'Approved' && (
+                                            <p className="text-xs text-red-400 mt-1">
+                                                {order.cancellation.reason && `Reason: ${CANCELLATION_REASONS.find(r => r.value === order.cancellation!.reason)?.label || order.cancellation.reason}. `}
+                                                {order.cancellation.approvedAt && `Cancelled on ${new Date(order.cancellation.approvedAt).toLocaleDateString('en-IN')}.`}
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
                             ) : (
@@ -296,12 +357,32 @@ export default function OrderDetailsContent() {
                                 )}
                                 {order.refund && (
                                     <div className="flex justify-between items-center text-sm pt-2 border-t border-dashed border-slate-200">
-                                        <span className="text-slate-500">Advance Refund</span>
+                                        <span className="text-slate-500">Refund</span>
                                         <span className="font-bold text-blue-700">
                                             {order.refund.status === 'failed'
                                                 ? "Failed — we'll follow up manually"
                                                 : `₹${(order.refund.amount || 0).toLocaleString('en-IN')} (${order.refund.status})`}
                                         </span>
+                                    </div>
+                                )}
+                                {order.cancellation && (
+                                    <div className="pt-2 border-t border-dashed border-slate-200 space-y-2">
+                                        <div className="flex justify-between items-center text-sm">
+                                            <span className="text-slate-500">Cancellation</span>
+                                            <span className={`font-bold ${order.cancellation.status === 'Rejected' ? 'text-slate-700' : 'text-amber-700'}`}>
+                                                {order.cancellation.status === 'Requested' ? 'Pending admin review' : order.cancellation.status}
+                                            </span>
+                                        </div>
+                                        {order.cancellation.status === 'Requested' && !order.refund && (
+                                            <p className="text-xs text-slate-500">
+                                                A refund will only be initiated once your cancellation is approved.
+                                            </p>
+                                        )}
+                                        {order.cancellation.status === 'Rejected' && (
+                                            <p className="text-xs text-slate-500">
+                                                Your cancellation request was declined{order.cancellation.rejectionReason ? `: ${order.cancellation.rejectionReason}` : '.'} Your order will continue to be processed.
+                                            </p>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -352,6 +433,53 @@ export default function OrderDetailsContent() {
                     </div>
                 </div>
             </div>
+
+            {showCancelModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-2xl p-6 max-w-md w-full">
+                        <h3 className="font-bold text-lg text-slate-900 mb-2">Cancel Order #{order.orderId}</h3>
+                        <p className="text-sm text-slate-500 mb-4">
+                            This sends a cancellation request for review — it won't cancel your order immediately. A refund will only be initiated after your request is approved.
+                        </p>
+                        <label className="text-xs font-bold text-slate-400 uppercase block mb-1">Why are you cancelling?</label>
+                        <select
+                            value={cancelReason}
+                            onChange={(e) => setCancelReason(e.target.value)}
+                            className="w-full border border-slate-200 rounded-lg p-2.5 text-sm mb-3 bg-white"
+                        >
+                            <option value="">Select a reason</option>
+                            {CANCELLATION_REASONS.map((r) => (
+                                <option key={r.value} value={r.value}>{r.label}</option>
+                            ))}
+                        </select>
+                        <label className="text-xs font-bold text-slate-400 uppercase block mb-1">Additional note (optional)</label>
+                        <textarea
+                            value={cancelNote}
+                            onChange={(e) => setCancelNote(e.target.value)}
+                            placeholder="Tell us more..."
+                            rows={3}
+                            className="w-full border border-slate-200 rounded-lg p-2.5 text-sm mb-3"
+                        />
+                        {cancelError && <p className="text-sm text-red-600 mb-3">{cancelError}</p>}
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setShowCancelModal(false)}
+                                disabled={cancelSubmitting}
+                                className="flex-1 py-2.5 rounded-lg border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                            >
+                                Keep Order
+                            </button>
+                            <button
+                                onClick={submitCancelRequest}
+                                disabled={cancelSubmitting || !cancelReason}
+                                className="flex-1 py-2.5 rounded-lg bg-red-600 text-white text-sm font-bold hover:bg-red-700 disabled:opacity-60"
+                            >
+                                {cancelSubmitting ? 'Submitting...' : 'Request Cancellation'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

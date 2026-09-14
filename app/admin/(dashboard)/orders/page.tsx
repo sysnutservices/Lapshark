@@ -6,11 +6,12 @@ import { Order } from '@/types';
 import { Eye, Search, Filter, ChevronDown, Check, X, Clock, Truck, Package, Pencil, ShieldCheck } from 'lucide-react';
 
 export default function OrderManager() {
-    const { orders, updateOrderStatus, setItemSerialNumber } = useStore();
+    const { orders, updateOrderStatus, setItemSerialNumber, approveCancellation, rejectCancellation } = useStore();
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('All');
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [statusUpdating, setStatusUpdating] = useState(false);
+    const [cancelActionLoading, setCancelActionLoading] = useState(false);
     // Serial number capture, keyed by item _id — null/undefined means "not
     // currently editing this row" (shows the saved value + Edit button, or
     // an empty input if nothing's saved yet).
@@ -388,6 +389,63 @@ export default function OrderManager() {
                                     </div>
                                 )}
                             </div>
+
+                            {selectedOrder.cancellation && (
+                                <div>
+                                    <label className="text-xs font-bold text-gray-400 uppercase block mb-3">Cancellation</label>
+                                    <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 space-y-1 text-sm">
+                                        <p className="text-gray-700"><span className="font-bold">Status:</span> {selectedOrder.cancellation.status}</p>
+                                        <p className="text-gray-700"><span className="font-bold">Reason:</span> {selectedOrder.cancellation.reason || '—'}</p>
+                                        {selectedOrder.cancellation.note && (
+                                            <p className="text-gray-500">Customer note: {selectedOrder.cancellation.note}</p>
+                                        )}
+                                        {selectedOrder.cancellation.requestedAt && (
+                                            <p className="text-gray-500">Requested: {new Date(selectedOrder.cancellation.requestedAt).toLocaleString('en-IN')}</p>
+                                        )}
+                                        {selectedOrder.cancellation.status === 'Rejected' && selectedOrder.cancellation.rejectionReason && (
+                                            <p className="text-gray-500">Rejection note: {selectedOrder.cancellation.rejectionReason}</p>
+                                        )}
+                                    </div>
+                                    {selectedOrder.cancellation.status === 'Requested' && (
+                                        <div className="flex gap-2 mt-3">
+                                            <button
+                                                disabled={cancelActionLoading}
+                                                onClick={async () => {
+                                                    setCancelActionLoading(true);
+                                                    try {
+                                                        const updated = await approveCancellation(selectedOrder.orderId);
+                                                        setSelectedOrder(updated);
+                                                    } catch (err: any) {
+                                                        alert(err?.response?.data?.message || "Couldn't approve cancellation");
+                                                    } finally {
+                                                        setCancelActionLoading(false);
+                                                    }
+                                                }}
+                                                className="flex-1 py-2 rounded-lg text-sm font-bold bg-red-600 text-white hover:bg-red-700 disabled:opacity-60"
+                                            >
+                                                Approve Cancellation
+                                            </button>
+                                            <button
+                                                disabled={cancelActionLoading}
+                                                onClick={async () => {
+                                                    setCancelActionLoading(true);
+                                                    try {
+                                                        const updated = await rejectCancellation(selectedOrder.orderId);
+                                                        setSelectedOrder(updated);
+                                                    } catch (err: any) {
+                                                        alert(err?.response?.data?.message || "Couldn't reject cancellation");
+                                                    } finally {
+                                                        setCancelActionLoading(false);
+                                                    }
+                                                }}
+                                                className="flex-1 py-2 rounded-lg text-sm font-bold bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 disabled:opacity-60"
+                                            >
+                                                Reject Cancellation
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

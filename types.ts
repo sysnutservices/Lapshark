@@ -164,6 +164,18 @@ export interface Order {
     status?: string;
     refundedAt?: string;
   };
+  // Customer request -> admin approve/reject workflow. Absent until a
+  // cancellation is first requested. See lapshark_backend/src/models/
+  // Order.ts's IOrder.cancellation comment.
+  cancellation?: {
+    status: 'Requested' | 'Approved' | 'Rejected';
+    reason?: string;
+    note?: string;
+    requestedAt?: string;
+    approvedAt?: string;
+    rejectedAt?: string;
+    rejectionReason?: string;
+  };
 }
 
 export interface Address {

@@ -50,6 +50,8 @@ interface StoreContextType {
   placeOrder: (order: Order) => Promise<void>;
   updateOrderStatus: (id: string, status: Order["status"]) => Promise<Order>;
   setItemSerialNumber: (orderId: string, itemId: string, serialNumber: string) => Promise<Order>;
+  approveCancellation: (orderId: string, note?: string) => Promise<Order>;
+  rejectCancellation: (orderId: string, reason?: string) => Promise<Order>;
 
   // Coupons
   addCoupon: (coupon: Coupon) => Promise<void>;
@@ -276,6 +278,24 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     return updated;
   };
 
+  // Same PUT /orders/:id/cancel route the customer's own cancellation
+  // request uses — an admin call to it approves instead. No optimistic
+  // update, same reasoning as updateOrderStatus above: this triggers a real
+  // Razorpay refund server-side and can fail.
+  const approveCancellation = async (orderId: string, note?: string) => {
+    const res = await api.put(`/orders/${orderId}/cancel`, { note }, { headers: authHeaders() });
+    const updated = res.data.order as Order;
+    setOrders(prev => prev.map(o => (o.orderId === orderId ? updated : o)));
+    return updated;
+  };
+
+  const rejectCancellation = async (orderId: string, reason?: string) => {
+    const res = await api.put(`/orders/${orderId}/cancel/reject`, { reason }, { headers: authHeaders() });
+    const updated = res.data.order as Order;
+    setOrders(prev => prev.map(o => (o.orderId === orderId ? updated : o)));
+    return updated;
+  };
+
   // ------------------------
   // COUPONS
   // ------------------------
@@ -381,6 +401,8 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         placeOrder,
         updateOrderStatus,
         setItemSerialNumber,
+        approveCancellation,
+        rejectCancellation,
         addCoupon,
         updateCoupon,
         validateCoupon,
