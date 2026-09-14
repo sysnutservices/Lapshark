@@ -26,13 +26,30 @@ const clearSessionAndRedirect = () => {
     }
 };
 
+// Guards against a reload storm: several admin pages fire multiple
+// requests in parallel, and a real session-revocation cascades a 401 to
+// all of them at once — without this, each one would independently reload.
+let handledSessionExpiry = false;
+
 // A revoked/expired token today just fails silently per-page (each call
 // site's own try/catch shows an error banner) until the admin happens to
-// navigate back through layout.tsx's gate. This makes it immediate.
+// navigate back through layout.tsx's gate. This makes it immediate --
+// BUT only when there actually was a session to revoke: plenty of pages
+// (the admin login page itself, any public page) fire requests against
+// admin-only endpoints before the user is logged in at all -- StoreContext
+// eagerly fetches /orders, /coupons, /users on mount regardless of auth
+// state -- and those 401s are completely expected, not a revoked session.
+// Treating every 401 as "log out and reload" turned that into an infinite
+// reload loop on /admin/login itself (each reload re-fires the same
+// requests, which 401 again), which is what actually broke admin login,
+// not the account/password.
 api.interceptors.response.use(
     (res) => res,
     (err) => {
-        if (err?.response?.status === 401) clearSessionAndRedirect();
+        if (err?.response?.status === 401 && localStorage.getItem("token") && !handledSessionExpiry) {
+            handledSessionExpiry = true;
+            clearSessionAndRedirect();
+        }
         return Promise.reject(err);
     }
 );
