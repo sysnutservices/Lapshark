@@ -11,3 +11,29 @@ export const api = axios.create({
     withCredentials: false,                  // if using cookies auth
 });
 
+// api.ts is a plain module, not a component — it can't call useAuth()'s
+// logout(). Clears the same localStorage keys logout() clears and hard-
+// navigates instead; a full navigation remounts AuthContext, which reads
+// the now-empty localStorage on mount, landing at the same end state.
+const clearSessionAndRedirect = () => {
+    if (typeof window === "undefined") return;
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    if (window.location.pathname.startsWith("/admin") && window.location.pathname !== "/admin/login") {
+        window.location.href = "/admin/login";
+    } else {
+        window.location.reload();
+    }
+};
+
+// A revoked/expired token today just fails silently per-page (each call
+// site's own try/catch shows an error banner) until the admin happens to
+// navigate back through layout.tsx's gate. This makes it immediate.
+api.interceptors.response.use(
+    (res) => res,
+    (err) => {
+        if (err?.response?.status === 401) clearSessionAndRedirect();
+        return Promise.reject(err);
+    }
+);
+
