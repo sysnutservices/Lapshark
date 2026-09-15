@@ -3,8 +3,8 @@
 // HomeClient, LayoutContent, OrderDetailsContent) with no shared source, and
 // the one wired click-to-chat button (Navbar mobile menu) opened wa.me with
 // no message at all.
-export const SUPPORT_PHONE = "+918971319555";
-export const SUPPORT_PHONE_DISPLAY = "+91 897 131 9555";
+export const SUPPORT_PHONE = "+919900013473";
+export const SUPPORT_PHONE_DISPLAY = "+91 99000 13473";
 // wa.me wants digits only, no leading +.
 const WA_NUMBER = SUPPORT_PHONE.replace(/\D/g, "");
 

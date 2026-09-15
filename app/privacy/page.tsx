@@ -1,6 +1,7 @@
 import React from 'react';
 import { Lock, Eye, Database, Globe } from 'lucide-react';
 import { Metadata } from 'next';
+import { STORE_ADDRESS_DISPLAY } from '@/lib/store';
 
 export const metadata: Metadata = {
     // Root layout's title template already appends " | Lapshark" — this was
@@ -81,7 +82,7 @@ export default function Privacy() {
                         <p>
                             If you have any questions about this Privacy Policy, please contact us at: <br />
                             <strong>Email:</strong> privacy@lapshark.com <br />
-                            <strong>Address:</strong> Sysnut Technologies, Banashankari 1st Stage, Bengaluru, Karnataka 560050
+                            <strong>Address:</strong> {STORE_ADDRESS_DISPLAY}
                         </p>
                     </section>
 
