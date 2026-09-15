@@ -46,11 +46,14 @@ export const STORE_HOURS = [
 ] as const;
 
 // No Google Maps API key in this project (see the "Map Placeholder" comment
-// in ContactClient.tsx), so this uses the no-key `output=embed` form rather
-// than a hand-built `/maps/embed?pb=...` string (that param is opaque,
-// normally copy-pasted from Maps' own "Share > Embed a map" UI — hand
-// assembling one risks a subtly wrong embed).
-export const STORE_MAPS_EMBED_URL = `https://www.google.com/maps?q=Lapshark,${STORE_GEO.latitude},${STORE_GEO.longitude}&z=17&output=embed`;
+// in ContactClient.tsx). Previously used the no-key `google.com/maps?...
+// &output=embed` trick, but Google now frequently serves "This content is
+// blocked. Contact the site owner to fix the issue." for that undocumented
+// endpoint — confirmed 2026-09-15 on /store/bangalore (broken iframe, no
+// error surfaced to the page since it's just a cross-origin src). Switched
+// to OpenStreetMap's embed, which needs no key and won't get key-gated.
+const STORE_MAP_BBOX_DELTA = 0.004;
+export const STORE_MAPS_EMBED_URL = `https://www.openstreetmap.org/export/embed.html?bbox=${STORE_GEO.longitude - STORE_MAP_BBOX_DELTA}%2C${STORE_GEO.latitude - STORE_MAP_BBOX_DELTA}%2C${STORE_GEO.longitude + STORE_MAP_BBOX_DELTA}%2C${STORE_GEO.latitude + STORE_MAP_BBOX_DELTA}&layer=mapnik&marker=${STORE_GEO.latitude}%2C${STORE_GEO.longitude}`;
 
 // A real "get directions" link (Google Maps directions, not just a passive
 // embed) — dir/?api=1 opens turn-by-turn directions to these coordinates in
