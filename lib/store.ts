@@ -12,14 +12,14 @@
 // directly by the business owner — supersedes an earlier, less precise
 // pair pulled from a "Sysnut Technologies" map embed.
 export const STORE_ADDRESS = {
-  streetAddress: "36, near Vidyapeeta Circle, Vidyapeeta Layout, Ashok Nagar, Banashankari 1st Stage",
+  streetAddress: "36, near 6th Cross Road, Vidyapeeta Layout, Ashok Nagar, Banashankari 1st Stage, Banashankari",
   addressLocality: "Bengaluru",
   addressRegion: "Karnataka",
   postalCode: "560050",
   addressCountry: "IN",
 } as const;
 
-export const STORE_ADDRESS_DISPLAY = `Sysnut Technologies, ${STORE_ADDRESS.streetAddress}, ${STORE_ADDRESS.addressLocality}, ${STORE_ADDRESS.addressRegion} ${STORE_ADDRESS.postalCode}`;
+export const STORE_ADDRESS_DISPLAY = `Lapshark, ${STORE_ADDRESS.streetAddress}, ${STORE_ADDRESS.addressLocality}, ${STORE_ADDRESS.addressRegion} ${STORE_ADDRESS.postalCode}`;
 
 // Same gap as resolveSupportPhone() in lib/whatsapp.ts: the admin editor's
 // Contact tab (siteConfig.contact.address) saves fine but was never read
