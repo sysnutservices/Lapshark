@@ -11,7 +11,7 @@ const cspHeader = `
     default-src 'self';
     script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://connect.facebook.net https://www.clarity.ms https://*.razorpay.com;
     connect-src 'self' https://www.google-analytics.com https://www.facebook.com https://*.razorpay.com;
-    frame-src 'self' https://*.razorpay.com;
+    frame-src 'self' https://*.razorpay.com https://www.openstreetmap.org;
     style-src 'self' 'unsafe-inline';
     img-src 'self' data: blob: https://ik.imagekit.io https://picsum.photos https://*.razorpay.com;
     font-src 'self' data:;
