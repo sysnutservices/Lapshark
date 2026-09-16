@@ -11,6 +11,13 @@ export default function OrderManager() {
     const [statusFilter, setStatusFilter] = useState<string>('All');
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [statusUpdating, setStatusUpdating] = useState(false);
+    // Inline "ship without a courier" form — separate from the Shipped
+    // button since it skips the real Ekart booking entirely (local
+    // delivery, a courier Ekart doesn't cover, etc.).
+    const [showManualShip, setShowManualShip] = useState(false);
+    const [manualCourierName, setManualCourierName] = useState('');
+    const [manualTrackingNumber, setManualTrackingNumber] = useState('');
+    const [manualTrackingUrl, setManualTrackingUrl] = useState('');
     const [cancelActionLoading, setCancelActionLoading] = useState(false);
     // Serial number capture, keyed by item _id — null/undefined means "not
     // currently editing this row" (shows the saved value + Edit button, or
@@ -22,6 +29,27 @@ export default function OrderManager() {
     const startEditingSerial = (itemId: string, currentValue?: string) => {
         setEditingItemId(itemId);
         setSerialInput(currentValue || '');
+    };
+
+    const confirmManualShip = async () => {
+        if (!selectedOrder) return;
+        setStatusUpdating(true);
+        try {
+            const updated = await updateOrderStatus(selectedOrder.orderId, 'Shipped', {
+                courierName: manualCourierName.trim() || undefined,
+                trackingNumber: manualTrackingNumber.trim() || undefined,
+                trackingUrl: manualTrackingUrl.trim() || undefined,
+            });
+            setSelectedOrder(updated);
+            setShowManualShip(false);
+            setManualCourierName('');
+            setManualTrackingNumber('');
+            setManualTrackingUrl('');
+        } catch (err: any) {
+            alert(err?.response?.data?.message || "Couldn't mark order as shipped");
+        } finally {
+            setStatusUpdating(false);
+        }
     };
 
     const saveSerial = async (item: { _id?: string }) => {
@@ -148,7 +176,13 @@ export default function OrderManager() {
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <button
-                                            onClick={() => setSelectedOrder(order)}
+                                            onClick={() => {
+                                                setSelectedOrder(order);
+                                                setShowManualShip(false);
+                                                setManualCourierName('');
+                                                setManualTrackingNumber('');
+                                                setManualTrackingUrl('');
+                                            }}
                                             className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                                         >
                                             <Eye className="w-4 h-4" />
@@ -375,7 +409,76 @@ export default function OrderManager() {
 
                                     ))}
                                 </div>
-                                {selectedOrder.shipment?.awb && (
+
+                                {selectedOrder.status !== 'Shipped' && selectedOrder.status !== 'Delivered' && (
+                                    <div className="mt-2">
+                                        {!showManualShip ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowManualShip(true)}
+                                                className="text-sm font-medium text-gray-500 hover:text-gray-700 underline"
+                                            >
+                                                Ship manually (no courier booking)
+                                            </button>
+                                        ) : (
+                                            <div className="mt-2 bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
+                                                <p className="text-xs font-bold text-gray-400 uppercase">Manual Shipment (optional details)</p>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Courier name (optional)"
+                                                    value={manualCourierName}
+                                                    onChange={(e) => setManualCourierName(e.target.value)}
+                                                    className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2"
+                                                />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Tracking number (optional)"
+                                                    value={manualTrackingNumber}
+                                                    onChange={(e) => setManualTrackingNumber(e.target.value)}
+                                                    className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2"
+                                                />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Tracking URL (optional)"
+                                                    value={manualTrackingUrl}
+                                                    onChange={(e) => setManualTrackingUrl(e.target.value)}
+                                                    className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2"
+                                                />
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        type="button"
+                                                        disabled={statusUpdating}
+                                                        onClick={confirmManualShip}
+                                                        className="flex-1 py-2 rounded-lg text-sm font-medium bg-gray-800 text-white hover:bg-gray-900 disabled:opacity-60"
+                                                    >
+                                                        {statusUpdating ? 'Shipping...' : 'Confirm Manual Shipment'}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowManualShip(false)}
+                                                        className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-100"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {selectedOrder.shipment?.manual ? (
+                                    <div className="mt-3 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-sm">
+                                        <p className="text-gray-700 font-bold">Shipped manually{selectedOrder.shipment.courierName ? ` via ${selectedOrder.shipment.courierName}` : ''}</p>
+                                        {selectedOrder.shipment.awb && (
+                                            <p className="text-gray-500 mt-1">Tracking #: {selectedOrder.shipment.awb}</p>
+                                        )}
+                                        {selectedOrder.shipment.trackingUrl && (
+                                            <a href={selectedOrder.shipment.trackingUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-bold underline mt-1 inline-block">
+                                                Track shipment
+                                            </a>
+                                        )}
+                                    </div>
+                                ) : selectedOrder.shipment?.awb && (
                                     <div className="mt-3 bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 text-sm">
                                         <p className="text-gray-700"><span className="font-bold">AWB:</span> {selectedOrder.shipment.awb}</p>
                                         {selectedOrder.shipment.courierStatus && (

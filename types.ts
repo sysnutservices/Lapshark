@@ -157,6 +157,8 @@ export interface Order {
     trackingUrl?: string;
     shippedAt?: string;
     deliveredAt?: string;
+    manual?: boolean;
+    courierName?: string;
   };
   refund?: {
     id?: string;

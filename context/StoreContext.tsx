@@ -48,7 +48,11 @@ interface StoreContextType {
 
   // Orders
   placeOrder: (order: Order) => Promise<void>;
-  updateOrderStatus: (id: string, status: Order["status"]) => Promise<Order>;
+  updateOrderStatus: (
+    id: string,
+    status: Order["status"],
+    manualShipping?: { courierName?: string; trackingNumber?: string; trackingUrl?: string }
+  ) => Promise<Order>;
   setItemSerialNumber: (orderId: string, itemId: string, serialNumber: string) => Promise<Order>;
   approveCancellation: (orderId: string, note?: string) => Promise<Order>;
   rejectCancellation: (orderId: string, reason?: string) => Promise<Order>;
@@ -252,10 +256,15 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   // old optimistic set-then-fetch showed "Shipped" even when the backend
   // rejected the change, leaving the UI out of sync with what's actually true.
   // Callers see the failure via the rejected promise.
-  const updateOrderStatus = async (orderId: string, status: Order["status"]) => {
+  const updateOrderStatus = async (
+    orderId: string,
+    status: Order["status"],
+    manualShipping?: { courierName?: string; trackingNumber?: string; trackingUrl?: string }
+  ) => {
     // PUT /orders/:id/status is protect+admin — was missing the header, so
     // every "Update Status" click on the admin order page 401'd.
-    const res = await api.put(`/orders/${orderId}/status`, { status }, { headers: authHeaders() });
+    const body = manualShipping ? { status, manual: true, ...manualShipping } : { status };
+    const res = await api.put(`/orders/${orderId}/status`, body, { headers: authHeaders() });
     const updated = res.data.order as Order;
     setOrders(prev => prev.map(o => (o.orderId === orderId ? updated : o)));
     return updated;
