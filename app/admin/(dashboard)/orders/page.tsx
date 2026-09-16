@@ -6,7 +6,9 @@ import { Order } from '@/types';
 import { Eye, Search, Filter, ChevronDown, Check, X, Clock, Truck, Package, Pencil, ShieldCheck } from 'lucide-react';
 
 export default function OrderManager() {
-    const { orders, updateOrderStatus, setItemSerialNumber, approveCancellation, rejectCancellation } = useStore();
+    const { orders, updateOrderStatus, setItemSerialNumber, approveCancellation, rejectCancellation, requestReview } = useStore();
+    const [reviewRequesting, setReviewRequesting] = useState(false);
+    const [reviewRequestSent, setReviewRequestSent] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('All');
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -29,6 +31,19 @@ export default function OrderManager() {
     const startEditingSerial = (itemId: string, currentValue?: string) => {
         setEditingItemId(itemId);
         setSerialInput(currentValue || '');
+    };
+
+    const sendReviewRequest = async () => {
+        if (!selectedOrder) return;
+        setReviewRequesting(true);
+        try {
+            await requestReview(selectedOrder.orderId);
+            setReviewRequestSent(true);
+        } catch (err: any) {
+            alert(err?.response?.data?.message || "Couldn't send review request");
+        } finally {
+            setReviewRequesting(false);
+        }
     };
 
     const confirmManualShip = async () => {
@@ -182,6 +197,7 @@ export default function OrderManager() {
                                                 setManualCourierName('');
                                                 setManualTrackingNumber('');
                                                 setManualTrackingUrl('');
+                                                setReviewRequestSent(false);
                                             }}
                                             className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                                         >
@@ -492,6 +508,19 @@ export default function OrderManager() {
                                                 Track shipment
                                             </a>
                                         )}
+                                    </div>
+                                )}
+
+                                {selectedOrder.status === 'Delivered' && (
+                                    <div className="mt-3">
+                                        <button
+                                            type="button"
+                                            disabled={reviewRequesting || reviewRequestSent}
+                                            onClick={sendReviewRequest}
+                                            className="text-sm font-medium text-teal-600 hover:text-teal-700 underline disabled:opacity-60 disabled:no-underline disabled:cursor-not-allowed"
+                                        >
+                                            {reviewRequestSent ? 'Review request sent' : reviewRequesting ? 'Sending...' : 'Request a review via WhatsApp'}
+                                        </button>
                                     </div>
                                 )}
                             </div>

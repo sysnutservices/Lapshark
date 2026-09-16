@@ -56,6 +56,7 @@ interface StoreContextType {
   setItemSerialNumber: (orderId: string, itemId: string, serialNumber: string) => Promise<Order>;
   approveCancellation: (orderId: string, note?: string) => Promise<Order>;
   rejectCancellation: (orderId: string, reason?: string) => Promise<Order>;
+  requestReview: (orderId: string) => Promise<void>;
 
   // Coupons
   addCoupon: (coupon: Coupon) => Promise<void>;
@@ -305,6 +306,10 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     return updated;
   };
 
+  const requestReview = async (orderId: string) => {
+    await api.post(`/orders/${orderId}/request-review`, {}, { headers: authHeaders() });
+  };
+
   // ------------------------
   // COUPONS
   // ------------------------
@@ -412,6 +417,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         setItemSerialNumber,
         approveCancellation,
         rejectCancellation,
+        requestReview,
         addCoupon,
         updateCoupon,
         validateCoupon,
