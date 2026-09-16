@@ -27,7 +27,14 @@ export const CheckoutLogin: React.FC<CheckoutLoginProps> = ({
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [countdown, setCountdown] = useState(0);
-    const { loginWithUser } = useAuth();
+    const { loginWithUser, user } = useAuth();
+
+    // Shown once, right after OTP verification, only for a brand-new account
+    // (isNewUser from /users/login) that has no name yet — mobile+OTP signup
+    // never collects one otherwise.
+    const [showNameStep, setShowNameStep] = useState(false);
+    const [name, setName] = useState('');
+    const [nameSaving, setNameSaving] = useState(false);
 
     // Every call site renders this inside its own "fixed inset-0" overlay
     // (no shared Dialog primitive) and only mounts it while the modal is
@@ -92,8 +99,9 @@ export const CheckoutLogin: React.FC<CheckoutLoginProps> = ({
                     userData.token
                 );
 
-                // Call success callback
-                if (onLoginSuccess) {
+                if (response.data.isNewUser) {
+                    setShowNameStep(true);
+                } else if (onLoginSuccess) {
                     onLoginSuccess();
                 }
             }
@@ -101,6 +109,28 @@ export const CheckoutLogin: React.FC<CheckoutLoginProps> = ({
             setError(err.response?.data?.message || 'Invalid OTP');
         } finally {
             setLoading(false);
+        }
+    };
+
+    // Saves the name they just typed, then finishes login the same way
+    // handleVerifyOTP would have for a returning user. Skippable — a
+    // missing name shouldn't be able to block checkout.
+    const handleSaveName = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setNameSaving(true);
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.put(
+                `${API_URL}/users/profile`,
+                { name },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            if (token) loginWithUser({ ...user, ...response.data.user }, token);
+        } catch (err: any) {
+            console.error('Failed to save name:', err.response?.data || err);
+        } finally {
+            setNameSaving(false);
+            if (onLoginSuccess) onLoginSuccess();
         }
     };
 
@@ -134,12 +164,14 @@ export const CheckoutLogin: React.FC<CheckoutLoginProps> = ({
                         </div>
                     )}
                     <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-                        {isOtpSent ? 'Verify OTP' : 'Login to Continue'}
+                        {showNameStep ? "What's your name?" : isOtpSent ? 'Verify OTP' : 'Login to Continue'}
                     </h2>
                     <p className="mt-2 text-sm text-slate-500">
-                        {isOtpSent
-                            ? `Enter the OTP sent to ${mobile}`
-                            : 'Sign in with your mobile number to complete your order'}
+                        {showNameStep
+                            ? "So we know what to call you on your orders"
+                            : isOtpSent
+                                ? `Enter the OTP sent to ${mobile}`
+                                : 'Sign in with your mobile number to complete your order'}
                     </p>
                 </div>
 
@@ -149,7 +181,43 @@ export const CheckoutLogin: React.FC<CheckoutLoginProps> = ({
                     </div>
                 )}
 
-                {!isOtpSent ? (
+                {showNameStep ? (
+                    // Name Form — new account only, right after OTP verification
+                    <form className="space-y-6" onSubmit={handleSaveName}>
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">
+                                Full Name
+                            </label>
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    required
+                                    className="appearance-none relative block w-full px-4 py-3 border border-slate-300 placeholder-slate-400 text-slate-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 sm:text-lg transition-all"
+                                    placeholder="Enter your full name"
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                    autoFocus
+                                />
+                            </div>
+                        </div>
+
+                        <button
+                            type="submit"
+                            disabled={nameSaving || !name.trim()}
+                            className="group relative w-full flex justify-center py-3.5 px-4 border border-transparent text-base font-bold rounded-xl text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-all shadow-lg hover:shadow-teal-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {nameSaving ? 'Saving...' : 'Continue'}
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => { if (onLoginSuccess) onLoginSuccess(); }}
+                            className="block w-full text-center text-sm font-medium text-slate-500 hover:text-slate-600"
+                        >
+                            Skip for now
+                        </button>
+                    </form>
+                ) : !isOtpSent ? (
                     // Mobile Number Form
                     <form className="space-y-6" onSubmit={handleSendOTP}>
                         <div>
