@@ -422,7 +422,8 @@ export default function OrderManager() {
                                             </button>
                                         ) : (
                                             <div className="mt-2 bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
-                                                <p className="text-xs font-bold text-gray-400 uppercase">Manual Shipment (optional details)</p>
+                                                <p className="text-xs font-bold text-gray-400 uppercase">Manual Shipment</p>
+                                                <p className="text-xs text-gray-500 -mt-2">Tracking number and URL are required so the customer gets a WhatsApp shipment notification.</p>
                                                 <input
                                                     type="text"
                                                     placeholder="Courier name (optional)"
@@ -432,14 +433,16 @@ export default function OrderManager() {
                                                 />
                                                 <input
                                                     type="text"
-                                                    placeholder="Tracking number (optional)"
+                                                    required
+                                                    placeholder="Tracking number"
                                                     value={manualTrackingNumber}
                                                     onChange={(e) => setManualTrackingNumber(e.target.value)}
                                                     className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2"
                                                 />
                                                 <input
                                                     type="text"
-                                                    placeholder="Tracking URL (optional)"
+                                                    required
+                                                    placeholder="Tracking URL"
                                                     value={manualTrackingUrl}
                                                     onChange={(e) => setManualTrackingUrl(e.target.value)}
                                                     className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2"
@@ -447,7 +450,7 @@ export default function OrderManager() {
                                                 <div className="flex gap-2">
                                                     <button
                                                         type="button"
-                                                        disabled={statusUpdating}
+                                                        disabled={statusUpdating || !manualTrackingNumber.trim() || !manualTrackingUrl.trim()}
                                                         onClick={confirmManualShip}
                                                         className="flex-1 py-2 rounded-lg text-sm font-medium bg-gray-800 text-white hover:bg-gray-900 disabled:opacity-60"
                                                     >
