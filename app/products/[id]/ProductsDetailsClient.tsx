@@ -71,6 +71,12 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
     const [reviewRating, setReviewRating] = useState(5);
     const [reviewComment, setReviewComment] = useState('');
     const [submittingReview, setSubmittingReview] = useState(false);
+    // Shown after a 4-5 star submit only — a happy customer is worth
+    // steering to the public Google Business Profile too, while a lower
+    // rating stays site-only (still visible here, just not pushed to
+    // Google) so it can't drag down the public score.
+    const [showGoogleReviewPrompt, setShowGoogleReviewPrompt] = useState(false);
+    const GOOGLE_REVIEW_URL = "https://g.page/r/CdzAUTv36st3EBM/review";
 
     // Server already fetched this product for metadata; use it until the store loads
     // so the details render in the initial HTML instead of a skeleton.
@@ -124,6 +130,7 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
             );
             const res = await api.get(`/products/${product._id}/reviews`);
             setProductReviews(res.data || []);
+            setShowGoogleReviewPrompt(reviewRating >= 4);
             setReviewComment('');
             setReviewRating(5);
             setShowReviewForm(false);
@@ -694,6 +701,31 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
                                 </Button>
                             </div>
                         </form>
+                    )}
+
+                    {showGoogleReviewPrompt && (
+                        <div className="mb-8 p-6 bg-amber-50 rounded-2xl border border-amber-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <div>
+                                <p className="font-bold text-slate-900">Thanks for the great rating! 🎉</p>
+                                <p className="text-sm text-slate-600 mt-1">Mind sharing it on Google too? It really helps other buyers find us.</p>
+                            </div>
+                            <div className="flex gap-2 shrink-0">
+                                <Button
+                                    onClick={() => { window.open(GOOGLE_REVIEW_URL, '_blank', 'noopener,noreferrer'); setShowGoogleReviewPrompt(false); }}
+                                    className="h-auto rounded-xl bg-amber-500 px-4 py-2 text-sm font-bold text-white hover:bg-amber-600"
+                                >
+                                    Leave a Google Review
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    onClick={() => setShowGoogleReviewPrompt(false)}
+                                    className="h-auto rounded-xl px-4 py-2 text-sm font-bold"
+                                >
+                                    No thanks
+                                </Button>
+                            </div>
+                        </div>
                     )}
 
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-16">
