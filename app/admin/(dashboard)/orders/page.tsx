@@ -248,6 +248,17 @@ export default function OrderManager() {
                                     })}</p>
                                     <p className="text-sm font-medium text-gray-500">Payment: {selectedOrder.paymentMethod}</p>
                                     <p className="text-sm text-gray-500">Payment Status: <span className={`px-2 rounded-full text-xs font-bold border ${getPaymentColor(selectedOrder.paymentStatus)}`}>{selectedOrder.paymentStatus}</span></p>
+                                    {(() => {
+                                        // Mirrors backend isCOD check (lapshark_backend/src/services/ekart.ts)
+                                        // so this reflects exactly what createShipment will send to Ekart.
+                                        const codAmount = selectedOrder.total - (selectedOrder.advanceAmount || 0);
+                                        const isCOD = selectedOrder.paymentMethod === 'COD' && codAmount > 0;
+                                        return (
+                                            <p className="text-sm text-gray-500">
+                                                Ekart payment mode: <span className="font-bold">{isCOD ? 'COD' : 'Prepaid'}</span>
+                                            </p>
+                                        );
+                                    })()}
                                     {selectedOrder.paymentMethod === 'COD' && !!selectedOrder.advanceAmount && selectedOrder.status !== 'Cancelled' && (
                                         <p className="text-sm text-gray-500">
                                             Advance paid: ₹{selectedOrder.advanceAmount.toLocaleString('en-IN')} · Collect on delivery: <span className="font-bold text-amber-700">₹{(selectedOrder.total - selectedOrder.advanceAmount).toLocaleString('en-IN')}</span>
