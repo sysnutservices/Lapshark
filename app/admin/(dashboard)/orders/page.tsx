@@ -12,6 +12,11 @@ export default function OrderManager() {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('All');
     const [paymentFilter, setPaymentFilter] = useState<string>('All');
+    const [dateFilter, setDateFilter] = useState<string>('All');
+    // yyyy-mm-dd strings straight from <input type="date">, used only when
+    // dateFilter is 'Custom'. Either end may be left blank (open-ended).
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [statusUpdating, setStatusUpdating] = useState(false);
     // Inline "ship without a courier" form — separate from the Shipped
@@ -102,6 +107,28 @@ export default function OrderManager() {
         }
     };
 
+    // [start, end) window for the date filter, in the admin's local time —
+    // null on either side means unbounded.
+    const dateRange = (() => {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+        switch (dateFilter) {
+            case 'Today': return { start: today, end: addDays(today, 1) };
+            case 'Yesterday': return { start: addDays(today, -1), end: today };
+            case 'This Month': return { start: new Date(now.getFullYear(), now.getMonth(), 1), end: new Date(now.getFullYear(), now.getMonth() + 1, 1) };
+            case 'This Year': return { start: new Date(now.getFullYear(), 0, 1), end: new Date(now.getFullYear() + 1, 0, 1) };
+            case 'Custom': {
+                // Appending T00:00 parses as local midnight — a bare
+                // yyyy-mm-dd would parse as UTC and shift the day in IST.
+                const from = dateFrom ? new Date(`${dateFrom}T00:00`) : null;
+                const to = dateTo ? addDays(new Date(`${dateTo}T00:00`), 1) : null;
+                return { start: from, end: to };
+            }
+            default: return { start: null, end: null };
+        }
+    })();
+
     const term = searchTerm.trim().toLowerCase();
     // Phone search compares digits only, so spaces/dashes/"+91" in either
     // the typed term or the saved number don't matter. Only used when the
@@ -121,7 +148,11 @@ export default function OrderManager() {
                 (order.shippingAddress?.phone?.replace(/\D/g, '').includes(phoneDigits) ?? false));
         const matchesStatus = statusFilter === 'All' || order.status === statusFilter;
         const matchesPayment = paymentFilter === 'All' || order.paymentStatus === paymentFilter;
-        return matchesSearch && matchesStatus && matchesPayment;
+        const orderTime = new Date(order.date).getTime();
+        const matchesDate =
+            (!dateRange.start || orderTime >= dateRange.start.getTime()) &&
+            (!dateRange.end || orderTime < dateRange.end.getTime());
+        return matchesSearch && matchesStatus && matchesPayment && matchesDate;
     });
 
     const getStatusColor = (status: string) => {
@@ -515,12 +546,12 @@ export default function OrderManager() {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="flex flex-col gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
                     <p className="text-gray-500 text-sm">Manage and track customer orders</p>
                 </div>
-                <div className="flex flex-wrap md:flex-nowrap gap-3 w-full md:w-auto">
+                <div className="flex flex-wrap items-center gap-3 w-full">
                     <div className="relative w-full md:w-64">
                         <input
                             type="text"
@@ -556,6 +587,39 @@ export default function OrderManager() {
                         <option value="Failed">Failed</option>
                         <option value="Refunded">Refunded</option>
                     </select>
+                    <select
+                        className="flex-1 md:flex-none bg-white border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={dateFilter}
+                        onChange={(e) => { setDateFilter(e.target.value); setSelectedOrder(null); }}
+                    >
+                        <option value="All">All Time</option>
+                        <option value="Today">Today</option>
+                        <option value="Yesterday">Yesterday</option>
+                        <option value="This Month">This Month</option>
+                        <option value="This Year">This Year</option>
+                        <option value="Custom">Custom Range</option>
+                    </select>
+                    {dateFilter === 'Custom' && (
+                        <div className="flex items-center gap-2 w-full md:w-auto">
+                            <input
+                                type="date"
+                                aria-label="From date"
+                                value={dateFrom}
+                                max={dateTo || undefined}
+                                onChange={(e) => { setDateFrom(e.target.value); setSelectedOrder(null); }}
+                                className="flex-1 md:flex-none bg-white border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-gray-400">to</span>
+                            <input
+                                type="date"
+                                aria-label="To date"
+                                value={dateTo}
+                                min={dateFrom || undefined}
+                                onChange={(e) => { setDateTo(e.target.value); setSelectedOrder(null); }}
+                                className="flex-1 md:flex-none bg-white border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                        </div>
+                    )}
                 </div>
             </div>
 
