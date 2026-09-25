@@ -101,10 +101,15 @@ export default function OrderManager() {
         }
     };
 
+    const term = searchTerm.trim().toLowerCase();
     const filteredOrders = orders.filter(order => {
+        // Keep the expanded order in the list even once it stops matching —
+        // e.g. filtered to "Pending" and just marked Processing — otherwise
+        // its details vanish mid-edit along with the row.
+        if (order.orderId === selectedOrder?.orderId) return true;
         const matchesSearch =
-            (order.orderId?.toString()?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
-            (order.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
+            (order.orderId?.toString()?.toLowerCase().includes(term) ?? false) ||
+            (order.customerName?.toLowerCase().includes(term) ?? false);
         const matchesStatus = statusFilter === 'All' || order.status === statusFilter;
         return matchesSearch && matchesStatus;
     });
@@ -512,14 +517,14 @@ export default function OrderManager() {
                             placeholder="Search order ID or name..."
                             className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onChange={(e) => { setSearchTerm(e.target.value); setSelectedOrder(null); }}
                         />
                         <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
                     </div>
                     <select
                         className="bg-white border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
+                        onChange={(e) => { setStatusFilter(e.target.value); setSelectedOrder(null); }}
                     >
                         <option value="All">All Status</option>
                         <option value="Pending">Pending</option>
