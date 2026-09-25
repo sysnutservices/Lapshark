@@ -162,7 +162,19 @@ export default function OrderManager() {
     // the headline total and shown on their own instead.
     const isLostOrder = (o: Order) => o.status === 'Cancelled' || o.status === 'RTO';
     const lostOrders = matchingOrders.filter(isLostOrder);
-    const matchingTotal = matchingOrders.reduce((sum, o) => sum + (isLostOrder(o) ? 0 : o.total || 0), 0);
+    // Money actually received. paymentStatus alone can't say that: a COD
+    // order's advance also marks it "Paid" (and it never changes after), so
+    // COD counts only the advance until it's Delivered and the courier has
+    // collected the rest. Prepaid counts in full once Paid.
+    const receivedAmount = (o: Order) => {
+        if (isLostOrder(o)) return 0;
+        if (o.paymentMethod === 'COD') {
+            if (o.status === 'Delivered') return o.total || 0;
+            return o.paymentStatus === 'Paid' ? o.advanceAmount || 0 : 0;
+        }
+        return o.paymentStatus === 'Paid' ? o.total || 0 : 0;
+    };
+    const matchingTotal = matchingOrders.reduce((sum, o) => sum + receivedAmount(o), 0);
     const lostTotal = lostOrders.reduce((sum, o) => sum + (o.total || 0), 0);
 
     const getStatusColor = (status: string) => {
@@ -639,12 +651,12 @@ export default function OrderManager() {
                     {matchingOrders.length === 1 ? 'order' : 'orders'}
                 </span>
                 <span>
-                    Total: <span className="font-bold text-gray-900">₹{matchingTotal.toLocaleString('en-IN')}</span>
+                    Revenue received: <span className="font-bold text-gray-900">₹{matchingTotal.toLocaleString('en-IN')}</span>
                 </span>
                 {lostOrders.length > 0 && (
                     <span>
                         Cancelled / RTO: <span className="font-medium text-red-600">{lostOrders.length} · ₹{lostTotal.toLocaleString('en-IN')}</span>
-                        <span className="text-gray-400"> (not in total)</span>
+                        <span className="text-gray-400"> (not in revenue)</span>
                     </span>
                 )}
             </div>
