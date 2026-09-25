@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useStore } from '@/context/StoreContext';
 import { Order } from '@/types';
-import { Eye, Search, Filter, ChevronDown, Check, X, Clock, Truck, Package, Pencil, ShieldCheck } from 'lucide-react';
+import { Search, Filter, ChevronDown, Check, X, Clock, Truck, Package, Pencil, ShieldCheck } from 'lucide-react';
 
 export default function OrderManager() {
     const { orders, updateOrderStatus, setItemSerialNumber, approveCancellation, rejectCancellation, requestReview } = useStore();
@@ -31,6 +31,22 @@ export default function OrderManager() {
     const startEditingSerial = (itemId: string, currentValue?: string) => {
         setEditingItemId(itemId);
         setSerialInput(currentValue || '');
+    };
+
+    // Clicking an order's row expands its details inline; clicking it again
+    // (or another order) collapses it. Per-order form state resets on switch.
+    const toggleOrder = (order: Order) => {
+        if (selectedOrder?.orderId === order.orderId) {
+            setSelectedOrder(null);
+            return;
+        }
+        setSelectedOrder(order);
+        setShowManualShip(false);
+        setManualCourierName('');
+        setManualTrackingNumber('');
+        setManualTrackingUrl('');
+        setReviewRequestSent(false);
+        setEditingItemId(null);
     };
 
     const sendReviewRequest = async () => {
@@ -114,6 +130,374 @@ export default function OrderManager() {
         }
     };
 
+    // Expanded inline under the order row (replaces the old modal) so all
+    // details are visible in place without covering the list.
+    const orderDetails = selectedOrder && (
+        <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-1">
+                    <label className="text-xs font-bold text-gray-400 uppercase">Customer</label>
+                    <p className="font-medium text-gray-900">{selectedOrder.customerName}</p>
+                    <p className="text-sm text-gray-500">{selectedOrder.shippingAddress?.phone}</p>
+                </div>
+                <div className="space-y-1">
+                    <label className="text-xs font-bold text-gray-400 uppercase">Order Info</label>
+                    <p className="text-sm font-medium text-gray-500">Order date:  {new Date(selectedOrder.date).toLocaleString("en-IN", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                    })}</p>
+                    <p className="text-sm font-medium text-gray-500">Payment: {selectedOrder.paymentMethod}</p>
+                    <p className="text-sm text-gray-500">Payment Status: <span className={`px-2 rounded-full text-xs font-bold border ${getPaymentColor(selectedOrder.paymentStatus)}`}>{selectedOrder.paymentStatus}</span></p>
+                    {(() => {
+                        // Mirrors backend isCOD check (lapshark_backend/src/services/ekart.ts)
+                        // so this reflects exactly what createShipment will send to Ekart.
+                        const codAmount = selectedOrder.total - (selectedOrder.advanceAmount || 0);
+                        const isCOD = selectedOrder.paymentMethod === 'COD' && codAmount > 0;
+                        return (
+                            <p className="text-sm text-gray-500">
+                                Ekart payment mode: <span className="font-bold">{isCOD ? 'COD' : 'Prepaid'}</span>
+                            </p>
+                        );
+                    })()}
+                    {selectedOrder.paymentMethod === 'COD' && !!selectedOrder.advanceAmount && selectedOrder.status !== 'Cancelled' && (
+                        <p className="text-sm text-gray-500">
+                            Advance paid: ₹{selectedOrder.advanceAmount.toLocaleString('en-IN')} · Collect on delivery: <span className="font-bold text-amber-700">₹{(selectedOrder.total - selectedOrder.advanceAmount).toLocaleString('en-IN')}</span>
+                        </p>
+                    )}
+                    {selectedOrder.refund && (
+                        <p className="text-sm text-gray-500">
+                            Refund: ₹{(selectedOrder.refund.amount || 0).toLocaleString('en-IN')} —{' '}
+                            <span className={`font-bold ${selectedOrder.refund.status === 'failed' ? 'text-red-600' : 'text-blue-600'}`}>
+                                {selectedOrder.refund.status === 'failed' ? 'Failed — refund manually' : selectedOrder.refund.status}
+                            </span>
+                        </p>
+                    )}
+                </div>
+                <div className="space-y-1">
+                    <label className="text-xs font-bold text-gray-400 uppercase">Shipping Address</label>
+                    <p className="text-sm text-gray-500">{selectedOrder.shippingAddress?.street}</p>
+                    <p className="text-sm text-gray-500">{selectedOrder.shippingAddress?.city}, {selectedOrder.shippingAddress?.state}</p>
+                    <p className="text-sm text-gray-500">{selectedOrder.shippingAddress?.zip}</p>
+                    <p className="text-sm text-gray-500">Location : <a href={selectedOrder.mapLink} target="_blank" rel="noopener noreferrer">View on Google Maps</a></p>
+                </div>
+            </div>
+
+            <div>
+                <label className="text-xs font-bold text-gray-400 uppercase block mb-3">Items Ordered</label>
+                <div className="border border-gray-200 rounded-xl overflow-hidden">
+                    <table className="w-full text-sm text-left">
+                        <thead className="bg-gray-50">
+                            <tr>
+                                <th className="px-4 py-2 font-medium text-gray-600">Product</th>
+                                <th className="px-4 py-2 font-medium text-gray-600 text-right">Price</th>
+                                <th className="px-4 py-2 font-medium text-gray-600 text-right">Qty</th>
+                                <th className="px-4 py-2 font-medium text-gray-600 text-right">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                            {selectedOrder.items.map((item, idx) => (
+                                <React.Fragment key={idx}>
+                                <tr>
+                                    <td className="px-4 py-3">
+                                        <div className="flex items-center gap-3">
+                                            <img src={item.image} className="w-8 h-8 rounded object-cover    " alt="" />
+                                            <div>
+                                                <span className="font-medium text-gray-900">{item.title}</span>
+                                                {/* Snapshot frozen at purchase time — never recomputed
+                                                    from the live product, so this stays accurate even
+                                                    after the offer expires or is edited/removed. */}
+                                                {item.extraOfferDiscount ? (
+                                                    <div className="text-xs text-rose-600 font-medium">
+                                                        {item.extraOfferLabel || 'Product Offer'}: -₹{item.extraOfferDiscount.toLocaleString('en-IN')}
+                                                    </div>
+                                                ) : null}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-right">
+                                        {item.originalPrice ? (
+                                            <>
+                                                <div className="text-xs text-gray-400 line-through">₹{item.originalPrice.toLocaleString('en-IN')}</div>
+                                                <div>₹{item.finalPrice.toLocaleString('en-IN')}</div>
+                                            </>
+                                        ) : (
+                                            <>₹{item.finalPrice.toLocaleString('en-IN')}</>
+                                        )}
+                                    </td>
+                                    <td className="px-4 py-3 text-right">{item.quantity}</td>
+                                    <td className="px-4 py-3 text-right font-medium">₹{(item.finalPrice * item.quantity).toLocaleString('en-IN')}</td>
+                                </tr>
+                                {/* Serial number — captured here at fulfillment time, not at
+                                    order creation, since a real unit isn't picked for the
+                                    order until now. Keyed to this specific item (item._id),
+                                    never the whole order, so a multi-item order gets one
+                                    serial per laptop. Warranty card reads item.serialNumber
+                                    directly — nothing else to wire up once this saves. */}
+                                <tr className="bg-gray-50/50">
+                                    <td colSpan={4} className="px-4 py-2.5">
+                                        {item.serialNumber && editingItemId !== item._id ? (
+                                            <div className="flex items-center gap-2 text-sm">
+                                                <span className="text-gray-500">Serial Number:</span>
+                                                <span className="font-mono font-medium text-gray-900">{item.serialNumber}</span>
+                                                <span className="inline-flex items-center gap-1 text-green-600 text-xs font-bold">
+                                                    <ShieldCheck className="w-3.5 h-3.5" /> Assigned
+                                                </span>
+                                                <button
+                                                    onClick={() => startEditingSerial(item._id!, item.serialNumber)}
+                                                    className="ml-auto flex items-center gap-1 text-xs font-bold text-gray-500 hover:text-blue-600"
+                                                >
+                                                    <Pencil className="w-3.5 h-3.5" /> Edit
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-2">
+                                                <label className="text-sm text-gray-500 flex-shrink-0">Serial Number</label>
+                                                <input
+                                                    type="text"
+                                                    autoFocus={editingItemId === item._id}
+                                                    placeholder="Scan or type serial number"
+                                                    value={editingItemId === item._id ? serialInput : ''}
+                                                    onFocus={() => { if (editingItemId !== item._id) startEditingSerial(item._id!, ''); }}
+                                                    onChange={(e) => setSerialInput(e.target.value)}
+                                                    // A USB barcode/QR scanner types the code then sends
+                                                    // Enter — this saves on Enter with no extra wiring.
+                                                    onKeyDown={(e) => { if (e.key === 'Enter') saveSerial(item); }}
+                                                    className="flex-1 px-3 py-1.5 border rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                />
+                                                <button
+                                                    onClick={() => saveSerial(item)}
+                                                    disabled={savingSerialItemId === item._id || !serialInput.trim()}
+                                                    className="px-3 py-1.5 rounded-lg text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                                                >
+                                                    {savingSerialItemId === item._id ? 'Saving...' : 'Save'}
+                                                </button>
+                                                {item.serialNumber && (
+                                                    <button
+                                                        onClick={() => setEditingItemId(null)}
+                                                        className="text-xs font-bold text-gray-400 hover:text-gray-600 flex-shrink-0"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
+                                    </td>
+                                </tr>
+                                </React.Fragment>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+                <div className="flex justify-end mt-4">
+                    <div className="text-right space-y-0.5">
+                        {!!selectedOrder.shippingCost && (
+                            <p className="text-sm text-gray-500">
+                                Shipping: <span className="font-medium">₹{selectedOrder.shippingCost.toLocaleString('en-IN')}</span>
+                            </p>
+                        )}
+                        {(selectedOrder as any).couponValue > 0 && (
+                            <p className="text-sm text-gray-500">
+                                Coupon{(selectedOrder as any).coupon ? ` (${(selectedOrder as any).coupon})` : ''}: <span className="text-rose-600 font-medium">-₹{(selectedOrder as any).couponValue.toLocaleString('en-IN')}</span>
+                            </p>
+                        )}
+                        <p className="text-xl font-bold text-gray-900 mt-1">Total: ₹{selectedOrder.total.toLocaleString('en-IN')}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <label className="text-xs font-bold text-gray-400 uppercase block mb-3">Update Status</label>
+                <div className="flex gap-2">
+                    {['Pending', 'Processing', 'Shipped', 'Delivered'].map((status) => (
+                        <button
+                            key={status}
+                            disabled={selectedOrder.status === status || statusUpdating}
+                            onClick={async () => {
+                                setStatusUpdating(true);
+                                try {
+                                    // "Shipped" books the real Ekart shipment server-side, so this
+                                    // waits for the response instead of updating optimistically —
+                                    // a courier-side failure must not show "Shipped" when it isn't.
+                                    const updated = await updateOrderStatus(selectedOrder.orderId, status as any);
+                                    setSelectedOrder(updated);
+                                } catch (err: any) {
+                                    alert(err?.response?.data?.message || `Couldn't update status to ${status}`);
+                                } finally {
+                                    setStatusUpdating(false);
+                                }
+                            }}
+                            className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-all disabled:opacity-60 ${selectedOrder.status === status
+                                ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                }`}
+                        >
+                            {status === 'Shipped' && selectedOrder.status !== 'Shipped' && statusUpdating ? 'Shipping...' : status}
+                        </button>
+
+                    ))}
+                </div>
+
+                {selectedOrder.status !== 'Shipped' && selectedOrder.status !== 'Delivered' && (
+                    <div className="mt-2">
+                        {!showManualShip ? (
+                            <button
+                                type="button"
+                                onClick={() => setShowManualShip(true)}
+                                className="text-sm font-medium text-gray-500 hover:text-gray-700 underline"
+                            >
+                                Ship manually (no courier booking)
+                            </button>
+                        ) : (
+                            <div className="mt-2 bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
+                                <p className="text-xs font-bold text-gray-400 uppercase">Manual Shipment</p>
+                                <p className="text-xs text-gray-500 -mt-2">Tracking number and URL are required so the customer gets a WhatsApp shipment notification.</p>
+                                <input
+                                    type="text"
+                                    placeholder="Courier name (optional)"
+                                    value={manualCourierName}
+                                    onChange={(e) => setManualCourierName(e.target.value)}
+                                    className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2"
+                                />
+                                <input
+                                    type="text"
+                                    required
+                                    placeholder="Tracking number"
+                                    value={manualTrackingNumber}
+                                    onChange={(e) => setManualTrackingNumber(e.target.value)}
+                                    className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2"
+                                />
+                                <input
+                                    type="text"
+                                    required
+                                    placeholder="Tracking URL"
+                                    value={manualTrackingUrl}
+                                    onChange={(e) => setManualTrackingUrl(e.target.value)}
+                                    className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2"
+                                />
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        disabled={statusUpdating || !manualTrackingNumber.trim() || !manualTrackingUrl.trim()}
+                                        onClick={confirmManualShip}
+                                        className="flex-1 py-2 rounded-lg text-sm font-medium bg-gray-800 text-white hover:bg-gray-900 disabled:opacity-60"
+                                    >
+                                        {statusUpdating ? 'Shipping...' : 'Confirm Manual Shipment'}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowManualShip(false)}
+                                        className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-100"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {selectedOrder.shipment?.manual ? (
+                    <div className="mt-3 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-sm">
+                        <p className="text-gray-700 font-bold">Shipped manually{selectedOrder.shipment.courierName ? ` via ${selectedOrder.shipment.courierName}` : ''}</p>
+                        {selectedOrder.shipment.awb && (
+                            <p className="text-gray-500 mt-1">Tracking #: {selectedOrder.shipment.awb}</p>
+                        )}
+                        {selectedOrder.shipment.trackingUrl && (
+                            <a href={selectedOrder.shipment.trackingUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-bold underline mt-1 inline-block">
+                                Track shipment
+                            </a>
+                        )}
+                    </div>
+                ) : selectedOrder.shipment?.awb && (
+                    <div className="mt-3 bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 text-sm">
+                        <p className="text-gray-700"><span className="font-bold">AWB:</span> {selectedOrder.shipment.awb}</p>
+                        {selectedOrder.shipment.courierStatus && (
+                            <p className="text-gray-500 mt-1">Courier status: {selectedOrder.shipment.courierStatus}</p>
+                        )}
+                        {selectedOrder.shipment.trackingUrl && (
+                            <a href={selectedOrder.shipment.trackingUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-bold underline mt-1 inline-block">
+                                Track shipment
+                            </a>
+                        )}
+                    </div>
+                )}
+
+                {selectedOrder.status === 'Delivered' && (
+                    <div className="mt-3">
+                        <button
+                            type="button"
+                            disabled={reviewRequesting || reviewRequestSent}
+                            onClick={sendReviewRequest}
+                            className="text-sm font-medium text-teal-600 hover:text-teal-700 underline disabled:opacity-60 disabled:no-underline disabled:cursor-not-allowed"
+                        >
+                            {reviewRequestSent ? 'Review request sent' : reviewRequesting ? 'Sending...' : 'Request a review via WhatsApp'}
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            {selectedOrder.cancellation && (
+                <div>
+                    <label className="text-xs font-bold text-gray-400 uppercase block mb-3">Cancellation</label>
+                    <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 space-y-1 text-sm">
+                        <p className="text-gray-700"><span className="font-bold">Status:</span> {selectedOrder.cancellation.status}</p>
+                        <p className="text-gray-700"><span className="font-bold">Reason:</span> {selectedOrder.cancellation.reason || '—'}</p>
+                        {selectedOrder.cancellation.note && (
+                            <p className="text-gray-500">Customer note: {selectedOrder.cancellation.note}</p>
+                        )}
+                        {selectedOrder.cancellation.requestedAt && (
+                            <p className="text-gray-500">Requested: {new Date(selectedOrder.cancellation.requestedAt).toLocaleString('en-IN')}</p>
+                        )}
+                        {selectedOrder.cancellation.status === 'Rejected' && selectedOrder.cancellation.rejectionReason && (
+                            <p className="text-gray-500">Rejection note: {selectedOrder.cancellation.rejectionReason}</p>
+                        )}
+                    </div>
+                    {selectedOrder.cancellation.status === 'Requested' && (
+                        <div className="flex gap-2 mt-3">
+                            <button
+                                disabled={cancelActionLoading}
+                                onClick={async () => {
+                                    setCancelActionLoading(true);
+                                    try {
+                                        const updated = await approveCancellation(selectedOrder.orderId);
+                                        setSelectedOrder(updated);
+                                    } catch (err: any) {
+                                        alert(err?.response?.data?.message || "Couldn't approve cancellation");
+                                    } finally {
+                                        setCancelActionLoading(false);
+                                    }
+                                }}
+                                className="flex-1 py-2 rounded-lg text-sm font-bold bg-red-600 text-white hover:bg-red-700 disabled:opacity-60"
+                            >
+                                Approve Cancellation
+                            </button>
+                            <button
+                                disabled={cancelActionLoading}
+                                onClick={async () => {
+                                    setCancelActionLoading(true);
+                                    try {
+                                        const updated = await rejectCancellation(selectedOrder.orderId);
+                                        setSelectedOrder(updated);
+                                    } catch (err: any) {
+                                        alert(err?.response?.data?.message || "Couldn't reject cancellation");
+                                    } finally {
+                                        setCancelActionLoading(false);
+                                    }
+                                }}
+                                className="flex-1 py-2 rounded-lg text-sm font-bold bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 disabled:opacity-60"
+                            >
+                                Reject Cancellation
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -164,8 +548,14 @@ export default function OrderManager() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {filteredOrders.map(order => (
-                                <tr key={order.orderId} className="hover:bg-gray-50 transition-colors">
+                            {filteredOrders.map(order => {
+                                const isExpanded = selectedOrder?.orderId === order.orderId;
+                                return (
+                                <React.Fragment key={order.orderId}>
+                                <tr
+                                    onClick={() => toggleOrder(order)}
+                                    className={`cursor-pointer transition-colors ${isExpanded ? 'bg-blue-50/60' : 'hover:bg-gray-50'}`}
+                                >
                                     <td className="px-6 py-4 font-mono font-medium text-blue-600">{order.orderId}</td>
                                     <td className="px-6 py-4 text-gray-500">
                                         {new Date(order.date).toLocaleString("en-IN", {
@@ -191,24 +581,28 @@ export default function OrderManager() {
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <button
-                                            onClick={() => {
-                                                setSelectedOrder(order);
-                                                setShowManualShip(false);
-                                                setManualCourierName('');
-                                                setManualTrackingNumber('');
-                                                setManualTrackingUrl('');
-                                                setReviewRequestSent(false);
-                                            }}
+                                            onClick={(e) => { e.stopPropagation(); toggleOrder(order); }}
+                                            aria-expanded={isExpanded}
+                                            aria-label={isExpanded ? 'Hide order details' : 'Show order details'}
                                             className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                                         >
-                                            <Eye className="w-4 h-4" />
+                                            <ChevronDown className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180 text-blue-600' : ''}`} />
                                         </button>
                                     </td>
                                 </tr>
-                            ))}
+                                {isExpanded && (
+                                    <tr className="bg-gray-50/70">
+                                        <td colSpan={7} className="px-6 py-6 border-l-4 border-blue-500">
+                                            {orderDetails}
+                                        </td>
+                                    </tr>
+                                )}
+                                </React.Fragment>
+                                );
+                            })}
                             {filteredOrders.length === 0 && (
                                 <tr>
-                                    <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                                    <td colSpan={7}className="px-6 py-12 text-center text-gray-500">
                                         No orders found matching your filters.
                                     </td>
                                 </tr>
@@ -218,384 +612,6 @@ export default function OrderManager() {
                 </div>
             </div>
 
-            {/* Order Details Modal */}
-            {selectedOrder && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                    <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl animate-in fade-in zoom-in-95 overflow-hidden flex flex-col max-h-[90vh]">
-                        <div className="p-6 border-b flex justify-between items-center bg-gray-50">
-                            <div>
-                                <h2 className="text-xl font-bold text-gray-900">Order Details</h2>
-                                <p className="text-sm text-gray-500 uppercase font-medium">Order ID: {selectedOrder.orderId}</p>
-                            </div>
-                            <button onClick={() => setSelectedOrder(null)} className="p-2 hover:bg-gray-200 rounded-full"><X className="w-5 h-5" /></button>
-                        </div>
-
-                        <div className="p-6 overflow-y-auto space-y-6">
-                            <div className="grid grid-cols-2 gap-6">
-                                <div className="space-y-1">
-                                    <label className="text-xs font-bold text-gray-400 uppercase">Customer</label>
-                                    <p className="font-medium text-gray-900">{selectedOrder.customerName}</p>
-                                    <p className="text-sm text-gray-500">{selectedOrder.shippingAddress?.phone}</p>
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs font-bold text-gray-400 uppercase">Order Info</label>
-                                    <p className="text-sm font-medium text-gray-500">Order date:  {new Date(selectedOrder.date).toLocaleString("en-IN", {
-                                        day: "2-digit",
-                                        month: "short",
-                                        year: "numeric",
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                    })}</p>
-                                    <p className="text-sm font-medium text-gray-500">Payment: {selectedOrder.paymentMethod}</p>
-                                    <p className="text-sm text-gray-500">Payment Status: <span className={`px-2 rounded-full text-xs font-bold border ${getPaymentColor(selectedOrder.paymentStatus)}`}>{selectedOrder.paymentStatus}</span></p>
-                                    {(() => {
-                                        // Mirrors backend isCOD check (lapshark_backend/src/services/ekart.ts)
-                                        // so this reflects exactly what createShipment will send to Ekart.
-                                        const codAmount = selectedOrder.total - (selectedOrder.advanceAmount || 0);
-                                        const isCOD = selectedOrder.paymentMethod === 'COD' && codAmount > 0;
-                                        return (
-                                            <p className="text-sm text-gray-500">
-                                                Ekart payment mode: <span className="font-bold">{isCOD ? 'COD' : 'Prepaid'}</span>
-                                            </p>
-                                        );
-                                    })()}
-                                    {selectedOrder.paymentMethod === 'COD' && !!selectedOrder.advanceAmount && selectedOrder.status !== 'Cancelled' && (
-                                        <p className="text-sm text-gray-500">
-                                            Advance paid: ₹{selectedOrder.advanceAmount.toLocaleString('en-IN')} · Collect on delivery: <span className="font-bold text-amber-700">₹{(selectedOrder.total - selectedOrder.advanceAmount).toLocaleString('en-IN')}</span>
-                                        </p>
-                                    )}
-                                    {selectedOrder.refund && (
-                                        <p className="text-sm text-gray-500">
-                                            Refund: ₹{(selectedOrder.refund.amount || 0).toLocaleString('en-IN')} —{' '}
-                                            <span className={`font-bold ${selectedOrder.refund.status === 'failed' ? 'text-red-600' : 'text-blue-600'}`}>
-                                                {selectedOrder.refund.status === 'failed' ? 'Failed — refund manually' : selectedOrder.refund.status}
-                                            </span>
-                                        </p>
-                                    )}
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs font-bold text-gray-400 uppercase">Shipping Address</label>
-                                    <p className="text-sm text-gray-500">{selectedOrder.shippingAddress?.street}</p>
-                                    <p className="text-sm text-gray-500">{selectedOrder.shippingAddress?.city}, {selectedOrder.shippingAddress?.state}</p>
-                                    <p className="text-sm text-gray-500">{selectedOrder.shippingAddress?.zip}</p>
-                                    <p className="text-sm text-gray-500">Location : <a href={selectedOrder.mapLink} target="_blank" rel="noopener noreferrer">View on Google Maps</a></p>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="text-xs font-bold text-gray-400 uppercase block mb-3">Items Ordered</label>
-                                <div className="border border-gray-200 rounded-xl overflow-hidden">
-                                    <table className="w-full text-sm text-left">
-                                        <thead className="bg-gray-50">
-                                            <tr>
-                                                <th className="px-4 py-2 font-medium text-gray-600">Product</th>
-                                                <th className="px-4 py-2 font-medium text-gray-600 text-right">Price</th>
-                                                <th className="px-4 py-2 font-medium text-gray-600 text-right">Qty</th>
-                                                <th className="px-4 py-2 font-medium text-gray-600 text-right">Total</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y">
-                                            {selectedOrder.items.map((item, idx) => (
-                                                <React.Fragment key={idx}>
-                                                <tr>
-                                                    <td className="px-4 py-3">
-                                                        <div className="flex items-center gap-3">
-                                                            <img src={item.image} className="w-8 h-8 rounded object-cover    " alt="" />
-                                                            <div>
-                                                                <span className="font-medium text-gray-900">{item.title}</span>
-                                                                {/* Snapshot frozen at purchase time — never recomputed
-                                                                    from the live product, so this stays accurate even
-                                                                    after the offer expires or is edited/removed. */}
-                                                                {item.extraOfferDiscount ? (
-                                                                    <div className="text-xs text-rose-600 font-medium">
-                                                                        {item.extraOfferLabel || 'Product Offer'}: -₹{item.extraOfferDiscount.toLocaleString('en-IN')}
-                                                                    </div>
-                                                                ) : null}
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-4 py-3 text-right">
-                                                        {item.originalPrice ? (
-                                                            <>
-                                                                <div className="text-xs text-gray-400 line-through">₹{item.originalPrice.toLocaleString('en-IN')}</div>
-                                                                <div>₹{item.finalPrice.toLocaleString('en-IN')}</div>
-                                                            </>
-                                                        ) : (
-                                                            <>₹{item.finalPrice.toLocaleString('en-IN')}</>
-                                                        )}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-right">{item.quantity}</td>
-                                                    <td className="px-4 py-3 text-right font-medium">₹{(item.finalPrice * item.quantity).toLocaleString('en-IN')}</td>
-                                                </tr>
-                                                {/* Serial number — captured here at fulfillment time, not at
-                                                    order creation, since a real unit isn't picked for the
-                                                    order until now. Keyed to this specific item (item._id),
-                                                    never the whole order, so a multi-item order gets one
-                                                    serial per laptop. Warranty card reads item.serialNumber
-                                                    directly — nothing else to wire up once this saves. */}
-                                                <tr className="bg-gray-50/50">
-                                                    <td colSpan={4} className="px-4 py-2.5">
-                                                        {item.serialNumber && editingItemId !== item._id ? (
-                                                            <div className="flex items-center gap-2 text-sm">
-                                                                <span className="text-gray-500">Serial Number:</span>
-                                                                <span className="font-mono font-medium text-gray-900">{item.serialNumber}</span>
-                                                                <span className="inline-flex items-center gap-1 text-green-600 text-xs font-bold">
-                                                                    <ShieldCheck className="w-3.5 h-3.5" /> Assigned
-                                                                </span>
-                                                                <button
-                                                                    onClick={() => startEditingSerial(item._id!, item.serialNumber)}
-                                                                    className="ml-auto flex items-center gap-1 text-xs font-bold text-gray-500 hover:text-blue-600"
-                                                                >
-                                                                    <Pencil className="w-3.5 h-3.5" /> Edit
-                                                                </button>
-                                                            </div>
-                                                        ) : (
-                                                            <div className="flex items-center gap-2">
-                                                                <label className="text-sm text-gray-500 flex-shrink-0">Serial Number</label>
-                                                                <input
-                                                                    type="text"
-                                                                    autoFocus={editingItemId === item._id}
-                                                                    placeholder="Scan or type serial number"
-                                                                    value={editingItemId === item._id ? serialInput : ''}
-                                                                    onFocus={() => { if (editingItemId !== item._id) startEditingSerial(item._id!, ''); }}
-                                                                    onChange={(e) => setSerialInput(e.target.value)}
-                                                                    // A USB barcode/QR scanner types the code then sends
-                                                                    // Enter — this saves on Enter with no extra wiring.
-                                                                    onKeyDown={(e) => { if (e.key === 'Enter') saveSerial(item); }}
-                                                                    className="flex-1 px-3 py-1.5 border rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                                />
-                                                                <button
-                                                                    onClick={() => saveSerial(item)}
-                                                                    disabled={savingSerialItemId === item._id || !serialInput.trim()}
-                                                                    className="px-3 py-1.5 rounded-lg text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-                                                                >
-                                                                    {savingSerialItemId === item._id ? 'Saving...' : 'Save'}
-                                                                </button>
-                                                                {item.serialNumber && (
-                                                                    <button
-                                                                        onClick={() => setEditingItemId(null)}
-                                                                        className="text-xs font-bold text-gray-400 hover:text-gray-600 flex-shrink-0"
-                                                                    >
-                                                                        Cancel
-                                                                    </button>
-                                                                )}
-                                                            </div>
-                                                        )}
-                                                    </td>
-                                                </tr>
-                                                </React.Fragment>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <div className="flex justify-end mt-4">
-                                    <div className="text-right space-y-0.5">
-                                        {!!selectedOrder.shippingCost && (
-                                            <p className="text-sm text-gray-500">
-                                                Shipping: <span className="font-medium">₹{selectedOrder.shippingCost.toLocaleString('en-IN')}</span>
-                                            </p>
-                                        )}
-                                        {(selectedOrder as any).couponValue > 0 && (
-                                            <p className="text-sm text-gray-500">
-                                                Coupon{(selectedOrder as any).coupon ? ` (${(selectedOrder as any).coupon})` : ''}: <span className="text-rose-600 font-medium">-₹{(selectedOrder as any).couponValue.toLocaleString('en-IN')}</span>
-                                            </p>
-                                        )}
-                                        <p className="text-xl font-bold text-gray-900 mt-1">Total: ₹{selectedOrder.total.toLocaleString('en-IN')}</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="text-xs font-bold text-gray-400 uppercase block mb-3">Update Status</label>
-                                <div className="flex gap-2">
-                                    {['Pending', 'Processing', 'Shipped', 'Delivered'].map((status) => (
-                                        <button
-                                            key={status}
-                                            disabled={selectedOrder.status === status || statusUpdating}
-                                            onClick={async () => {
-                                                setStatusUpdating(true);
-                                                try {
-                                                    // "Shipped" books the real Ekart shipment server-side, so this
-                                                    // waits for the response instead of updating optimistically —
-                                                    // a courier-side failure must not show "Shipped" when it isn't.
-                                                    const updated = await updateOrderStatus(selectedOrder.orderId, status as any);
-                                                    setSelectedOrder(updated);
-                                                } catch (err: any) {
-                                                    alert(err?.response?.data?.message || `Couldn't update status to ${status}`);
-                                                } finally {
-                                                    setStatusUpdating(false);
-                                                }
-                                            }}
-                                            className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-all disabled:opacity-60 ${selectedOrder.status === status
-                                                ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                                                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                                                }`}
-                                        >
-                                            {status === 'Shipped' && selectedOrder.status !== 'Shipped' && statusUpdating ? 'Shipping...' : status}
-                                        </button>
-
-                                    ))}
-                                </div>
-
-                                {selectedOrder.status !== 'Shipped' && selectedOrder.status !== 'Delivered' && (
-                                    <div className="mt-2">
-                                        {!showManualShip ? (
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowManualShip(true)}
-                                                className="text-sm font-medium text-gray-500 hover:text-gray-700 underline"
-                                            >
-                                                Ship manually (no courier booking)
-                                            </button>
-                                        ) : (
-                                            <div className="mt-2 bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
-                                                <p className="text-xs font-bold text-gray-400 uppercase">Manual Shipment</p>
-                                                <p className="text-xs text-gray-500 -mt-2">Tracking number and URL are required so the customer gets a WhatsApp shipment notification.</p>
-                                                <input
-                                                    type="text"
-                                                    placeholder="Courier name (optional)"
-                                                    value={manualCourierName}
-                                                    onChange={(e) => setManualCourierName(e.target.value)}
-                                                    className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2"
-                                                />
-                                                <input
-                                                    type="text"
-                                                    required
-                                                    placeholder="Tracking number"
-                                                    value={manualTrackingNumber}
-                                                    onChange={(e) => setManualTrackingNumber(e.target.value)}
-                                                    className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2"
-                                                />
-                                                <input
-                                                    type="text"
-                                                    required
-                                                    placeholder="Tracking URL"
-                                                    value={manualTrackingUrl}
-                                                    onChange={(e) => setManualTrackingUrl(e.target.value)}
-                                                    className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2"
-                                                />
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        type="button"
-                                                        disabled={statusUpdating || !manualTrackingNumber.trim() || !manualTrackingUrl.trim()}
-                                                        onClick={confirmManualShip}
-                                                        className="flex-1 py-2 rounded-lg text-sm font-medium bg-gray-800 text-white hover:bg-gray-900 disabled:opacity-60"
-                                                    >
-                                                        {statusUpdating ? 'Shipping...' : 'Confirm Manual Shipment'}
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setShowManualShip(false)}
-                                                        className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-100"
-                                                    >
-                                                        Cancel
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-
-                                {selectedOrder.shipment?.manual ? (
-                                    <div className="mt-3 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-sm">
-                                        <p className="text-gray-700 font-bold">Shipped manually{selectedOrder.shipment.courierName ? ` via ${selectedOrder.shipment.courierName}` : ''}</p>
-                                        {selectedOrder.shipment.awb && (
-                                            <p className="text-gray-500 mt-1">Tracking #: {selectedOrder.shipment.awb}</p>
-                                        )}
-                                        {selectedOrder.shipment.trackingUrl && (
-                                            <a href={selectedOrder.shipment.trackingUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-bold underline mt-1 inline-block">
-                                                Track shipment
-                                            </a>
-                                        )}
-                                    </div>
-                                ) : selectedOrder.shipment?.awb && (
-                                    <div className="mt-3 bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 text-sm">
-                                        <p className="text-gray-700"><span className="font-bold">AWB:</span> {selectedOrder.shipment.awb}</p>
-                                        {selectedOrder.shipment.courierStatus && (
-                                            <p className="text-gray-500 mt-1">Courier status: {selectedOrder.shipment.courierStatus}</p>
-                                        )}
-                                        {selectedOrder.shipment.trackingUrl && (
-                                            <a href={selectedOrder.shipment.trackingUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-bold underline mt-1 inline-block">
-                                                Track shipment
-                                            </a>
-                                        )}
-                                    </div>
-                                )}
-
-                                {selectedOrder.status === 'Delivered' && (
-                                    <div className="mt-3">
-                                        <button
-                                            type="button"
-                                            disabled={reviewRequesting || reviewRequestSent}
-                                            onClick={sendReviewRequest}
-                                            className="text-sm font-medium text-teal-600 hover:text-teal-700 underline disabled:opacity-60 disabled:no-underline disabled:cursor-not-allowed"
-                                        >
-                                            {reviewRequestSent ? 'Review request sent' : reviewRequesting ? 'Sending...' : 'Request a review via WhatsApp'}
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-
-                            {selectedOrder.cancellation && (
-                                <div>
-                                    <label className="text-xs font-bold text-gray-400 uppercase block mb-3">Cancellation</label>
-                                    <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 space-y-1 text-sm">
-                                        <p className="text-gray-700"><span className="font-bold">Status:</span> {selectedOrder.cancellation.status}</p>
-                                        <p className="text-gray-700"><span className="font-bold">Reason:</span> {selectedOrder.cancellation.reason || '—'}</p>
-                                        {selectedOrder.cancellation.note && (
-                                            <p className="text-gray-500">Customer note: {selectedOrder.cancellation.note}</p>
-                                        )}
-                                        {selectedOrder.cancellation.requestedAt && (
-                                            <p className="text-gray-500">Requested: {new Date(selectedOrder.cancellation.requestedAt).toLocaleString('en-IN')}</p>
-                                        )}
-                                        {selectedOrder.cancellation.status === 'Rejected' && selectedOrder.cancellation.rejectionReason && (
-                                            <p className="text-gray-500">Rejection note: {selectedOrder.cancellation.rejectionReason}</p>
-                                        )}
-                                    </div>
-                                    {selectedOrder.cancellation.status === 'Requested' && (
-                                        <div className="flex gap-2 mt-3">
-                                            <button
-                                                disabled={cancelActionLoading}
-                                                onClick={async () => {
-                                                    setCancelActionLoading(true);
-                                                    try {
-                                                        const updated = await approveCancellation(selectedOrder.orderId);
-                                                        setSelectedOrder(updated);
-                                                    } catch (err: any) {
-                                                        alert(err?.response?.data?.message || "Couldn't approve cancellation");
-                                                    } finally {
-                                                        setCancelActionLoading(false);
-                                                    }
-                                                }}
-                                                className="flex-1 py-2 rounded-lg text-sm font-bold bg-red-600 text-white hover:bg-red-700 disabled:opacity-60"
-                                            >
-                                                Approve Cancellation
-                                            </button>
-                                            <button
-                                                disabled={cancelActionLoading}
-                                                onClick={async () => {
-                                                    setCancelActionLoading(true);
-                                                    try {
-                                                        const updated = await rejectCancellation(selectedOrder.orderId);
-                                                        setSelectedOrder(updated);
-                                                    } catch (err: any) {
-                                                        alert(err?.response?.data?.message || "Couldn't reject cancellation");
-                                                    } finally {
-                                                        setCancelActionLoading(false);
-                                                    }
-                                                }}
-                                                className="flex-1 py-2 rounded-lg text-sm font-bold bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 disabled:opacity-60"
-                                            >
-                                                Reject Cancellation
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }
