@@ -136,11 +136,7 @@ export default function OrderManager() {
     // match random phone numbers.
     const isPhoneTerm = /^[\d\s+()-]+$/.test(term);
     const phoneDigits = term.replace(/\D/g, '').replace(/^91(?=\d{10}$)/, '');
-    const filteredOrders = orders.filter(order => {
-        // Keep the expanded order in the list even once it stops matching —
-        // e.g. filtered to "Pending" and just marked Processing — otherwise
-        // its details vanish mid-edit along with the row.
-        if (order.orderId === selectedOrder?.orderId) return true;
+    const matchesFilters = (order: Order) => {
         const matchesSearch =
             (order.orderId?.toString()?.toLowerCase().includes(term) ?? false) ||
             (order.customerName?.toLowerCase().includes(term) ?? false) ||
@@ -153,7 +149,21 @@ export default function OrderManager() {
             (!dateRange.start || orderTime >= dateRange.start.getTime()) &&
             (!dateRange.end || orderTime < dateRange.end.getTime());
         return matchesSearch && matchesStatus && matchesPayment && matchesDate;
-    });
+    };
+    // Keep the expanded order in the list even once it stops matching —
+    // e.g. filtered to "Pending" and just marked Processing — otherwise
+    // its details vanish mid-edit along with the row.
+    const filteredOrders = orders.filter(order =>
+        order.orderId === selectedOrder?.orderId || matchesFilters(order)
+    );
+    // Summary counts only genuine matches, not a pinned expanded order.
+    const matchingOrders = orders.filter(matchesFilters);
+    // Cancelled/RTO orders never turned into revenue, so they're kept out of
+    // the headline total and shown on their own instead.
+    const isLostOrder = (o: Order) => o.status === 'Cancelled' || o.status === 'RTO';
+    const lostOrders = matchingOrders.filter(isLostOrder);
+    const matchingTotal = matchingOrders.reduce((sum, o) => sum + (isLostOrder(o) ? 0 : o.total || 0), 0);
+    const lostTotal = lostOrders.reduce((sum, o) => sum + (o.total || 0), 0);
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -621,6 +631,22 @@ export default function OrderManager() {
                         </div>
                     )}
                 </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm text-gray-500">
+                <span>
+                    <span className="font-bold text-gray-900">{matchingOrders.length.toLocaleString('en-IN')}</span>{' '}
+                    {matchingOrders.length === 1 ? 'order' : 'orders'}
+                </span>
+                <span>
+                    Total: <span className="font-bold text-gray-900">₹{matchingTotal.toLocaleString('en-IN')}</span>
+                </span>
+                {lostOrders.length > 0 && (
+                    <span>
+                        Cancelled / RTO: <span className="font-medium text-red-600">{lostOrders.length} · ₹{lostTotal.toLocaleString('en-IN')}</span>
+                        <span className="text-gray-400"> (not in total)</span>
+                    </span>
+                )}
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
