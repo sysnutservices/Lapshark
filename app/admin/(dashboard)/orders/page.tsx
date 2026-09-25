@@ -158,7 +158,12 @@ export default function OrderManager() {
     );
     // Summary counts only genuine matches, not a pinned expanded order.
     const matchingOrders = orders.filter(matchesFilters);
-    const matchingTotal = matchingOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+    // Cancelled/RTO orders never turned into revenue, so they're kept out of
+    // the headline total and shown on their own instead.
+    const isLostOrder = (o: Order) => o.status === 'Cancelled' || o.status === 'RTO';
+    const lostOrders = matchingOrders.filter(isLostOrder);
+    const matchingTotal = matchingOrders.reduce((sum, o) => sum + (isLostOrder(o) ? 0 : o.total || 0), 0);
+    const lostTotal = lostOrders.reduce((sum, o) => sum + (o.total || 0), 0);
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -636,6 +641,12 @@ export default function OrderManager() {
                 <span>
                     Total: <span className="font-bold text-gray-900">₹{matchingTotal.toLocaleString('en-IN')}</span>
                 </span>
+                {lostOrders.length > 0 && (
+                    <span>
+                        Cancelled / RTO: <span className="font-medium text-red-600">{lostOrders.length} · ₹{lostTotal.toLocaleString('en-IN')}</span>
+                        <span className="text-gray-400"> (not in total)</span>
+                    </span>
+                )}
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
