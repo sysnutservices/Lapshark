@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useStore } from '@/context/StoreContext';
 import { Order } from '@/types';
-import { Search, Filter, ChevronDown, Check, X, Clock, Truck, Package, Pencil, ShieldCheck } from 'lucide-react';
+import { Search, Filter, ChevronDown, Check, X, Clock, Truck, Package, Pencil, ShieldCheck, Download } from 'lucide-react';
 
 export default function OrderManager() {
     const { orders, updateOrderStatus, setItemSerialNumber, approveCancellation, rejectCancellation, requestReview } = useStore();
@@ -13,6 +13,7 @@ export default function OrderManager() {
     const [statusFilter, setStatusFilter] = useState<string>('All');
     const [paymentFilter, setPaymentFilter] = useState<string>('All');
     const [dateFilter, setDateFilter] = useState<string>('All');
+    const [exporting, setExporting] = useState(false);
     // yyyy-mm-dd strings straight from <input type="date">, used only when
     // dateFilter is 'Custom'. Either end may be left blank (open-ended).
     const [dateFrom, setDateFrom] = useState('');
@@ -176,6 +177,57 @@ export default function OrderManager() {
     };
     const matchingTotal = matchingOrders.reduce((sum, o) => sum + receivedAmount(o), 0);
     const lostTotal = lostOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+
+    // Exports exactly what the summary line counts (matchingOrders), one row
+    // per order, as a real .xlsx. The library is loaded only on click so it
+    // stays out of the page bundle.
+    const exportToExcel = async () => {
+        if (matchingOrders.length === 0) return;
+        setExporting(true);
+        try {
+            const { default: writeExcelFile } = await import('write-excel-file/browser');
+            // write-excel-file stores dates as UTC wall-clock; shift so Excel
+            // shows the admin's local (IST) time, same as the table does.
+            const toLocalCell = (iso?: string) => {
+                if (!iso) return undefined;
+                const d = new Date(iso);
+                return new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+            };
+            const header = (text: string) => ({ value: text, fontWeight: 'bold' as const });
+            const text = (value?: string) => ({ value: value || '', type: String, format: '@' });
+            const money = (value: number) => ({ value, type: Number, format: '#,##0' });
+            const columns = [
+                { header: header('Order ID'), cell: (o: Order) => text(o.orderId), width: 16 },
+                { header: header('Date'), cell: (o: Order) => ({ value: toLocalCell(o.date), type: Date, format: 'dd/mm/yyyy hh:mm' }), width: 17 },
+                { header: header('Customer'), cell: (o: Order) => text(o.customerName), width: 22 },
+                { header: header('Phone'), cell: (o: Order) => text(o.shippingAddress?.phone), width: 14 },
+                { header: header('Email'), cell: (o: Order) => text(o.customerEmail), width: 26 },
+                { header: header('Address'), cell: (o: Order) => text(o.shippingAddress?.street), width: 36 },
+                { header: header('City'), cell: (o: Order) => text(o.shippingAddress?.city), width: 14 },
+                { header: header('State'), cell: (o: Order) => text(o.shippingAddress?.state), width: 14 },
+                { header: header('PIN'), cell: (o: Order) => text(o.shippingAddress?.zip), width: 9 },
+                { header: header('Items'), cell: (o: Order) => text(o.items.map(i => `${i.title} × ${i.quantity}`).join('; ')), width: 45 },
+                { header: header('Serial Numbers'), cell: (o: Order) => text(o.items.map(i => i.serialNumber).filter(Boolean).join('; ')), width: 20 },
+                { header: header('Order Status'), cell: (o: Order) => text(o.status), width: 15 },
+                { header: header('Payment Method'), cell: (o: Order) => text(o.paymentMethod), width: 15 },
+                { header: header('Payment Status'), cell: (o: Order) => text(o.paymentStatus), width: 15 },
+                { header: header('Shipping (₹)'), cell: (o: Order) => money(o.shippingCost || 0), width: 12 },
+                { header: header('Order Total (₹)'), cell: (o: Order) => money(o.total || 0), width: 15 },
+                { header: header('Advance Paid (₹)'), cell: (o: Order) => money(o.paymentMethod === 'COD' && o.paymentStatus === 'Paid' ? o.advanceAmount || 0 : 0), width: 16 },
+                { header: header('Revenue Received (₹)'), cell: (o: Order) => money(receivedAmount(o)), width: 20 },
+                { header: header('Courier / AWB'), cell: (o: Order) => text([o.shipment?.courierName, o.shipment?.awb].filter(Boolean).join(' ')), width: 22 },
+            ];
+            const now = new Date();
+            const stamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            await writeExcelFile(matchingOrders, { columns, sheet: 'Orders', stickyRowsCount: 1 })
+                .toFile(`lapshark-orders-${stamp}.xlsx`);
+        } catch (err) {
+            console.error(err);
+            alert("Couldn't export orders to Excel");
+        } finally {
+            setExporting(false);
+        }
+    };
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -659,6 +711,15 @@ export default function OrderManager() {
                         <span className="text-gray-400"> (not in revenue)</span>
                     </span>
                 )}
+                <button
+                    type="button"
+                    onClick={exportToExcel}
+                    disabled={exporting || matchingOrders.length === 0}
+                    className="ml-auto inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <Download className="w-4 h-4" />
+                    {exporting ? 'Exporting...' : 'Export to Excel'}
+                </button>
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
