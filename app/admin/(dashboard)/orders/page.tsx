@@ -102,6 +102,12 @@ export default function OrderManager() {
     };
 
     const term = searchTerm.trim().toLowerCase();
+    // Phone search compares digits only, so spaces/dashes/"+91" in either
+    // the typed term or the saved number don't matter. Only used when the
+    // term looks like a phone number — otherwise an order ID's digits would
+    // match random phone numbers.
+    const isPhoneTerm = /^[\d\s+()-]+$/.test(term);
+    const phoneDigits = term.replace(/\D/g, '').replace(/^91(?=\d{10}$)/, '');
     const filteredOrders = orders.filter(order => {
         // Keep the expanded order in the list even once it stops matching —
         // e.g. filtered to "Pending" and just marked Processing — otherwise
@@ -109,7 +115,9 @@ export default function OrderManager() {
         if (order.orderId === selectedOrder?.orderId) return true;
         const matchesSearch =
             (order.orderId?.toString()?.toLowerCase().includes(term) ?? false) ||
-            (order.customerName?.toLowerCase().includes(term) ?? false);
+            (order.customerName?.toLowerCase().includes(term) ?? false) ||
+            (isPhoneTerm && !!phoneDigits &&
+                (order.shippingAddress?.phone?.replace(/\D/g, '').includes(phoneDigits) ?? false));
         const matchesStatus = statusFilter === 'All' || order.status === statusFilter;
         return matchesSearch && matchesStatus;
     });
@@ -514,7 +522,7 @@ export default function OrderManager() {
                     <div className="relative flex-1 md:w-64">
                         <input
                             type="text"
-                            placeholder="Search order ID or name..."
+                            placeholder="Search order ID, name or phone..."
                             className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                             value={searchTerm}
                             onChange={(e) => { setSearchTerm(e.target.value); setSelectedOrder(null); }}
