@@ -1,8 +1,22 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useStore } from '@/context/StoreContext';
 import { Search, Ban, CheckCircle, Mail, Calendar, User, Phone, LogOut } from 'lucide-react';
+
+// When a customer joined, as epoch ms. GET /users returns natural (oldest-
+// first) order, and some older accounts have no createdAt — a Mongo ObjectId's
+// first 4 bytes are its creation time in seconds, so it's a reliable fallback.
+const joinedAt = (c: { createdAt?: string | Date; id?: string }): number => {
+    if (c?.createdAt) {
+        const t = new Date(c.createdAt).getTime();
+        if (!Number.isNaN(t)) return t;
+    }
+    if (c?.id && /^[0-9a-f]{24}$/i.test(c.id)) {
+        return parseInt(c.id.slice(0, 8), 16) * 1000;
+    }
+    return 0;
+};
 
 export default function CustomerManager() {
     const { customers, blockCustomer, forceLogoutCustomer } = useStore();
@@ -18,14 +32,20 @@ export default function CustomerManager() {
         }
     };
 
-    const filteredCustomers = customers.filter(c => {
-        const name = c?.name || '';
-        const email = c?.email || '';
+    // Newest customers first.
+    const filteredCustomers = useMemo(() => {
         const search = searchTerm.toLowerCase();
 
-        return name.toLowerCase().includes(search) ||
-            email.toLowerCase().includes(search);
-    });
+        return customers
+            .filter(c => {
+                const name = c?.name || '';
+                const email = c?.email || '';
+
+                return name.toLowerCase().includes(search) ||
+                    email.toLowerCase().includes(search);
+            })
+            .sort((a, b) => joinedAt(b) - joinedAt(a));
+    }, [customers, searchTerm]);
 
     return (
         <div className="space-y-6">
