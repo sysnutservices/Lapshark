@@ -18,7 +18,14 @@ const joinedAt = (c: { createdAt?: string | Date; id?: string }): number => {
     return 0;
 };
 
-type StatusFilter = 'all' | 'active' | 'blocked';
+// Always shown in IST regardless of the admin's device timezone, e.g.
+// "26 Sept 2026" / "2:45 PM".
+const formatJoinedDate = (ms: number) =>
+    new Date(ms).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
+const formatJoinedTime = (ms: number) =>
+    new Date(ms).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' }).toUpperCase();
+
+type StatusFilter ='all' | 'active' | 'blocked';
 type OrdersFilter = 'all' | 'with' | 'without';
 type JoinedFilter = 'all' | '7d' | '30d' | '90d';
 
@@ -192,13 +199,20 @@ export default function CustomerManager() {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="flex items-center gap-2 text-gray-500">
-                                                <Calendar className="w-3 h-3" />
-                                                {customer?.createdAt
-                                                    ? new Date(customer.createdAt).toLocaleDateString('en-IN')
-                                                    : <span className="text-gray-400 italic">N/A</span>
-                                                }
-                                            </div>
+                                            {joinedAt(customer) ? (
+                                                <div className="flex items-start gap-2 text-gray-500 whitespace-nowrap">
+                                                    <Calendar className="w-3 h-3 mt-1" />
+                                                    <div>
+                                                        <div>{formatJoinedDate(joinedAt(customer))}</div>
+                                                        <div className="text-xs text-gray-400">{formatJoinedTime(joinedAt(customer))}</div>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-2 text-gray-500">
+                                                    <Calendar className="w-3 h-3" />
+                                                    <span className="text-gray-400 italic">N/A</span>
+                                                </div>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 font-medium">
                                             {customer?.ordersCount ?? 0}
