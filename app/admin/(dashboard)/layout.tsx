@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { LayoutDashboard, Package, ShoppingCart, ShoppingBag, Users, Monitor, Settings, Ticket, LogOut, Globe, Menu, X, MessageCircle, BarChart3, Mail, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { WHATSAPP_URL } from '@/api/api';
+import { LoginAlerts } from '@/components/admin/LoginAlerts';
 
 export default function AdminDashboardLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -190,6 +191,8 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
                     {children}
                 </main>
             </div>
+
+            <LoginAlerts />
         </div>
     );
 }

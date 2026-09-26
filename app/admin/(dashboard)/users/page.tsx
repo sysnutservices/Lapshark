@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useMemo, useState } from 'react';
+import React, { Suspense, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useStore } from '@/context/StoreContext';
 import { Search, Ban, CheckCircle, Mail, Calendar, User as UserIcon, Phone, LogOut, Download } from 'lucide-react';
 import type { User } from '@/types';
@@ -35,7 +36,17 @@ const JOINED_DAYS: Record<Exclude<JoinedFilter, 'all'>, number> = { '7d': 7, '30
 
 const selectClass = "px-3 py-2 border rounded-lg bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500";
 
-export default function CustomerManager() {
+// useSearchParams needs a Suspense boundary or `next build` fails the page's
+// static prerender.
+export default function CustomersPage() {
+    return (
+        <Suspense fallback={null}>
+            <CustomerManager />
+        </Suspense>
+    );
+}
+
+function CustomerManager() {
     const { customers, blockCustomer, forceLogoutCustomer } = useStore();
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -43,6 +54,15 @@ export default function CustomerManager() {
     const [joinedFilter, setJoinedFilter] = useState<JoinedFilter>('all');
     const [loggingOutId, setLoggingOutId] = useState<string | null>(null);
     const [exporting, setExporting] = useState(false);
+
+    // ?q= pre-fills the search — used by the admin login popup's "View
+    // customer" link (components/admin/LoginAlerts.tsx). Re-read on every
+    // navigation so clicking a second popup while already here still works.
+    const searchParams = useSearchParams();
+    const queryParam = searchParams.get('q');
+    useEffect(() => {
+        if (queryParam) setSearchTerm(queryParam);
+    }, [queryParam]);
 
     const handleForceLogout = async (id: string) => {
         setLoggingOutId(id);
