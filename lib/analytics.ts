@@ -14,6 +14,7 @@ const CONSENT_KEY = "lapshark_cookie_consent";
 const VISITOR_KEY = "lapshark_visitor_id";
 const SESSION_KEY = "lapshark_session_id";
 const SESSION_META_KEY = "lapshark_session_meta";
+const PURCHASE_TRACKED_PREFIX = "lapshark_purchase_tracked_";
 
 function hasConsent(): boolean {
   try {
@@ -303,6 +304,23 @@ export function trackPurchaseConversion(params: {
   try {
     if (!hasConsent()) return;
 
+    // Two call sites can reach here for the same order — the Razorpay
+    // handler in CheckoutContent.tsx and the order-success page (which
+    // covers customers whose handler never ran, e.g. a UPI app hand-off
+    // on mobile). Same eventID means Meta would dedupe the pixel hits
+    // anyway, but GA4's `purchase` has no such guard, so the flag is what
+    // keeps it to one per order. Only set after something actually fired,
+    // so a call made before the pixel loaded can be retried.
+    const flagKey = `${PURCHASE_TRACKED_PREFIX}${params.orderId}`;
+    try {
+      if (localStorage.getItem(flagKey)) return;
+    } catch {
+      // storage unavailable — fall through and fire; a duplicate is
+      // better than a lost conversion.
+    }
+
+    if (typeof window.gtag !== "function" && typeof window.fbq !== "function") return;
+
     if (typeof window.gtag === "function") {
       window.gtag("event", "purchase", {
         transaction_id: params.orderId,
@@ -324,8 +342,10 @@ export function trackPurchaseConversion(params: {
         {
           value: params.total,
           currency: "INR",
+          content_type: "product",
           content_ids: params.items.map((i) => i.productId),
           contents: params.items.map((i) => ({ id: i.productId, quantity: i.quantity })),
+          num_items: params.items.reduce((n, i) => n + i.quantity, 0),
         },
         { eventID: params.eventId }
       );
@@ -333,6 +353,12 @@ export function trackPurchaseConversion(params: {
 
     if (typeof window.clarity === "function") {
       window.clarity("set", "purchase_completed", "true");
+    }
+
+    try {
+      localStorage.setItem(flagKey, "1");
+    } catch {
+      // see above
     }
   } catch {
     // never throw into the caller
