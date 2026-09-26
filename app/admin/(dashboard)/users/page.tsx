@@ -2,7 +2,8 @@
 
 import React, { useMemo, useState } from 'react';
 import { useStore } from '@/context/StoreContext';
-import { Search, Ban, CheckCircle, Mail, Calendar, User, Phone, LogOut } from 'lucide-react';
+import { Search, Ban, CheckCircle, Mail, Calendar, User as UserIcon, Phone, LogOut, Download } from 'lucide-react';
+import type { User } from '@/types';
 
 // When a customer joined, as epoch ms. GET /users returns natural (oldest-
 // first) order, and some older accounts have no createdAt — a Mongo ObjectId's
@@ -41,6 +42,7 @@ export default function CustomerManager() {
     const [ordersFilter, setOrdersFilter] = useState<OrdersFilter>('all');
     const [joinedFilter, setJoinedFilter] = useState<JoinedFilter>('all');
     const [loggingOutId, setLoggingOutId] = useState<string | null>(null);
+    const [exporting, setExporting] = useState(false);
 
     const handleForceLogout = async (id: string) => {
         setLoggingOutId(id);
@@ -86,6 +88,44 @@ export default function CustomerManager() {
             })
             .sort((a, b) => joinedAt(b) - joinedAt(a));
     }, [customers, searchTerm, statusFilter, ordersFilter, joinedFilter]);
+
+    // Exports exactly the filtered list on screen (same newest-first order),
+    // as a real .xlsx — same approach as the Orders page export. The library
+    // is loaded only on click so it stays out of the page bundle.
+    const exportToExcel = async () => {
+        if (filteredCustomers.length === 0) return;
+        setExporting(true);
+        try {
+            const { default: writeExcelFile } = await import('write-excel-file/browser');
+            // write-excel-file stores dates as UTC wall-clock; shift so Excel
+            // shows the admin's local (IST) time, same as the table does.
+            const toLocalCell = (ms: number) => {
+                if (!ms) return undefined;
+                const d = new Date(ms);
+                return new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+            };
+            const header = (text: string) => ({ value: text, fontWeight: 'bold' as const });
+            const text = (value?: string) => ({ value: value || '', type: String, format: '@' });
+            const columns = [
+                { header: header('Name'), cell: (c: User) => text(c.name), width: 24 },
+                { header: header('Phone'), cell: (c: User) => text(c.mobile), width: 14 },
+                { header: header('Email'), cell: (c: User) => text(c.email), width: 30 },
+                { header: header('Joined'), cell: (c: User) => ({ value: toLocalCell(joinedAt(c)), type: Date, format: 'dd/mm/yyyy hh:mm AM/PM' }), width: 20 },
+                { header: header('Orders'), cell: (c: User) => ({ value: c.ordersCount ?? 0, type: Number }), width: 9 },
+                { header: header('Total Spent (₹)'), cell: (c: User) => ({ value: c.totalSpent ?? 0, type: Number, format: '#,##0' }), width: 15 },
+                { header: header('Status'), cell: (c: User) => text(c.status === 'blocked' ? 'Blocked' : c.status === 'active' ? 'Active' : ''), width: 10 },
+            ];
+            const now = new Date();
+            const stamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            await writeExcelFile(filteredCustomers, { columns, sheet: 'Customers', stickyRowsCount: 1 })
+                .toFile(`lapshark-customers-${stamp}.xlsx`);
+        } catch (err) {
+            console.error(err);
+            alert("Couldn't export customers to Excel");
+        } finally {
+            setExporting(false);
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -149,6 +189,15 @@ export default function CustomerManager() {
                 <span className="text-sm text-gray-500 md:ml-auto">
                     Showing {filteredCustomers.length} of {customers.length}
                 </span>
+                <button
+                    type="button"
+                    onClick={exportToExcel}
+                    disabled={exporting || filteredCustomers.length === 0}
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <Download className="w-4 h-4" />
+                    {exporting ? 'Exporting...' : 'Export to Excel'}
+                </button>
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -179,7 +228,7 @@ export default function CustomerManager() {
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
-                                                    {customer?.name ? customer.name.charAt(0).toUpperCase() : <User className="w-4 h-4" />}
+                                                    {customer?.name ? customer.name.charAt(0).toUpperCase() : <UserIcon className="w-4 h-4" />}
                                                 </div>
                                                 <span className="font-medium text-gray-900">
                                                     {customer?.name || <span className="text-gray-400 italic">Unknown User</span>}
