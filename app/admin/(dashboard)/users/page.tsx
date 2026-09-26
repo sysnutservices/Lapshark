@@ -18,9 +18,21 @@ const joinedAt = (c: { createdAt?: string | Date; id?: string }): number => {
     return 0;
 };
 
+type StatusFilter = 'all' | 'active' | 'blocked';
+type OrdersFilter = 'all' | 'with' | 'without';
+type JoinedFilter = 'all' | '7d' | '30d' | '90d';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const JOINED_DAYS: Record<Exclude<JoinedFilter, 'all'>, number> = { '7d': 7, '30d': 30, '90d': 90 };
+
+const selectClass = "px-3 py-2 border rounded-lg bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500";
+
 export default function CustomerManager() {
     const { customers, blockCustomer, forceLogoutCustomer } = useStore();
     const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+    const [ordersFilter, setOrdersFilter] = useState<OrdersFilter>('all');
+    const [joinedFilter, setJoinedFilter] = useState<JoinedFilter>('all');
     const [loggingOutId, setLoggingOutId] = useState<string | null>(null);
 
     const handleForceLogout = async (id: string) => {
@@ -32,20 +44,41 @@ export default function CustomerManager() {
         }
     };
 
+    const hasActiveFilters = !!searchTerm || statusFilter !== 'all' || ordersFilter !== 'all' || joinedFilter !== 'all';
+
+    const clearFilters = () => {
+        setSearchTerm('');
+        setStatusFilter('all');
+        setOrdersFilter('all');
+        setJoinedFilter('all');
+    };
+
     // Newest customers first.
     const filteredCustomers = useMemo(() => {
-        const search = searchTerm.toLowerCase();
+        const search = searchTerm.trim().toLowerCase();
+        const joinedCutoff = joinedFilter === 'all' ? 0 : Date.now() - JOINED_DAYS[joinedFilter] * DAY_MS;
 
         return customers
             .filter(c => {
-                const name = c?.name || '';
-                const email = c?.email || '';
+                if (search) {
+                    const haystack = [c?.name, c?.email, c?.mobile]
+                        .map(v => (v || '').toLowerCase())
+                        .join(' ');
+                    if (!haystack.includes(search)) return false;
+                }
 
-                return name.toLowerCase().includes(search) ||
-                    email.toLowerCase().includes(search);
+                if (statusFilter !== 'all' && c?.status !== statusFilter) return false;
+
+                const orders = c?.ordersCount ?? 0;
+                if (ordersFilter === 'with' && orders === 0) return false;
+                if (ordersFilter === 'without' && orders > 0) return false;
+
+                if (joinedCutoff && joinedAt(c) < joinedCutoff) return false;
+
+                return true;
             })
             .sort((a, b) => joinedAt(b) - joinedAt(a));
-    }, [customers, searchTerm]);
+    }, [customers, searchTerm, statusFilter, ordersFilter, joinedFilter]);
 
     return (
         <div className="space-y-6">
@@ -54,16 +87,61 @@ export default function CustomerManager() {
                     <h1 className="text-2xl font-bold text-gray-900">Customers</h1>
                     <p className="text-gray-500 text-sm">Manage user accounts and access</p>
                 </div>
-                <div className="relative w-full md:w-64">
+                <div className="relative w-full md:w-72">
                     <input
                         type="text"
-                        placeholder="Search customers..."
+                        placeholder="Search name, email or phone..."
                         className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                     <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
                 </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+                <select
+                    aria-label="Filter by status"
+                    className={selectClass}
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+                >
+                    <option value="all">All statuses</option>
+                    <option value="active">Active</option>
+                    <option value="blocked">Blocked</option>
+                </select>
+                <select
+                    aria-label="Filter by orders"
+                    className={selectClass}
+                    value={ordersFilter}
+                    onChange={(e) => setOrdersFilter(e.target.value as OrdersFilter)}
+                >
+                    <option value="all">All customers</option>
+                    <option value="with">Has orders</option>
+                    <option value="without">No orders</option>
+                </select>
+                <select
+                    aria-label="Filter by join date"
+                    className={selectClass}
+                    value={joinedFilter}
+                    onChange={(e) => setJoinedFilter(e.target.value as JoinedFilter)}
+                >
+                    <option value="all">Joined: any time</option>
+                    <option value="7d">Last 7 days</option>
+                    <option value="30d">Last 30 days</option>
+                    <option value="90d">Last 90 days</option>
+                </select>
+                {hasActiveFilters && (
+                    <button
+                        onClick={clearFilters}
+                        className="text-sm font-medium text-blue-600 hover:text-blue-700"
+                    >
+                        Clear filters
+                    </button>
+                )}
+                <span className="text-sm text-gray-500 md:ml-auto">
+                    Showing {filteredCustomers.length} of {customers.length}
+                </span>
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -84,8 +162,8 @@ export default function CustomerManager() {
                         <tbody className="divide-y divide-gray-100">
                             {filteredCustomers.length === 0 ? (
                                 <tr>
-                                    <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
-                                        {searchTerm ? 'No customers found matching your search.' : 'No customers yet.'}
+                                    <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+                                        {hasActiveFilters ? 'No customers match these filters.' : 'No customers yet.'}
                                     </td>
                                 </tr>
                             ) : (
@@ -103,14 +181,14 @@ export default function CustomerManager() {
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-2 text-gray-500">
-                                                <Mail className="w-3 h-3" />
-                                                {customer?.email || <span className="text-gray-400 italic">No email</span>}
+                                                <Phone className="w-3 h-3" />
+                                                {customer?.mobile || <span className="text-gray-400 italic">No phone</span>}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-2 text-gray-500">
-                                                <Phone className="w-3 h-3" />
-                                                {customer?.mobile || <span className="text-gray-400 italic">No phone</span>}
+                                                <Mail className="w-3 h-3" />
+                                                {customer?.email || <span className="text-gray-400 italic">No email</span>}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
