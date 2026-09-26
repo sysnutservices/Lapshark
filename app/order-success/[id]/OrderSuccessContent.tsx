@@ -4,8 +4,70 @@ import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { Check, Package, ShoppingBag, Home } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { api } from '@/api/api';
+import { trackPurchaseConversion } from '@/lib/analytics';
 
 export default function OrderSuccessContent({ id }: { id: string }) {
+    // Browser Pixel/GA4 Purchase, driven by the saved order rather than the
+    // Razorpay handler's closure — the handler never runs when the customer
+    // is handed off to a UPI app and comes back straight to this URL, but
+    // the server still records the payment (webhook) and sends its own CAPI
+    // Purchase. Reusing the order's metaEventId/total makes this hit dedupe
+    // against that one; trackPurchaseConversion's per-order flag keeps it
+    // from doubling up with the handler's call when both do run.
+    useEffect(() => {
+        let cancelled = false;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+
+        const fire = async () => {
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) return;
+                const { data } = await api.get(`/orders/${id}`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                const order = data?.order;
+                if (cancelled || !order || order.paymentStatus !== 'Paid' || !order.metaEventId) return;
+
+                const params = {
+                    eventId: order.metaEventId as string,
+                    orderId: order.orderId as string,
+                    total: order.total as number,
+                    items: (order.items || []).map((i: any) => ({
+                        productId: String(i.productId),
+                        title: i.title,
+                        quantity: i.quantity ?? 1,
+                        finalPrice: i.finalPrice,
+                        price: i.price,
+                    })),
+                };
+
+                // The pixel snippet loads afterInteractive, so on a direct
+                // page load fbq may not exist yet — retry briefly instead of
+                // silently dropping the conversion.
+                let attempts = 0;
+                const tryTrack = () => {
+                    if (cancelled) return;
+                    if (typeof window.fbq === 'function' || attempts >= 10) {
+                        trackPurchaseConversion(params);
+                        return;
+                    }
+                    attempts += 1;
+                    timer = setTimeout(tryTrack, 500);
+                };
+                tryTrack();
+            } catch {
+                // analytics must never break the confirmation page
+            }
+        };
+
+        fire();
+        return () => {
+            cancelled = true;
+            if (timer) clearTimeout(timer);
+        };
+    }, [id]);
+
     useEffect(() => {
         // Fire confetti animation on mount
         const duration = 3 * 1000;

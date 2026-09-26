@@ -141,6 +141,10 @@ export interface Order {
   // Set once by markOrderPaid on the backend (Order.ts's IOrder.paidAt) —
   // absent on any order that hasn't been paid yet.
   paidAt?: string;
+  // Minted at checkout and shared with the browser Pixel Purchase call and
+  // the server-side Meta CAPI Purchase (Order.ts's IOrder.metaEventId) so
+  // Meta dedupes them into one conversion.
+  metaEventId?: string;
   mapLink: string;
   total: number;
   shippingCost?: number;
