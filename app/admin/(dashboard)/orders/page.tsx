@@ -214,6 +214,11 @@ export default function OrderManager() {
     };
     const matchingTotal = matchingOrders.reduce((sum, o) => sum + receivedAmount(o), 0);
     const lostTotal = lostOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+    // Cash the courier collected on delivery but hasn't settled to us yet.
+    const settlementPending = (o: Order) =>
+        getPaymentLabel(o) === 'Awaiting Settlement' ? o.total - (o.advanceAmount || 0) : 0;
+    const pendingOrders = matchingOrders.filter(o => settlementPending(o) > 0);
+    const pendingTotal = pendingOrders.reduce((sum, o) => sum + settlementPending(o), 0);
 
     // Exports exactly what the summary line counts (matchingOrders), one row
     // per order, as a real .xlsx. The library is loaded only on click so it
@@ -256,7 +261,7 @@ export default function OrderManager() {
                 { header: header('Settlement Received'), cell: (o: Order) => ({ value: toLocalCell(o.codCollected?.at), type: Date, format: 'dd/mm/yyyy' }), width: 19 },
                 // Cash the courier collected on delivery but hasn't settled to
                 // us yet; 0 for everything not in Awaiting Settlement.
-                { header: header('Settlement Pending (₹)'), cell: (o: Order) => money(getPaymentLabel(o) === 'Awaiting Settlement' ? o.total - (o.advanceAmount || 0) : 0), width: 21 },
+                { header: header('Settlement Pending (₹)'), cell: (o: Order) => money(settlementPending(o)), width: 21 },
                 { header: header('Revenue Received (₹)'), cell: (o: Order) => money(receivedAmount(o)), width: 20 },
                 { header: header('Courier / AWB'), cell: (o: Order) => text([o.shipment?.courierName, o.shipment?.awb].filter(Boolean).join(' ')), width: 22 },
             ];
@@ -783,6 +788,16 @@ export default function OrderManager() {
                 <span>
                     Revenue received: <span className="font-bold text-gray-900">₹{matchingTotal.toLocaleString('en-IN')}</span>
                 </span>
+                {pendingOrders.length > 0 && (
+                    <button
+                        type="button"
+                        onClick={() => { setPaymentFilter('Awaiting Settlement'); setSelectedOrder(null); }}
+                        title="Show only orders awaiting courier settlement"
+                        className="hover:underline"
+                    >
+                        Settlement pending: <span className="font-bold text-purple-700">{pendingOrders.length} · ₹{pendingTotal.toLocaleString('en-IN')}</span>
+                    </button>
+                )}
                 {lostOrders.length > 0 && (
                     <span>
                         Cancelled / RTO: <span className="font-medium text-red-600">{lostOrders.length} · ₹{lostTotal.toLocaleString('en-IN')}</span>
