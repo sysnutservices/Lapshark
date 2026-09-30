@@ -91,7 +91,7 @@ export default function Dashboard() {
             {/* COD cash the courier has collected but not yet paid out — same
                 figure as the orders page's "Settlement pending" total. */}
             {pendingOrders.length > 0 && (
-                <Link href="/admin/orders" className="block hover:opacity-90">
+                <Link href="/admin/orders?payment=Awaiting%20Settlement" className="block hover:opacity-90">
                     <StatCard
                         title={`Settlement Pending · ${pendingOrders.length} ${pendingOrders.length === 1 ? 'order' : 'orders'}`}
                         value={`₹${pendingTotal.toLocaleString('en-IN')}`}

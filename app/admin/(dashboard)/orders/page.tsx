@@ -1,12 +1,25 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useStore } from '@/context/StoreContext';
 import { Order } from '@/types';
 import { getPaymentLabel, settlementPending } from '@/lib/orderPayment';
 import { Search, Filter, ChevronDown, Check, X, Clock, Truck, Package, Pencil, ShieldCheck, Download } from 'lucide-react';
 
-export default function OrderManager() {
+// useSearchParams needs a Suspense boundary or `next build` fails the page's
+// static prerender (same as the customers page).
+export default function OrdersPage() {
+    return (
+        <Suspense fallback={null}>
+            <OrderManager />
+        </Suspense>
+    );
+}
+
+const PAYMENT_FILTERS = ['All', 'Paid', 'Fully Paid', 'Partially Paid', 'Awaiting Settlement', 'Pending', 'Failed', 'Refunded'];
+
+function OrderManager() {
     const { orders, updateOrderStatus, setItemSerialNumber, approveCancellation, rejectCancellation, requestReview, setCodCollected } = useStore();
     const [reviewRequesting, setReviewRequesting] = useState(false);
     const [reviewRequestSent, setReviewRequestSent] = useState(false);
@@ -14,6 +27,12 @@ export default function OrderManager() {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('All');
     const [paymentFilter, setPaymentFilter] = useState<string>('All');
+    // ?payment= pre-selects the payment filter — used by the dashboard's
+    // Settlement Pending card. Re-read on every navigation.
+    const paymentParam = useSearchParams().get('payment');
+    useEffect(() => {
+        if (paymentParam && PAYMENT_FILTERS.includes(paymentParam)) setPaymentFilter(paymentParam);
+    }, [paymentParam]);
     const [dateFilter, setDateFilter] = useState<string>('All');
     const [exporting, setExporting] = useState(false);
     // yyyy-mm-dd strings straight from <input type="date">, used only when
