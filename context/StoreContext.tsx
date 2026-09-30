@@ -57,6 +57,7 @@ interface StoreContextType {
   approveCancellation: (orderId: string, note?: string) => Promise<Order>;
   rejectCancellation: (orderId: string, reason?: string) => Promise<Order>;
   requestReview: (orderId: string) => Promise<void>;
+  setCodCollected: (orderId: string, collected: boolean) => Promise<Order>;
 
   // Coupons
   addCoupon: (coupon: Coupon) => Promise<void>;
@@ -310,6 +311,13 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     await api.post(`/orders/${orderId}/request-review`, {}, { headers: authHeaders() });
   };
 
+  const setCodCollected = async (orderId: string, collected: boolean) => {
+    const res = await api.put(`/orders/${orderId}/cod-collected`, { collected }, { headers: authHeaders() });
+    const updated = res.data.order as Order;
+    setOrders(prev => prev.map(o => (o.orderId === orderId ? updated : o)));
+    return updated;
+  };
+
   // ------------------------
   // COUPONS
   // ------------------------
@@ -418,6 +426,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         approveCancellation,
         rejectCancellation,
         requestReview,
+        setCodCollected,
         addCoupon,
         updateCoupon,
         validateCoupon,

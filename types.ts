@@ -149,6 +149,8 @@ export interface Order {
   total: number;
   shippingCost?: number;
   advanceAmount?: number;
+  // Set once an admin marks the COD balance (total - advanceAmount) as received.
+  codCollected?: { at: string; by?: string };
   status: 'Pending' | 'Processing' | 'Shipped' | 'Out for Delivery' | 'Delivered' | 'Cancelled' | 'RTO';
   paymentStatus: 'Paid' | 'Pending' | 'Failed' | 'Refunded';
   paymentMethod: 'Razorpay' | 'COD' | 'Card';
