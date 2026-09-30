@@ -254,7 +254,11 @@ export default function OrderManager() {
     const getPaymentLabel = (o: Order) => {
         if (o.paymentStatus !== 'Paid') return o.paymentStatus;
         const due = o.total - (o.advanceAmount || 0);
-        return o.paymentMethod === 'COD' && due > 0 && !o.codCollected?.at ? 'Partially Paid' : 'Fully Paid';
+        // Delivered COD = courier collected the cash. The backend now records
+        // codCollected on delivery; the status check also covers orders
+        // delivered before that existed.
+        const balanceReceived = !!o.codCollected?.at || o.status === 'Delivered';
+        return o.paymentMethod === 'COD' && due > 0 && !balanceReceived ? 'Partially Paid' : 'Fully Paid';
     };
 
     const getStatusColor = (status: string) => {
@@ -317,12 +321,15 @@ export default function OrderManager() {
                             Advance paid: ₹{selectedOrder.advanceAmount.toLocaleString('en-IN')} ·{' '}
                             {selectedOrder.codCollected?.at ? (
                                 <>Balance ₹{(selectedOrder.total - selectedOrder.advanceAmount).toLocaleString('en-IN')} <span className="font-bold text-green-700">received</span> on {new Date(selectedOrder.codCollected.at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</>
+                            ) : selectedOrder.status === 'Delivered' ? (
+                                <>Balance ₹{(selectedOrder.total - selectedOrder.advanceAmount).toLocaleString('en-IN')} <span className="font-bold text-green-700">collected on delivery</span></>
                             ) : (
                                 <>Collect on delivery: <span className="font-bold text-amber-700">₹{(selectedOrder.total - selectedOrder.advanceAmount).toLocaleString('en-IN')}</span></>
                             )}
                         </p>
                     )}
-                    {selectedOrder.paymentMethod === 'COD' && selectedOrder.paymentStatus === 'Paid' && selectedOrder.status !== 'Cancelled'
+                    {selectedOrder.paymentMethod === 'COD' && selectedOrder.paymentStatus === 'Paid'
+                        && selectedOrder.status !== 'Cancelled' && selectedOrder.status !== 'Delivered'
                         && selectedOrder.total - (selectedOrder.advanceAmount || 0) > 0 && (
                         selectedOrder.codCollected?.at ? (
                             <button
