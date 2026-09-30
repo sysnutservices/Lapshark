@@ -155,6 +155,20 @@ export default function OrderManager() {
     // match random phone numbers.
     const isPhoneTerm = /^[\d\s+()-]+$/.test(term);
     const phoneDigits = term.replace(/\D/g, '').replace(/^91(?=\d{10}$)/, '');
+
+    // paymentStatus is 'Paid' for both a prepaid order and a COD order whose
+    // ₹500 advance went through — split those so admins can tell at a glance
+    // whether cash is still owed on delivery.
+    const getPaymentLabel = (o: Order) => {
+        if (o.paymentStatus !== 'Paid') return o.paymentStatus;
+        const due = o.total - (o.advanceAmount || 0);
+        // Delivered COD = courier collected the cash. The backend now records
+        // codCollected on delivery; the status check also covers orders
+        // delivered before that existed.
+        const balanceReceived = !!o.codCollected?.at || o.status === 'Delivered';
+        return o.paymentMethod === 'COD' && due > 0 && !balanceReceived ? 'Partially Paid' : 'Fully Paid';
+    };
+
     const matchesFilters = (order: Order) => {
         const matchesSearch =
             (order.orderId?.toString()?.toLowerCase().includes(term) ?? false) ||
@@ -162,7 +176,12 @@ export default function OrderManager() {
             (isPhoneTerm && !!phoneDigits &&
                 (order.shippingAddress?.phone?.replace(/\D/g, '').includes(phoneDigits) ?? false));
         const matchesStatus = statusFilter === 'All' || order.status === statusFilter;
-        const matchesPayment = paymentFilter === 'All' || order.paymentStatus === paymentFilter;
+        // Fully/Partially Paid are sub-splits of 'Paid' (see getPaymentLabel);
+        // the rest match the raw paymentStatus.
+        const matchesPayment = paymentFilter === 'All'
+            || (paymentFilter === 'Fully Paid' || paymentFilter === 'Partially Paid'
+                ? getPaymentLabel(order) === paymentFilter
+                : order.paymentStatus === paymentFilter);
         const orderTime = new Date(order.date).getTime();
         const matchesDate =
             (!dateRange.start || orderTime >= dateRange.start.getTime()) &&
@@ -246,19 +265,6 @@ export default function OrderManager() {
         } finally {
             setExporting(false);
         }
-    };
-
-    // paymentStatus is 'Paid' for both a prepaid order and a COD order whose
-    // ₹500 advance went through — split those so admins can tell at a glance
-    // whether cash is still owed on delivery.
-    const getPaymentLabel = (o: Order) => {
-        if (o.paymentStatus !== 'Paid') return o.paymentStatus;
-        const due = o.total - (o.advanceAmount || 0);
-        // Delivered COD = courier collected the cash. The backend now records
-        // codCollected on delivery; the status check also covers orders
-        // delivered before that existed.
-        const balanceReceived = !!o.codCollected?.at || o.status === 'Delivered';
-        return o.paymentMethod === 'COD' && due > 0 && !balanceReceived ? 'Partially Paid' : 'Fully Paid';
     };
 
     const getStatusColor = (status: string) => {
@@ -719,7 +725,9 @@ export default function OrderManager() {
                         onChange={(e) => { setPaymentFilter(e.target.value); setSelectedOrder(null); }}
                     >
                         <option value="All">All Payments</option>
-                        <option value="Paid">Paid</option>
+                        <option value="Paid">Paid (all)</option>
+                        <option value="Fully Paid">Fully Paid</option>
+                        <option value="Partially Paid">Partially Paid</option>
                         <option value="Pending">Pending</option>
                         <option value="Failed">Failed</option>
                         <option value="Refunded">Refunded</option>
