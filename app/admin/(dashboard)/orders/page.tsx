@@ -210,7 +210,7 @@ export default function OrderManager() {
                 { header: header('Serial Numbers'), cell: (o: Order) => text(o.items.map(i => i.serialNumber).filter(Boolean).join('; ')), width: 20 },
                 { header: header('Order Status'), cell: (o: Order) => text(o.status), width: 15 },
                 { header: header('Payment Method'), cell: (o: Order) => text(o.paymentMethod), width: 15 },
-                { header: header('Payment Status'), cell: (o: Order) => text(o.paymentStatus), width: 15 },
+                { header: header('Payment Status'), cell: (o: Order) => text(getPaymentLabel(o)), width: 15 },
                 { header: header('Shipping (₹)'), cell: (o: Order) => money(o.shippingCost || 0), width: 12 },
                 { header: header('Order Total (₹)'), cell: (o: Order) => money(o.total || 0), width: 15 },
                 { header: header('Advance Paid (₹)'), cell: (o: Order) => money(o.paymentMethod === 'COD' && o.paymentStatus === 'Paid' ? o.advanceAmount || 0 : 0), width: 16 },
@@ -229,6 +229,15 @@ export default function OrderManager() {
         }
     };
 
+    // paymentStatus is 'Paid' for both a prepaid order and a COD order whose
+    // ₹500 advance went through — split those so admins can tell at a glance
+    // whether cash is still owed on delivery.
+    const getPaymentLabel = (o: Order) => {
+        if (o.paymentStatus !== 'Paid') return o.paymentStatus;
+        const due = o.total - (o.advanceAmount || 0);
+        return o.paymentMethod === 'COD' && due > 0 ? 'Partially Paid' : 'Fully Paid';
+    };
+
     const getStatusColor = (status: string) => {
         switch (status) {
             case 'Delivered': return 'bg-green-100 text-green-700 border-green-200';
@@ -243,7 +252,9 @@ export default function OrderManager() {
 
     const getPaymentColor = (status: string) => {
         switch (status) {
-            case 'Paid': return 'bg-green-100 text-green-700 border-green-200';
+            case 'Paid':
+            case 'Fully Paid': return 'bg-green-100 text-green-700 border-green-200';
+            case 'Partially Paid': return 'bg-amber-100 text-amber-700 border-amber-200';
             case 'Pending': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
             case 'Failed': return 'bg-red-100 text-red-700 border-red-200';
             case 'Refunded': return 'bg-blue-100 text-blue-700 border-blue-200';
@@ -270,7 +281,7 @@ export default function OrderManager() {
                         minute: "2-digit",
                     })}</p>
                     <p className="text-sm font-medium text-gray-500">Payment: {selectedOrder.paymentMethod}</p>
-                    <p className="text-sm text-gray-500">Payment Status: <span className={`px-2 rounded-full text-xs font-bold border ${getPaymentColor(selectedOrder.paymentStatus)}`}>{selectedOrder.paymentStatus}</span></p>
+                    <p className="text-sm text-gray-500">Payment Status: <span className={`px-2 rounded-full text-xs font-bold border ${getPaymentColor(getPaymentLabel(selectedOrder))}`}>{getPaymentLabel(selectedOrder)}</span></p>
                     {(() => {
                         // Mirrors backend isCOD check (lapshark_backend/src/services/ekart.ts)
                         // so this reflects exactly what createShipment will send to Ekart.
@@ -764,9 +775,13 @@ export default function OrderManager() {
                                         </span>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${getPaymentColor(order.paymentStatus)}`}>
-                                            {order.paymentStatus}
+                                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${getPaymentColor(getPaymentLabel(order))}`}>
+                                            {getPaymentLabel(order)}
                                         </span>
+                                        <p className="mt-1 text-xs text-gray-500">
+                                            {order.paymentMethod === 'COD' ? 'COD' : 'Prepaid'}
+                                            {getPaymentLabel(order) === 'Partially Paid' && ` · ₹${(order.total - (order.advanceAmount || 0)).toLocaleString('en-IN')} due`}
+                                        </p>
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <button
