@@ -2,9 +2,11 @@
 
 import React from 'react';
 import { BarChart, Bar, XAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { DollarSign, ShoppingCart, Package, Users, TrendingUp, AlertTriangle } from 'lucide-react';
+import { DollarSign, ShoppingCart, Package, Users, TrendingUp, AlertTriangle, Hourglass } from 'lucide-react';
+import Link from 'next/link';
 import { useStore } from '@/context/StoreContext';
 import { Order } from '@/types';
+import { settlementPending } from '@/lib/orderPayment';
 
 // Last 7 calendar days' real order totals, grouped by day — same
 // all-orders-regardless-of-status convention as stats.totalRevenue below,
@@ -36,6 +38,8 @@ const StatCard = ({ title, value, icon: Icon, bgColor, color, trend }: any) => (
 export default function Dashboard() {
     const { stats, orders, customers } = useStore();
     const data = weeklySales(orders);
+    const pendingOrders = orders.filter((o) => settlementPending(o) > 0);
+    const pendingTotal = pendingOrders.reduce((sum, o) => sum + settlementPending(o), 0);
 
     return (
         <div className="space-y-6">
@@ -83,6 +87,20 @@ export default function Dashboard() {
                     />
                 )}
             </div>
+
+            {/* COD cash the courier has collected but not yet paid out — same
+                figure as the orders page's "Settlement pending" total. */}
+            {pendingOrders.length > 0 && (
+                <Link href="/admin/orders" className="block hover:opacity-90">
+                    <StatCard
+                        title={`Settlement Pending · ${pendingOrders.length} ${pendingOrders.length === 1 ? 'order' : 'orders'}`}
+                        value={`₹${pendingTotal.toLocaleString('en-IN')}`}
+                        icon={Hourglass}
+                        color="text-purple-500"
+                        bgColor="bg-purple-100"
+                    />
+                </Link>
+            )}
 
             {/* Chart — visitor traffic already has its own real page at
                 /admin/analytics/visitors, so it isn't duplicated here. */}

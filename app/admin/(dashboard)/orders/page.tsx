@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useStore } from '@/context/StoreContext';
 import { Order } from '@/types';
+import { getPaymentLabel, settlementPending } from '@/lib/orderPayment';
 import { Search, Filter, ChevronDown, Check, X, Clock, Truck, Package, Pencil, ShieldCheck, Download } from 'lucide-react';
 
 export default function OrderManager() {
@@ -156,18 +157,6 @@ export default function OrderManager() {
     const isPhoneTerm = /^[\d\s+()-]+$/.test(term);
     const phoneDigits = term.replace(/\D/g, '').replace(/^91(?=\d{10}$)/, '');
 
-    // paymentStatus is 'Paid' for both a prepaid order and a COD order whose
-    // ₹500 advance went through — split those so admins can tell at a glance
-    // whether cash is still owed on delivery.
-    const getPaymentLabel = (o: Order) => {
-        if (o.paymentStatus !== 'Paid') return o.paymentStatus;
-        const due = o.total - (o.advanceAmount || 0);
-        if (o.paymentMethod !== 'COD' || due <= 0 || o.codCollected?.at) return 'Fully Paid';
-        // Delivered COD: the courier has the cash but settles it to us days
-        // later — only Fully Paid once an admin marks the settlement received.
-        return o.status === 'Delivered' ? 'Awaiting Settlement' : 'Partially Paid';
-    };
-
     const matchesFilters = (order: Order) => {
         const matchesSearch =
             (order.orderId?.toString()?.toLowerCase().includes(term) ?? false) ||
@@ -214,9 +203,6 @@ export default function OrderManager() {
     };
     const matchingTotal = matchingOrders.reduce((sum, o) => sum + receivedAmount(o), 0);
     const lostTotal = lostOrders.reduce((sum, o) => sum + (o.total || 0), 0);
-    // Cash the courier collected on delivery but hasn't settled to us yet.
-    const settlementPending = (o: Order) =>
-        getPaymentLabel(o) === 'Awaiting Settlement' ? o.total - (o.advanceAmount || 0) : 0;
     const pendingOrders = matchingOrders.filter(o => settlementPending(o) > 0);
     const pendingTotal = pendingOrders.reduce((sum, o) => sum + settlementPending(o), 0);
 
