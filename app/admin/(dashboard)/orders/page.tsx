@@ -247,10 +247,13 @@ export default function OrderManager() {
                 { header: header('Serial Numbers'), cell: (o: Order) => text(o.items.map(i => i.serialNumber).filter(Boolean).join('; ')), width: 20 },
                 { header: header('Order Status'), cell: (o: Order) => text(o.status), width: 15 },
                 { header: header('Payment Method'), cell: (o: Order) => text(o.paymentMethod), width: 15 },
-                { header: header('Payment Status'), cell: (o: Order) => text(getPaymentLabel(o)), width: 15 },
+                { header: header('Payment Status'), cell: (o: Order) => text(getPaymentLabel(o)), width: 20 },
                 { header: header('Shipping (₹)'), cell: (o: Order) => money(o.shippingCost || 0), width: 12 },
                 { header: header('Order Total (₹)'), cell: (o: Order) => money(o.total || 0), width: 15 },
                 { header: header('Advance Paid (₹)'), cell: (o: Order) => money(o.paymentMethod === 'COD' && o.paymentStatus === 'Paid' ? o.advanceAmount || 0 : 0), width: 16 },
+                // Date an admin marked the COD balance received; blank for
+                // prepaid orders and COD orders still awaiting settlement.
+                { header: header('Settlement Received'), cell: (o: Order) => ({ value: toLocalCell(o.codCollected?.at), type: Date, format: 'dd/mm/yyyy' }), width: 19 },
                 { header: header('Revenue Received (₹)'), cell: (o: Order) => money(receivedAmount(o)), width: 20 },
                 { header: header('Courier / AWB'), cell: (o: Order) => text([o.shipment?.courierName, o.shipment?.awb].filter(Boolean).join(' ')), width: 22 },
             ];
