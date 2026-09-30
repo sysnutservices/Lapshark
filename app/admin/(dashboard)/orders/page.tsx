@@ -254,6 +254,9 @@ export default function OrderManager() {
                 // Date an admin marked the COD balance received; blank for
                 // prepaid orders and COD orders still awaiting settlement.
                 { header: header('Settlement Received'), cell: (o: Order) => ({ value: toLocalCell(o.codCollected?.at), type: Date, format: 'dd/mm/yyyy' }), width: 19 },
+                // Cash the courier collected on delivery but hasn't settled to
+                // us yet; 0 for everything not in Awaiting Settlement.
+                { header: header('Settlement Pending (₹)'), cell: (o: Order) => money(getPaymentLabel(o) === 'Awaiting Settlement' ? o.total - (o.advanceAmount || 0) : 0), width: 21 },
                 { header: header('Revenue Received (₹)'), cell: (o: Order) => money(receivedAmount(o)), width: 20 },
                 { header: header('Courier / AWB'), cell: (o: Order) => text([o.shipment?.courierName, o.shipment?.awb].filter(Boolean).join(' ')), width: 22 },
             ];
