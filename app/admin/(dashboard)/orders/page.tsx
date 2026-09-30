@@ -74,8 +74,8 @@ export default function OrderManager() {
         if (!selectedOrder) return;
         const due = selectedOrder.total - (selectedOrder.advanceAmount || 0);
         const question = collected
-            ? `Confirm ₹${due.toLocaleString('en-IN')} COD balance received for ${selectedOrder.orderId}? It will show as Fully Paid.`
-            : `Undo: mark ${selectedOrder.orderId} as Partially Paid again?`;
+            ? `Confirm ₹${due.toLocaleString('en-IN')} COD balance for ${selectedOrder.orderId} has reached you? It will show as Fully Paid.`
+            : `Undo: mark ${selectedOrder.orderId} as not fully paid again?`;
         if (!window.confirm(question)) return;
         setCodUpdating(true);
         try {
@@ -162,11 +162,10 @@ export default function OrderManager() {
     const getPaymentLabel = (o: Order) => {
         if (o.paymentStatus !== 'Paid') return o.paymentStatus;
         const due = o.total - (o.advanceAmount || 0);
-        // Delivered COD = courier collected the cash. The backend now records
-        // codCollected on delivery; the status check also covers orders
-        // delivered before that existed.
-        const balanceReceived = !!o.codCollected?.at || o.status === 'Delivered';
-        return o.paymentMethod === 'COD' && due > 0 && !balanceReceived ? 'Partially Paid' : 'Fully Paid';
+        if (o.paymentMethod !== 'COD' || due <= 0 || o.codCollected?.at) return 'Fully Paid';
+        // Delivered COD: the courier has the cash but settles it to us days
+        // later — only Fully Paid once an admin marks the settlement received.
+        return o.status === 'Delivered' ? 'Awaiting Settlement' : 'Partially Paid';
     };
 
     const matchesFilters = (order: Order) => {
@@ -176,10 +175,10 @@ export default function OrderManager() {
             (isPhoneTerm && !!phoneDigits &&
                 (order.shippingAddress?.phone?.replace(/\D/g, '').includes(phoneDigits) ?? false));
         const matchesStatus = statusFilter === 'All' || order.status === statusFilter;
-        // Fully/Partially Paid are sub-splits of 'Paid' (see getPaymentLabel);
-        // the rest match the raw paymentStatus.
+        // Fully Paid / Partially Paid / Awaiting Settlement are sub-splits of
+        // 'Paid' (see getPaymentLabel); the rest match the raw paymentStatus.
         const matchesPayment = paymentFilter === 'All'
-            || (paymentFilter === 'Fully Paid' || paymentFilter === 'Partially Paid'
+            || (['Fully Paid', 'Partially Paid', 'Awaiting Settlement'].includes(paymentFilter)
                 ? getPaymentLabel(order) === paymentFilter
                 : order.paymentStatus === paymentFilter);
         const orderTime = new Date(order.date).getTime();
@@ -202,13 +201,13 @@ export default function OrderManager() {
     const lostOrders = matchingOrders.filter(isLostOrder);
     // Money actually received. paymentStatus alone can't say that: a COD
     // order's advance also marks it "Paid" (and it never changes after), so
-    // COD counts only the advance until it's Delivered and the courier has
-    // collected the rest (or an admin marked the balance received). Prepaid
-    // counts in full once Paid.
+    // COD counts only the advance until an admin marks the balance received
+    // — delivery alone isn't enough, the courier settles the cash days later.
+    // Prepaid counts in full once Paid.
     const receivedAmount = (o: Order) => {
         if (isLostOrder(o)) return 0;
         if (o.paymentMethod === 'COD') {
-            if (o.status === 'Delivered' || o.codCollected?.at) return o.total || 0;
+            if (o.codCollected?.at) return o.total || 0;
             return o.paymentStatus === 'Paid' ? o.advanceAmount || 0 : 0;
         }
         return o.paymentStatus === 'Paid' ? o.total || 0 : 0;
@@ -284,6 +283,7 @@ export default function OrderManager() {
             case 'Paid':
             case 'Fully Paid': return 'bg-green-100 text-green-700 border-green-200';
             case 'Partially Paid': return 'bg-amber-100 text-amber-700 border-amber-200';
+            case 'Awaiting Settlement': return 'bg-purple-100 text-purple-700 border-purple-200';
             case 'Pending': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
             case 'Failed': return 'bg-red-100 text-red-700 border-red-200';
             case 'Refunded': return 'bg-blue-100 text-blue-700 border-blue-200';
@@ -328,14 +328,14 @@ export default function OrderManager() {
                             {selectedOrder.codCollected?.at ? (
                                 <>Balance ₹{(selectedOrder.total - selectedOrder.advanceAmount).toLocaleString('en-IN')} <span className="font-bold text-green-700">received</span> on {new Date(selectedOrder.codCollected.at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</>
                             ) : selectedOrder.status === 'Delivered' ? (
-                                <>Balance ₹{(selectedOrder.total - selectedOrder.advanceAmount).toLocaleString('en-IN')} <span className="font-bold text-green-700">collected on delivery</span></>
+                                <>Balance ₹{(selectedOrder.total - selectedOrder.advanceAmount).toLocaleString('en-IN')} <span className="font-bold text-purple-700">with courier, awaiting settlement</span></>
                             ) : (
                                 <>Collect on delivery: <span className="font-bold text-amber-700">₹{(selectedOrder.total - selectedOrder.advanceAmount).toLocaleString('en-IN')}</span></>
                             )}
                         </p>
                     )}
                     {selectedOrder.paymentMethod === 'COD' && selectedOrder.paymentStatus === 'Paid'
-                        && selectedOrder.status !== 'Cancelled' && selectedOrder.status !== 'Delivered'
+                        && selectedOrder.status !== 'Cancelled'
                         && selectedOrder.total - (selectedOrder.advanceAmount || 0) > 0 && (
                         selectedOrder.codCollected?.at ? (
                             <button
@@ -352,7 +352,7 @@ export default function OrderManager() {
                                 className="mt-1 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
                             >
                                 <Check className="w-3.5 h-3.5" />
-                                {codUpdating ? 'Updating…' : 'Mark as Fully Paid'}
+                                {codUpdating ? 'Updating…' : selectedOrder.status === 'Delivered' ? 'Mark Settlement Received' : 'Mark as Fully Paid'}
                             </button>
                         )
                     )}
@@ -728,6 +728,7 @@ export default function OrderManager() {
                         <option value="Paid">Paid (all)</option>
                         <option value="Fully Paid">Fully Paid</option>
                         <option value="Partially Paid">Partially Paid</option>
+                        <option value="Awaiting Settlement">Awaiting Settlement</option>
                         <option value="Pending">Pending</option>
                         <option value="Failed">Failed</option>
                         <option value="Refunded">Refunded</option>
@@ -840,7 +841,8 @@ export default function OrderManager() {
                                         </span>
                                         <p className="mt-1 text-xs text-gray-500">
                                             {order.paymentMethod === 'COD' ? 'COD' : 'Prepaid'}
-                                            {getPaymentLabel(order) === 'Partially Paid' && ` · ₹${(order.total - (order.advanceAmount || 0)).toLocaleString('en-IN')} due`}
+                                            {(getPaymentLabel(order) === 'Partially Paid' || getPaymentLabel(order) === 'Awaiting Settlement')
+                                                && ` · ₹${(order.total - (order.advanceAmount || 0)).toLocaleString('en-IN')} ${getPaymentLabel(order) === 'Partially Paid' ? 'due' : 'with courier'}`}
                                         </p>
                                     </td>
                                     <td className="px-6 py-4 text-right">
