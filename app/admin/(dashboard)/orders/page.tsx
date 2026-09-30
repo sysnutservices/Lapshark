@@ -6,9 +6,10 @@ import { Order } from '@/types';
 import { Search, Filter, ChevronDown, Check, X, Clock, Truck, Package, Pencil, ShieldCheck, Download } from 'lucide-react';
 
 export default function OrderManager() {
-    const { orders, updateOrderStatus, setItemSerialNumber, approveCancellation, rejectCancellation, requestReview } = useStore();
+    const { orders, updateOrderStatus, setItemSerialNumber, approveCancellation, rejectCancellation, requestReview, setCodCollected } = useStore();
     const [reviewRequesting, setReviewRequesting] = useState(false);
     const [reviewRequestSent, setReviewRequestSent] = useState(false);
+    const [codUpdating, setCodUpdating] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('All');
     const [paymentFilter, setPaymentFilter] = useState<string>('All');
@@ -66,6 +67,23 @@ export default function OrderManager() {
             alert(err?.response?.data?.message || "Couldn't send review request");
         } finally {
             setReviewRequesting(false);
+        }
+    };
+
+    const toggleCodCollected = async (collected: boolean) => {
+        if (!selectedOrder) return;
+        const due = selectedOrder.total - (selectedOrder.advanceAmount || 0);
+        const question = collected
+            ? `Confirm ₹${due.toLocaleString('en-IN')} COD balance received for ${selectedOrder.orderId}? It will show as Fully Paid.`
+            : `Undo: mark ${selectedOrder.orderId} as Partially Paid again?`;
+        if (!window.confirm(question)) return;
+        setCodUpdating(true);
+        try {
+            setSelectedOrder(await setCodCollected(selectedOrder.orderId, collected));
+        } catch (err: any) {
+            alert(err?.response?.data?.message || "Couldn't update payment");
+        } finally {
+            setCodUpdating(false);
         }
     };
 
@@ -166,11 +184,12 @@ export default function OrderManager() {
     // Money actually received. paymentStatus alone can't say that: a COD
     // order's advance also marks it "Paid" (and it never changes after), so
     // COD counts only the advance until it's Delivered and the courier has
-    // collected the rest. Prepaid counts in full once Paid.
+    // collected the rest (or an admin marked the balance received). Prepaid
+    // counts in full once Paid.
     const receivedAmount = (o: Order) => {
         if (isLostOrder(o)) return 0;
         if (o.paymentMethod === 'COD') {
-            if (o.status === 'Delivered') return o.total || 0;
+            if (o.status === 'Delivered' || o.codCollected?.at) return o.total || 0;
             return o.paymentStatus === 'Paid' ? o.advanceAmount || 0 : 0;
         }
         return o.paymentStatus === 'Paid' ? o.total || 0 : 0;
@@ -235,7 +254,7 @@ export default function OrderManager() {
     const getPaymentLabel = (o: Order) => {
         if (o.paymentStatus !== 'Paid') return o.paymentStatus;
         const due = o.total - (o.advanceAmount || 0);
-        return o.paymentMethod === 'COD' && due > 0 ? 'Partially Paid' : 'Fully Paid';
+        return o.paymentMethod === 'COD' && due > 0 && !o.codCollected?.at ? 'Partially Paid' : 'Fully Paid';
     };
 
     const getStatusColor = (status: string) => {
@@ -285,7 +304,7 @@ export default function OrderManager() {
                     {(() => {
                         // Mirrors backend isCOD check (lapshark_backend/src/services/ekart.ts)
                         // so this reflects exactly what createShipment will send to Ekart.
-                        const codAmount = selectedOrder.total - (selectedOrder.advanceAmount || 0);
+                        const codAmount = selectedOrder.codCollected?.at ? 0 : selectedOrder.total - (selectedOrder.advanceAmount || 0);
                         const isCOD = selectedOrder.paymentMethod === 'COD' && codAmount > 0;
                         return (
                             <p className="text-sm text-gray-500">
@@ -295,8 +314,34 @@ export default function OrderManager() {
                     })()}
                     {selectedOrder.paymentMethod === 'COD' && !!selectedOrder.advanceAmount && selectedOrder.status !== 'Cancelled' && (
                         <p className="text-sm text-gray-500">
-                            Advance paid: ₹{selectedOrder.advanceAmount.toLocaleString('en-IN')} · Collect on delivery: <span className="font-bold text-amber-700">₹{(selectedOrder.total - selectedOrder.advanceAmount).toLocaleString('en-IN')}</span>
+                            Advance paid: ₹{selectedOrder.advanceAmount.toLocaleString('en-IN')} ·{' '}
+                            {selectedOrder.codCollected?.at ? (
+                                <>Balance ₹{(selectedOrder.total - selectedOrder.advanceAmount).toLocaleString('en-IN')} <span className="font-bold text-green-700">received</span> on {new Date(selectedOrder.codCollected.at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</>
+                            ) : (
+                                <>Collect on delivery: <span className="font-bold text-amber-700">₹{(selectedOrder.total - selectedOrder.advanceAmount).toLocaleString('en-IN')}</span></>
+                            )}
                         </p>
+                    )}
+                    {selectedOrder.paymentMethod === 'COD' && selectedOrder.paymentStatus === 'Paid' && selectedOrder.status !== 'Cancelled'
+                        && selectedOrder.total - (selectedOrder.advanceAmount || 0) > 0 && (
+                        selectedOrder.codCollected?.at ? (
+                            <button
+                                onClick={() => toggleCodCollected(false)}
+                                disabled={codUpdating}
+                                className="text-xs text-gray-500 underline hover:text-gray-700 disabled:opacity-50"
+                            >
+                                {codUpdating ? 'Updating…' : 'Undo fully paid'}
+                            </button>
+                        ) : (
+                            <button
+                                onClick={() => toggleCodCollected(true)}
+                                disabled={codUpdating}
+                                className="mt-1 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+                            >
+                                <Check className="w-3.5 h-3.5" />
+                                {codUpdating ? 'Updating…' : 'Mark as Fully Paid'}
+                            </button>
+                        )
                     )}
                     {selectedOrder.refund && (
                         <p className="text-sm text-gray-500">
