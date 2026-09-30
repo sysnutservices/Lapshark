@@ -88,6 +88,8 @@ const USE_CASE_OPTIONS = [
     { value: 'everyday', label: 'Everyday Use' },
 ];
 
+const filterSelectClass = "px-3 py-2 border rounded-lg bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500";
+
 export default function ProductsPage() {
     const { products, addProduct, updateProduct, deleteProduct } = useStore();
     const [exporting, setExporting] = useState(false);
@@ -95,6 +97,11 @@ export default function ProductsPage() {
     const [editingProduct, setEditingProduct] = useState<Partial<Product>>({});
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [searchTerm, setSearchTerm] = useState('');
+    const [categoryFilter, setCategoryFilter] = useState('all');
+    const [brandFilter, setBrandFilter] = useState('all');
+    const [conditionFilter, setConditionFilter] = useState('all');
+    // Low = under 5, same threshold as the dashboard's Low Stock Alert.
+    const [stockFilter, setStockFilter] = useState<'all' | 'in' | 'low' | 'out'>('all');
 
     // File states
     const [mainImageFile, setMainImageFile] = useState<File | null>(null);
@@ -695,12 +702,32 @@ export default function ProductsPage() {
         setIsModalOpen(true);
     };
 
-    const filteredProducts = products.filter(p =>
-        p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.brand.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const brandOptions = Array.from(new Set(products.map(p => p.brand).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+    const conditionOptions = Array.from(new Set(products.map(p => p.condition).filter(Boolean) as string[])).sort();
+    const hasActiveFilters = !!searchTerm || categoryFilter !== 'all' || brandFilter !== 'all' || conditionFilter !== 'all' || stockFilter !== 'all';
+    const clearFilters = () => {
+        setSearchTerm('');
+        setCategoryFilter('all');
+        setBrandFilter('all');
+        setConditionFilter('all');
+        setStockFilter('all');
+    };
 
-    // Exports exactly what the search currently shows.
+    // Drives both the list and the Excel export.
+    const filteredProducts = products.filter(p => {
+        const term = searchTerm.toLowerCase();
+        if (term && !p.title.toLowerCase().includes(term) && !p.brand.toLowerCase().includes(term)) return false;
+        if (categoryFilter !== 'all' && p.category !== categoryFilter) return false;
+        if (brandFilter !== 'all' && p.brand !== brandFilter) return false;
+        if (conditionFilter !== 'all' && p.condition !== conditionFilter) return false;
+        const stock = p.stock ?? 0;
+        if (stockFilter === 'in' && stock <= 0) return false;
+        if (stockFilter === 'low' && !(stock > 0 && stock < 5)) return false;
+        if (stockFilter === 'out' && stock > 0) return false;
+        return true;
+    });
+
+    // Exports exactly what the search and filters currently show.
     const handleExport = async () => {
         if (filteredProducts.length === 0) return;
         setExporting(true);
@@ -755,6 +782,36 @@ export default function ProductsPage() {
                         <Plus className="w-5 h-5 mr-2" /> Add Product
                     </button>
                 </div>
+            </div>
+
+            {/* Filters — apply to the list below and to Export to Excel */}
+            <div className="flex flex-wrap items-center gap-3">
+                <select aria-label="Filter by category" className={filterSelectClass} value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+                    <option value="all">All categories</option>
+                    {Object.values(Category).map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <select aria-label="Filter by brand" className={filterSelectClass} value={brandFilter} onChange={(e) => setBrandFilter(e.target.value)}>
+                    <option value="all">All brands</option>
+                    {brandOptions.map(b => <option key={b} value={b}>{b}</option>)}
+                </select>
+                <select aria-label="Filter by condition" className={filterSelectClass} value={conditionFilter} onChange={(e) => setConditionFilter(e.target.value)}>
+                    <option value="all">All conditions</option>
+                    {conditionOptions.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <select aria-label="Filter by stock" className={filterSelectClass} value={stockFilter} onChange={(e) => setStockFilter(e.target.value as typeof stockFilter)}>
+                    <option value="all">All stock</option>
+                    <option value="in">In stock</option>
+                    <option value="low">Low stock (under 5)</option>
+                    <option value="out">Out of stock</option>
+                </select>
+                <span className="text-sm text-gray-500">
+                    Showing {filteredProducts.length} of {products.length}
+                </span>
+                {hasActiveFilters && (
+                    <button type="button" onClick={clearFilters} className="text-sm text-blue-600 hover:underline">
+                        Clear filters
+                    </button>
+                )}
             </div>
 
             {/* Products List — cards on mobile, table from md up */}
@@ -819,7 +876,7 @@ export default function ProductsPage() {
                 ))}
                 {filteredProducts.length === 0 && (
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 px-6 py-8 text-center text-gray-500">
-                        {searchTerm ? `No products found matching "${searchTerm}"` : 'No products available'}
+                        {hasActiveFilters ? 'No products match these filters' : 'No products available'}
                     </div>
                 )}
             </div>
@@ -911,7 +968,7 @@ export default function ProductsPage() {
                             {filteredProducts.length === 0 && (
                                 <tr>
                                     <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
-                                        {searchTerm ? `No products found matching "${searchTerm}"` : 'No products available'}
+                                        {hasActiveFilters ? 'No products match these filters' : 'No products available'}
                                     </td>
                                 </tr>
                             )}
