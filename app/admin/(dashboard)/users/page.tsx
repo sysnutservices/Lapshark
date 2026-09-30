@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { useStore } from '@/context/StoreContext';
 import { Search, Ban, CheckCircle, Mail, Calendar, User as UserIcon, Phone, LogOut, Download } from 'lucide-react';
 import type { User } from '@/types';
+import { settlementPending } from '@/lib/orderPayment';
 
 // When a customer joined, as epoch ms. GET /users returns natural (oldest-
 // first) order, and some older accounts have no createdAt — a Mongo ObjectId's
@@ -47,7 +48,7 @@ export default function CustomersPage() {
 }
 
 function CustomerManager() {
-    const { customers, blockCustomer, forceLogoutCustomer } = useStore();
+    const { customers, orders, blockCustomer, forceLogoutCustomer } = useStore();
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
     const [ordersFilter, setOrdersFilter] = useState<OrdersFilter>('all');
@@ -83,6 +84,17 @@ function CustomerManager() {
     };
 
     // Newest customers first.
+    // Per-customer COD balance the courier collected on their delivered
+    // orders but hasn't settled to us yet (same rule as the orders page).
+    const pendingByCustomer = useMemo(() => {
+        const map = new Map<string, number>();
+        for (const o of orders) {
+            const amount = settlementPending(o);
+            if (amount > 0 && o.userId) map.set(o.userId, (map.get(o.userId) ?? 0) + amount);
+        }
+        return map;
+    }, [orders]);
+
     const filteredCustomers = useMemo(() => {
         const search = searchTerm.trim().toLowerCase();
         const joinedCutoff = joinedFilter === 'all' ? 0 : Date.now() - JOINED_DAYS[joinedFilter] * DAY_MS;
@@ -133,6 +145,7 @@ function CustomerManager() {
                 { header: header('Joined'), cell: (c: User) => ({ value: toLocalCell(joinedAt(c)), type: Date, format: 'dd/mm/yyyy hh:mm AM/PM' }), width: 20 },
                 { header: header('Orders'), cell: (c: User) => ({ value: c.ordersCount ?? 0, type: Number }), width: 9 },
                 { header: header('Total Spent (₹)'), cell: (c: User) => ({ value: c.totalSpent ?? 0, type: Number, format: '#,##0' }), width: 15 },
+                { header: header('Settlement Pending (₹)'), cell: (c: User) => ({ value: pendingByCustomer.get(c.id) ?? 0, type: Number, format: '#,##0' }), width: 21 },
                 { header: header('Status'), cell: (c: User) => text(c.status === 'blocked' ? 'Blocked' : c.status === 'active' ? 'Active' : ''), width: 10 },
             ];
             const now = new Date();
@@ -231,6 +244,7 @@ function CustomerManager() {
                                 <th className="px-6 py-4">Joined</th>
                                 <th className="px-6 py-4">Orders</th>
                                 <th className="px-6 py-4">Total Spent</th>
+                                <th className="px-6 py-4">Settlement Pending</th>
                                 <th className="px-6 py-4">Status</th>
                                 <th className="px-6 py-4 text-right">Actions</th>
                             </tr>
@@ -238,7 +252,7 @@ function CustomerManager() {
                         <tbody className="divide-y divide-gray-100">
                             {filteredCustomers.length === 0 ? (
                                 <tr>
-                                    <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+                                    <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
                                         {hasActiveFilters ? 'No customers match these filters.' : 'No customers yet.'}
                                     </td>
                                 </tr>
@@ -288,6 +302,11 @@ function CustomerManager() {
                                         </td>
                                         <td className="px-6 py-4 font-bold text-gray-900">
                                             ₹{(customer?.totalSpent ?? 0).toLocaleString('en-IN')}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            {pendingByCustomer.get(customer.id)
+                                                ? <span className="font-bold text-purple-700">₹{pendingByCustomer.get(customer.id)!.toLocaleString('en-IN')}</span>
+                                                : <span className="text-gray-400">—</span>}
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`px-2 py-1 rounded-full text-xs font-bold ${customer?.status === 'active'
