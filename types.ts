@@ -90,6 +90,10 @@ export interface Product {
     technicianChecked?: boolean;
     inspectedAt?: string;
   };
+
+  // Mongoose timestamps — the backend's GET /products returns raw docs.
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // Mirrors the backend's IConfigOption (lapshark_backend/src/models/Product.ts).

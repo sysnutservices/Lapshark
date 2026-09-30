@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useStore } from '@/context/StoreContext';
 import { Product, Category } from '@/types';
-import { Edit, Trash2, Plus, X, AlertCircle, Check, Search, Upload, Image as ImageIcon, Cpu, HardDrive, Monitor, Zap, Settings, Loader2, RefreshCw, Sparkles, Camera } from 'lucide-react';
+import { Edit, Trash2, Plus, X, AlertCircle, Check, Search, Upload, Image as ImageIcon, Cpu, HardDrive, Monitor, Zap, Settings, Loader2, RefreshCw, Sparkles, Camera, Download } from 'lucide-react';
 import { API_URL } from '@/api/api';
 import { STORE_POLICIES } from '@/lib/policies';
 import { ensureUploadableImage } from '@/lib/convertHeic';
@@ -12,6 +12,7 @@ import dynamic from 'next/dynamic';
 import ProductImageWorkflow from '@/components/admin/ProductImageWorkflow';
 import ExtraOfferSection from '@/components/admin/ExtraOfferSection';
 import { calculateProductPrice, getExtraOfferStatus } from '@/lib/pricing';
+import { exportProductsToExcel } from '@/lib/productExport';
 const MDEditor = dynamic(
     () => import('@uiw/react-md-editor'),
     { ssr: false }
@@ -89,6 +90,7 @@ const USE_CASE_OPTIONS = [
 
 export default function ProductsPage() {
     const { products, addProduct, updateProduct, deleteProduct } = useStore();
+    const [exporting, setExporting] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Partial<Product>>({});
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -698,6 +700,20 @@ export default function ProductsPage() {
         p.brand.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    // Exports exactly what the search currently shows.
+    const handleExport = async () => {
+        if (filteredProducts.length === 0) return;
+        setExporting(true);
+        try {
+            await exportProductsToExcel(filteredProducts);
+        } catch (err) {
+            console.error(err);
+            alert("Couldn't export products to Excel");
+        } finally {
+            setExporting(false);
+        }
+    };
+
     // Blocks Save while any image is mid-flight through the background-removal
     // endpoint, so a save can't race a still-processing image.
     const anyImageProcessing = mainImageStatus === 'processing'
@@ -724,6 +740,14 @@ export default function ProductsPage() {
                         />
                         <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
                     </div>
+                    <button
+                        type="button"
+                        onClick={handleExport}
+                        disabled={exporting || filteredProducts.length === 0}
+                        className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center justify-center hover:bg-green-700 transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <Download className="w-5 h-5 mr-2" /> {exporting ? 'Exporting...' : 'Export to Excel'}
+                    </button>
                     <button
                         onClick={() => openModal()}
                         className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center justify-center hover:bg-blue-700 transition-colors whitespace-nowrap"
