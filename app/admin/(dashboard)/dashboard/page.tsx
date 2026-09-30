@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { BarChart, Bar, XAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { DollarSign, ShoppingCart, Package, Users, TrendingUp, AlertTriangle, Hourglass } from 'lucide-react';
 import Link from 'next/link';
@@ -40,6 +40,11 @@ export default function Dashboard() {
     const data = weeklySales(orders);
     const pendingOrders = orders.filter((o) => settlementPending(o) > 0);
     const pendingTotal = pendingOrders.reduce((sum, o) => sum + settlementPending(o), 0);
+    // Recent Orders table: last 5 orders, or every order awaiting courier
+    // settlement (not capped — that list is the point of the filter).
+    const [ordersView, setOrdersView] = useState<'recent' | 'pending'>('recent');
+    const showPending = ordersView === 'pending';
+    const tableOrders = showPending ? pendingOrders : orders.slice(0, 5);
 
     return (
         <div className="space-y-6">
@@ -120,8 +125,21 @@ export default function Dashboard() {
 
             {/* Recent Orders Table */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="p-6 border-b border-gray-100">
-                    <h3 className="font-bold text-gray-800">Recent Orders</h3>
+                <div className="p-6 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
+                    <h3 className="font-bold text-gray-800">{showPending ? 'Orders Awaiting Settlement' : 'Recent Orders'}</h3>
+                    <div className="inline-flex rounded-lg border border-gray-200 p-0.5 text-xs font-medium">
+                        {([['recent', 'Recent'], ['pending', `Settlement pending (${pendingOrders.length})`]] as const).map(([value, label]) => (
+                            <button
+                                key={value}
+                                type="button"
+                                onClick={() => setOrdersView(value)}
+                                aria-pressed={ordersView === value}
+                                className={`px-3 py-1.5 rounded-md ${ordersView === value ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm text-gray-600">
@@ -131,11 +149,11 @@ export default function Dashboard() {
                                 <th className="px-6 py-4">Customer</th>
                                 <th className="px-6 py-4">Status</th>
                                 <th className="px-6 py-4">Items</th>
-                                <th className="px-6 py-4">Amount</th>
+                                <th className="px-6 py-4">{showPending ? 'Pending' : 'Amount'}</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {orders?.slice(0, 5).map((order) => (
+                            {tableOrders.map((order) => (
                                 <tr key={order.orderId} className="border-t border-gray-100 hover:bg-gray-50">
                                     <td className="px-6 py-4 font-mono text-xs">{order.orderId}</td>
                                     <td className="px-6 py-4">{order.customerName}</td>
@@ -145,12 +163,18 @@ export default function Dashboard() {
                                         </span>
                                     </td>
                                     <td className="px-6 py-4">{order.items.length} Items</td>
-                                    <td className="px-6 py-4 font-bold text-gray-900">₹{order.total.toLocaleString('en-IN')}</td>
+                                    {showPending ? (
+                                        <td className="px-6 py-4 font-bold text-purple-700">₹{settlementPending(order).toLocaleString('en-IN')}</td>
+                                    ) : (
+                                        <td className="px-6 py-4 font-bold text-gray-900">₹{order.total.toLocaleString('en-IN')}</td>
+                                    )}
                                 </tr>
                             ))}
-                            {orders.length === 0 && (
+                            {tableOrders.length === 0 && (
                                 <tr>
-                                    <td colSpan={5} className="text-center py-8 text-gray-400">No orders yet. Go buy something!</td>
+                                    <td colSpan={5} className="text-center py-8 text-gray-400">
+                                        {showPending ? 'Nothing awaiting settlement — the courier has paid out every delivered COD order.' : 'No orders yet. Go buy something!'}
+                                    </td>
                                 </tr>
                             )}
                         </tbody>
