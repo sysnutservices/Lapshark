@@ -135,6 +135,9 @@ export interface User {
 export interface Order {
   id: string;
   orderId: string;
+  // Raw ObjectId string of the customer who placed it (the admin /orders
+  // list returns it unpopulated) — matches User.id.
+  userId?: string;
   customerName: string;
   customerEmail?: string;
   date: string;
