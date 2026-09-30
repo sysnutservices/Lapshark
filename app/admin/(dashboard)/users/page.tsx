@@ -31,6 +31,7 @@ const formatJoinedTime = (ms: number) =>
 type StatusFilter ='all' | 'active' | 'blocked';
 type OrdersFilter = 'all' | 'with' | 'without';
 type JoinedFilter = 'all' | '7d' | '30d' | '90d';
+type SettlementFilter = 'all' | 'pending' | 'none';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const JOINED_DAYS: Record<Exclude<JoinedFilter, 'all'>, number> = { '7d': 7, '30d': 30, '90d': 90 };
@@ -53,6 +54,7 @@ function CustomerManager() {
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
     const [ordersFilter, setOrdersFilter] = useState<OrdersFilter>('all');
     const [joinedFilter, setJoinedFilter] = useState<JoinedFilter>('all');
+    const [settlementFilter, setSettlementFilter] = useState<SettlementFilter>('all');
     const [loggingOutId, setLoggingOutId] = useState<string | null>(null);
     const [exporting, setExporting] = useState(false);
 
@@ -74,13 +76,14 @@ function CustomerManager() {
         }
     };
 
-    const hasActiveFilters = !!searchTerm || statusFilter !== 'all' || ordersFilter !== 'all' || joinedFilter !== 'all';
+    const hasActiveFilters = !!searchTerm || statusFilter !== 'all' || ordersFilter !== 'all' || joinedFilter !== 'all' || settlementFilter !== 'all';
 
     const clearFilters = () => {
         setSearchTerm('');
         setStatusFilter('all');
         setOrdersFilter('all');
         setJoinedFilter('all');
+        setSettlementFilter('all');
     };
 
     // Newest customers first.
@@ -116,10 +119,14 @@ function CustomerManager() {
 
                 if (joinedCutoff && joinedAt(c) < joinedCutoff) return false;
 
+                const hasPending = (pendingByCustomer.get(c.id) ?? 0) > 0;
+                if (settlementFilter === 'pending' && !hasPending) return false;
+                if (settlementFilter === 'none' && hasPending) return false;
+
                 return true;
             })
             .sort((a, b) => joinedAt(b) - joinedAt(a));
-    }, [customers, searchTerm, statusFilter, ordersFilter, joinedFilter]);
+    }, [customers, searchTerm, statusFilter, ordersFilter, joinedFilter, settlementFilter, pendingByCustomer]);
 
     // Exports exactly the filtered list on screen (same newest-first order),
     // as a real .xlsx — same approach as the Orders page export. The library
@@ -199,6 +206,16 @@ function CustomerManager() {
                     <option value="all">All customers</option>
                     <option value="with">Has orders</option>
                     <option value="without">No orders</option>
+                </select>
+                <select
+                    aria-label="Filter by settlement pending"
+                    className={selectClass}
+                    value={settlementFilter}
+                    onChange={(e) => setSettlementFilter(e.target.value as SettlementFilter)}
+                >
+                    <option value="all">Any settlement</option>
+                    <option value="pending">Settlement pending</option>
+                    <option value="none">No settlement pending</option>
                 </select>
                 <select
                     aria-label="Filter by join date"
