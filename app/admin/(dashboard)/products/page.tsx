@@ -39,9 +39,9 @@ interface IConfigOptions {
 
 const DEFAULT_CONFIG_OPTIONS: IConfigOptions = {
     ram: [
-        { label: "8GB Unified", value: "8GB", price: 0 },
-        { label: "16GB Unified", value: "16GB", price: 4000 },
-        { label: "32GB Unified", value: "32GB", price: 8000 },
+        { label: "8GB RAM", value: "8GB", price: 0 },
+        { label: "16GB RAM", value: "16GB", price: 4000 },
+        { label: "32GB RAM", value: "32GB", price: 8000 },
     ],
     storage: [
         { label: "256GB SSD", value: "256GB", price: 0 },
@@ -1321,7 +1321,7 @@ export default function ProductsPage() {
                                                 className="w-full p-3 border border-gray-300 rounded-lg outline-none"
                                                 value={specs.ram}
                                                 onChange={(e) => handleSpecChange('ram', e.target.value)}
-                                                placeholder="e.g. 16GB Unified Memory"
+                                                placeholder="e.g. 16GB DDR4"
                                             />
                                         </div>
                                         <div>
@@ -1435,7 +1435,7 @@ export default function ProductsPage() {
                                                 <div key={index} className="flex flex-col sm:flex-row gap-2 sm:items-center border border-gray-100 rounded-lg p-2 sm:border-0 sm:p-0">
                                                     <input
                                                         type="text"
-                                                        placeholder="Label (e.g. 8GB Unified)"
+                                                        placeholder="Label (e.g. 8GB RAM)"
                                                         className="flex-1 p-2 border border-gray-300 rounded-lg text-sm"
                                                         value={option.label}
                                                         onChange={(e) => updateConfigOption('ram', index, 'label', e.target.value)}
