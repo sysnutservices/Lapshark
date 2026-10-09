@@ -34,6 +34,10 @@ export default function CartContent() {
     const pricedCart = cart.map((item) => priceCartItem(item, products));
     const totalPrice = pricedCart.reduce((sum, i) => sum + i.livePrice * i.quantity, 0);
     const totalOfferSavings = pricedCart.reduce((sum, i) => sum + (i.offer ? (i.originalSellingPrice - i.livePrice) * i.quantity : 0), 0);
+    // Shown above the "Product Offer" line, so it's the pre-offer amount —
+    // totalPrice already has the offer taken off, and showing it there made
+    // the offer look subtracted twice (lines didn't add up to the total).
+    const subtotalBeforeOffer = totalPrice + totalOfferSavings;
 
     // Shipping — shared with Checkout via lib/pricing.ts instead of each
     // hardcoding its own copy of the threshold/rate.
@@ -373,7 +377,7 @@ export default function CartContent() {
                                 <div className="space-y-3 border-t border-slate-100 pt-6 mb-6">
                                     <div className="flex justify-between text-slate-600">
                                         <span>Subtotal</span>
-                                        <span>₹{totalPrice.toLocaleString("en-IN")}</span>
+                                        <span>₹{subtotalBeforeOffer.toLocaleString("en-IN")}</span>
                                     </div>
                                     {totalOfferSavings > 0 && (
                                         <div className="flex justify-between text-slate-600">
