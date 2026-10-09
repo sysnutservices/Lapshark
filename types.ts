@@ -105,6 +105,9 @@ export interface ConfigOption {
 
 export interface CartItem extends Product {
   quantity: number;
+  // Cart line identity (productId + config) — see cartLineId in
+  // context/CartContext.tsx. Absent on legacy rows and order items.
+  lineId?: string;
   selectedConfig?: any;
   // Present only on an Order's items (this type doubles as the order-item
   // shape too) — the Extra Product Offer snapshot frozen at purchase time.

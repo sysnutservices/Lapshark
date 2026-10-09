@@ -15,8 +15,9 @@ import { trackEvent } from "@/lib/analytics";
 interface CartContextType {
   cart: CartItem[];
   addToCart: (product: Product) => void;
-  removeFromCart: (productId: string) => Promise<void>;
-  updateQuantity: (productId: string, qty: number) => Promise<void>;
+  // Both take a line key — cartItemKey(item) — not a bare productId.
+  removeFromCart: (lineKey: string) => Promise<void>;
+  updateQuantity: (lineKey: string, qty: number) => Promise<void>;
   clearCart: () => Promise<void>;
   totalItems: number;
   totalPrice: number;
@@ -28,6 +29,21 @@ const CartContext = createContext<CartContextType | null>(null);
 
 const CART_KEY = "lapshark_cart";
 migrateKey("techmart_cart", CART_KEY);
+
+// One cart line per product+config — keep in sync with cartLineId in
+// lapshark_backend's cartController.ts. Lines used to be keyed by productId
+// alone, so picking 16GB/512GB on a laptop already in the cart as 8GB/256GB
+// just bumped the old line's quantity and Buy Now checked out the old config.
+// Unconfigured (and legacy, pre-lineId) items keep the bare productId.
+type CartConfig = { ram?: string; storage?: string; warranty?: string };
+export const cartLineId = (productId: string, config?: CartConfig | null) =>
+  config && (config.ram || config.storage || config.warranty)
+    ? `${productId}-${config.ram || "default"}-${config.storage || "default"}-${config.warranty || "none"}`
+    : productId;
+
+// The key removeFromCart/updateQuantity take.
+export const cartItemKey = (item: { lineId?: string; productId?: string }) =>
+  item.lineId || item.productId || "";
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -153,13 +169,14 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     }
 
     // ✅ GUEST USER → LOCAL STORAGE
+    const lineId = cartLineId(productId, product.config);
     setCart(prev => {
-      const existing = prev.find(i => i.productId === productId);
+      const existing = prev.find(i => cartItemKey(i) === lineId);
 
       if (existing) {
         return prev.map(i =>
-          i.productId === productId
-            ? { ...i, quantity: i.quantity + 1 }
+          cartItemKey(i) === lineId
+            ? { ...i, quantity: Math.min(5, i.quantity + 1) }
             : i
         );
       }
@@ -167,6 +184,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       const newItem: CartItem = {
         ...product,
         productId, // 🔑 normalized ID
+        lineId,
         quantity: 1,
         selectedConfig: product.config,
       };
@@ -176,11 +194,11 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   };
 
 
-  const removeFromCart = async (productId: string) => {
-    const removed = cart.find(i => i.productId === productId);
+  const removeFromCart = async (lineKey: string) => {
+    const removed = cart.find(i => cartItemKey(i) === lineKey);
     if (removed) {
       trackEvent("remove_from_cart", {
-        productId,
+        productId: removed.productId || lineKey,
         title: removed.title,
         quantity: removed.quantity,
         finalPrice: removed.finalPrice,
@@ -188,25 +206,25 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     }
 
     if (!isLoggedIn) {
-      setCart(prev => prev.filter(i => i.productId !== productId));
+      setCart(prev => prev.filter(i => cartItemKey(i) !== lineKey));
       return;
     }
 
     try {
-      await api.delete(`/cart/remove/${productId}`, authHeader());
+      await api.delete(`/cart/remove/${encodeURIComponent(lineKey)}`, authHeader());
       fetchCart();
     } catch (err) {
       console.error("❌ Remove from cart failed", err);
     }
   };
 
-  const updateQuantity = async (productId: string, qty: number) => {
+  const updateQuantity = async (lineKey: string, qty: number) => {
     if (qty < 1 || qty > 5) return;
 
     if (!isLoggedIn) {
       setCart(prev =>
         prev.map(i =>
-          i.productId === productId ? { ...i, quantity: qty } : i
+          cartItemKey(i) === lineKey ? { ...i, quantity: qty } : i
         )
       );
       return;
@@ -223,7 +241,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       // silent no-op.
       await api.put(
         `/cart/update`,
-        { productId, quantity: qty },
+        { productId: lineKey, quantity: qty },
         authHeader()
       );
       fetchCart();
