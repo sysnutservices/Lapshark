@@ -33,11 +33,21 @@ export default function CheckoutContent() {
     const finalCart = cart.map((item) => priceCartItem(item, products));
     const totalPrice = finalCart.reduce((sum, i) => sum + i.livePrice * i.quantity, 0);
     const totalOfferSavings = finalCart.reduce((sum, i) => sum + (i.offer ? (i.originalSellingPrice - i.livePrice) * i.quantity : 0), 0);
+    // Pre-offer amount for the "Subtotal" line (see CartContent) so the
+    // summary lines add up to the total.
+    const subtotalBeforeOffer = totalPrice + totalOfferSavings;
     const { getSelectedAddress, fetchAddresses } = useUserFeatures();
     const router = useRouter();
     const [isProcessing, setIsProcessing] = useState(false);
-    const [discount, setDiscount] = useState(0);
     const [couponCode, setCouponCode] = useState("");
+    // The coupon the customer actually applied, and the subtotal it was
+    // priced against. Previously the typed code was sent with the order even
+    // if never applied (charged a discount the page never showed, or blocked
+    // the order as "Invalid coupon"), and the discount amount stayed frozen
+    // after removing items or editing the code — shown total ≠ charged total.
+    const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; subtotal: number; discount: number } | null>(null);
+    const activeCoupon = appliedCoupon && appliedCoupon.code === couponCode.trim() ? appliedCoupon : null;
+    const discount = activeCoupon?.discount || 0;
     const selectedAddress = getSelectedAddress();
     const [showLogin, setShowLogin] = useState(false);
     const [locationReady, setLocationReady] = useState(false);
@@ -132,6 +142,23 @@ export default function CheckoutContent() {
     // not a useEffect chasing totalPrice around.
     const finalTotal = totalPrice + shippingCost - discount;
 
+    // Cart changed after the coupon was applied (item removed etc.) —
+    // re-price it against the new subtotal, or drop it if it no longer
+    // qualifies (e.g. below its minimum order value).
+    useEffect(() => {
+        if (!appliedCoupon || appliedCoupon.subtotal === totalPrice || totalPrice === 0) return;
+        let cancelled = false;
+        validateCoupon(appliedCoupon.code, totalPrice)
+            .then((result: any) => {
+                if (cancelled) return;
+                setAppliedCoupon(result?.valid ? { ...appliedCoupon, subtotal: totalPrice, discount: result.discountAmount } : null);
+            })
+            .catch(() => { if (!cancelled) setAppliedCoupon(null); });
+        return () => { cancelled = true; };
+        // validateCoupon is recreated on every StoreProvider render
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [totalPrice, appliedCoupon]);
+
     if (cart.length === 0) {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 px-4 animate-in fade-in duration-500">
@@ -173,10 +200,11 @@ export default function CheckoutContent() {
 
     const handleValidateCoupon = async () => {
         try {
-            const result = await validateCoupon(couponCode, totalPrice);
+            const code = couponCode.trim();
+            const result: any = await validateCoupon(code, totalPrice);
 
             if (result?.valid) {
-                setDiscount(result.discountAmount);
+                setAppliedCoupon({ code, subtotal: totalPrice, discount: result.discountAmount });
                 trackEvent("coupon_applied", { couponCode, discountAmount: result.discountAmount });
 
                 const duration = 5 * 1000;
@@ -203,7 +231,7 @@ export default function CheckoutContent() {
                     });
                 }, 250);
             } else {
-                setDiscount(0);
+                setAppliedCoupon(null);
                 MySwal.fire({
                     title: "Invalid Coupon!",
                     icon: "error",
@@ -214,7 +242,7 @@ export default function CheckoutContent() {
             }
         } catch (error) {
             console.error("Coupon validation failed:", error);
-            setDiscount(0);
+            setAppliedCoupon(null);
         }
     };
 
@@ -259,7 +287,7 @@ export default function CheckoutContent() {
                     type: selectedAddress?.type || "Home",
                 },
                 mapLink: mapLink, // Include map link
-                coupon: couponCode || null,
+                coupon: activeCoupon?.code || null,
                 discount: discount || 0,
                 total: finalTotal,
                 paymentMethod,
@@ -543,7 +571,7 @@ export default function CheckoutContent() {
                                     <div className="pt-4 space-y-2 text-sm">
                                         <div className="flex font-bold justify-between text-slate-500">
                                             <span>Subtotal</span>
-                                            <span>₹{totalPrice.toLocaleString('en-IN')}</span>
+                                            <span>₹{subtotalBeforeOffer.toLocaleString('en-IN')}</span>
                                         </div>
                                         {totalOfferSavings > 0 && (
                                             <div className="flex justify-between text-slate-500">
@@ -665,8 +693,10 @@ export default function CheckoutContent() {
                                 </div>
                             </div>
 
-                            <div className="md:hidden max-w-3xl mx-auto bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
-                                <div className="flex items-center justify-center gap-4 mb-4 md:hidden">
+                            {/* lg:hidden, not md:hidden — the desktop summary with its own Pay
+                                button only appears at lg, so 768-1023px (tablets) had no Pay button. */}
+                            <div className="lg:hidden max-w-3xl mx-auto bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
+                                <div className="flex items-center justify-center gap-4 mb-4">
                                     <img src="/payment-icons/mastercard.svg" className="h-5" alt="MC" />
                                     <img src="/payment-icons/visa.svg" className="h-5" alt="Visa" />
                                     <img src="/payment-icons/upi.svg" className="h-5" alt="UPI" />
@@ -706,7 +736,7 @@ export default function CheckoutContent() {
 
                                 <div className="p-8 max-h-[calc(100vh-400px)] overflow-y-auto space-y-6 custom-scrollbar">
                                     {finalCart.map((item) => (
-                                        <div key={item.id} className="flex gap-5">
+                                        <div key={cartItemKey(item)} className="flex gap-5">
                                             <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 relative group">
                                                 <span className="absolute top-0 right-0 bg-slate-800 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg shadow-sm z-10">{item.quantity}</span>
                                                 <img src={item.image} alt={item.title} className="h-full w-full object-contain p-2 mix-blend-multiply group-hover:scale-105 transition-transform duration-300" />
@@ -749,7 +779,7 @@ export default function CheckoutContent() {
                                     <div className="space-y-3 pt-2">
                                         <div className="flex items-center justify-between text-sm text-slate-600">
                                             <span className="font-medium">Subtotal</span>
-                                            <span className="font-bold text-slate-900">₹{totalPrice.toLocaleString('en-IN')}</span>
+                                            <span className="font-bold text-slate-900">₹{subtotalBeforeOffer.toLocaleString('en-IN')}</span>
                                         </div>
                                         {totalOfferSavings > 0 && (
                                             <div className="flex items-center justify-between text-sm text-slate-600">
