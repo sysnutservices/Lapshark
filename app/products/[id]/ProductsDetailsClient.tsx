@@ -86,6 +86,12 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
     const featuredAccessory = accessories[0];
     const moreAccessories = accessories.slice(1, 4);
 
+    // Keyed on _id, not `id` — API products have no `id`, so these effects
+    // only ever ran on first mount: moving to another product client-side
+    // (Similar Models) kept the previous laptop's config selection and main
+    // image, and never logged the new product as viewed.
+    const productKey = product?._id || product?.productId || product?.slug;
+
     useEffect(() => {
         if (product?.configOptions) {
             setSelectedRam(product.configOptions.ram?.[0] || null);
@@ -95,7 +101,8 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
         if (product?.image) {
             setActiveImage(product.image);
         }
-    }, [product?.id]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [productKey]);
 
     useEffect(() => {
         if (product) {
@@ -109,7 +116,8 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
                 finalPrice: product.finalPrice,
             });
         }
-    }, [product?.id, addToRecentlyViewed]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [productKey, addToRecentlyViewed]);
 
     useEffect(() => {
         if (!product?._id) return;
@@ -447,7 +455,7 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
                                                 <Star key={`rating-star-${i}`} className={`w-4 h-4 md:w-5 md:h-5 ${i < Math.floor(product.rating) ? 'fill-current' : 'text-slate-200'}`} />
                                             ))}
                                         </div>
-                                        <span className="text-xs md:text-sm font-bold text-slate-500 border-b border-slate-300 pb-0.5 cursor-pointer">{product.reviews} reviews</span>
+                                        <a href="#reviews" className="text-xs md:text-sm font-bold text-slate-500 border-b border-slate-300 pb-0.5">{product.reviews} reviews</a>
                                     </>
                                 ) : (
                                     <span className="text-xs md:text-sm font-bold text-slate-500">No reviews yet</span>
@@ -481,7 +489,13 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
                         </div>
 
                         <div className="grid grid-cols-2 gap-3 mb-4">
-                            {Object.entries((product.specs || {}) as Record<string, string>).slice(0, 4).map(([key, value]) => (
+                            {/* RAM/storage follow the selected config — the tiles used to
+                                keep showing the base 8GB/256GB after picking 16GB/512GB. */}
+                            {Object.entries({
+                                ...((product.specs || {}) as Record<string, string>),
+                                ...(selectedRam?.value && product.specs?.ram !== undefined ? { ram: selectedRam.value } : {}),
+                                ...(selectedStorage?.value && product.specs?.storage !== undefined ? { storage: selectedStorage.value } : {}),
+                            } as Record<string, string>).slice(0, 4).map(([key, value]) => (
                                 <div key={`spec-${key}`} className="bg-slate-50 p-3 rounded-xl border border-slate-100">
                                     <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block mb-1">{key}</span>
                                     <span className="text-base font-semibold text-slate-900 truncate block">{value}</span>
@@ -660,12 +674,12 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
                 )}
 
                 {/* Reviews Section */}
-                <div className="mb-12 md:mb-24 bg-white rounded-[2rem] md:rounded-[3rem] border border-slate-100 p-6 md:p-12 shadow-sm">
-                    <div className="flex items-center justify-between mb-8 md:mb-12">
+                <div id="reviews" className="scroll-mt-24 mb-12 md:mb-24 bg-white rounded-[2rem] md:rounded-[3rem] border border-slate-100 p-6 md:p-12 shadow-sm">
+                    <div className="flex items-center justify-between gap-3 mb-8 md:mb-12">
                         <h2 className="text-2xl md:text-3xl font-bold text-slate-900">Ratings & Reviews</h2>
                         <Button
                             onClick={() => { if (user) { setShowReviewForm(v => !v); } else { setLoginIntent('review'); setShowLogin(true); } }}
-                            className="hidden h-auto rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-bold hover:bg-teal-700 md:flex"
+                            className="h-auto shrink-0 rounded-xl bg-teal-600 px-4 py-2 text-xs font-bold hover:bg-teal-700 md:px-5 md:py-2.5 md:text-sm"
                         >
                             Write a Review
                         </Button>
