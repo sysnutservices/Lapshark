@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useCart } from "@/context/CartContext";
+import { useCart, cartItemKey } from "@/context/CartContext";
 import { useStore } from "@/context/StoreContext";
 import { priceCartItem, getShippingCost, SHIPPING_THRESHOLD } from "@/lib/pricing";
 import { ProductPromotionBadge } from "@/components/ecommerce/ProductPromotionBadge";
@@ -136,7 +136,7 @@ export default function CartContent() {
                             <div className="md:hidden space-y-4">
                                 {pricedCart.map((item) => (
                                     <div
-                                        key={item.productId}
+                                        key={cartItemKey(item)}
                                         className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 relative"
                                     >
                                         <div className="flex gap-4">
@@ -178,7 +178,7 @@ export default function CartContent() {
 
                                                     <div className="flex items-center border border-slate-200 rounded-lg shadow-sm h-7">
                                                         <button
-                                                            onClick={() => updateQuantity(item.id?.toString() || '', -1)}
+                                                            onClick={() => updateQuantity(cartItemKey(item), item.quantity - 1)}
                                                             className="w-6 h-full flex items-center justify-center text-slate-600 rounded-l-lg"
                                                         >
                                                             <Minus className="w-4 h-4" />
@@ -187,7 +187,7 @@ export default function CartContent() {
                                                             {item.quantity}
                                                         </span>
                                                         <button
-                                                            onClick={() => updateQuantity(item.id?.toString() || '', 1)}
+                                                            onClick={() => updateQuantity(cartItemKey(item), item.quantity + 1)}
                                                             className="w-6 h-full flex items-center justify-center text-slate-600 rounded-r-lg"
                                                         >
                                                             <Plus className="w-4 h-4" />
@@ -197,7 +197,7 @@ export default function CartContent() {
                                             </div>
                                         </div>
                                         <button
-                                            onClick={() => removeFromCart(item.productId?.toString() || '')}
+                                            onClick={() => removeFromCart(cartItemKey(item))}
                                             className="absolute top-3 right-3 p-2 text-red-500 hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
                                         >
                                             <Trash2 className="w-4 h-4" />
@@ -217,7 +217,7 @@ export default function CartContent() {
 
                                 <div className="divide-y divide-slate-100">
                                     {pricedCart.map((item) => (
-                                        <div key={item.productId} className="p-4 md:p-6">
+                                        <div key={cartItemKey(item)} className="p-4 md:p-6">
                                             <div className="grid grid-cols-12 gap-6 items-center">
                                                 <div className="col-span-6 w-full flex items-center gap-6">
                                                     <div className="w-24 h-24 flex-shrink-0 bg-slate-50 rounded-lg p-2 border border-slate-100">
@@ -249,7 +249,7 @@ export default function CartContent() {
                                                             {item.specs.processor} • {item.specs.ram}
                                                         </p>
                                                         <button
-                                                            onClick={() => removeFromCart(item.productId?.toString() || '')}
+                                                            onClick={() => removeFromCart(cartItemKey(item))}
                                                             className="text-red-500 text-xs font-medium hover:underline flex items-center"
                                                         >
                                                             <Trash2 className="w-3 h-3 mr-1" /> Remove
@@ -274,7 +274,7 @@ export default function CartContent() {
                                                 <div className="col-span-2 flex justify-center">
                                                     <div className="flex items-center border border-slate-200 rounded-lg bg-white shadow-sm">
                                                         <button
-                                                            onClick={() => updateQuantity(item.id?.toString() || '', -1)}
+                                                            onClick={() => updateQuantity(cartItemKey(item), item.quantity - 1)}
                                                             className="w-8 h-8 flex items-center justify-center text-slate-500 hover:bg-slate-50 rounded-l-lg transition-colors"
                                                         >
                                                             <Minus className="w-3.5 h-3.5" />
@@ -283,7 +283,7 @@ export default function CartContent() {
                                                             {item.quantity}
                                                         </span>
                                                         <button
-                                                            onClick={() => updateQuantity(item.id?.toString() || '', 1)}
+                                                            onClick={() => updateQuantity(cartItemKey(item), item.quantity + 1)}
                                                             className="w-8 h-8 flex items-center justify-center text-slate-500 hover:bg-slate-50 rounded-r-lg transition-colors"
                                                         >
                                                             <Plus className="w-3.5 h-3.5" />

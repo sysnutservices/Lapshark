@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useCart } from '@/context/CartContext';
+import { useCart, cartItemKey } from '@/context/CartContext';
 import { useStore } from '@/context/StoreContext';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -504,7 +504,7 @@ export default function CheckoutContent() {
                                 <div className="p-5 border-t border-slate-100 bg-white">
                                     <div className="space-y-4 mb-6">
                                         {finalCart.map((item) => (
-                                            <div key={item.productId} className="flex gap-4 items-center">
+                                            <div key={cartItemKey(item)} className="flex gap-4 items-center">
                                                 <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 relative">
                                                     <span className="absolute top-0 right-0 bg-slate-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-bl-lg z-10">{item.quantity}</span>
                                                     <img src={item.image} alt={item.title} className="h-full w-full object-contain p-1 mix-blend-multiply" />
@@ -518,7 +518,7 @@ export default function CheckoutContent() {
                                                     <div className="flex items-center justify-between mt-1">
                                                         {item.offer ? <ProductPromotionBadge offer={item.offer} className="self-start" /> : <span />}
                                                         <button
-                                                            onClick={() => removeFromCart(item.productId?.toString() || '')}
+                                                            onClick={() => removeFromCart(cartItemKey(item))}
                                                             className="text-red-500 text-xs font-medium hover:underline flex items-center flex-shrink-0"
                                                         >
                                                             <Trash2 className="w-3 h-3 mr-1" /> Remove
@@ -720,7 +720,7 @@ export default function CheckoutContent() {
                                                 <div className="flex items-center justify-between mt-1.5">
                                                     {item.offer ? <ProductPromotionBadge offer={item.offer} className="self-start" /> : <span />}
                                                     <button
-                                                        onClick={() => removeFromCart(item.productId?.toString() || '')}
+                                                        onClick={() => removeFromCart(cartItemKey(item))}
                                                         className="text-red-500 text-xs font-medium hover:underline flex items-center flex-shrink-0"
                                                     >
                                                         <Trash2 className="w-3 h-3 mr-1" /> Remove
