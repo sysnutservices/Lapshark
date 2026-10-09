@@ -7,13 +7,21 @@
 // checkout.js is loaded dynamically at payment time (CheckoutContent.tsx)
 // and the widget opens its own iframe + makes its own API calls; omitting
 // this would silently break checkout, not just look wrong in devtools.
+// Analytics hosts follow each vendor's published CSP list: Clarity's tag
+// loads its real script from scripts.clarity.ms and beacons to *.clarity.ms
+// (only www.clarity.ms was allowed, so Clarity never recorded anything) and
+// syncs via c.bing.com;
+// GA4 collects via *.google-analytics.com / *.analytics.google.com; the Meta
+// Pixel sends image beacons to www.facebook.com and connect.facebook.net.
+// images.unsplash.com: the homepage promo banners (site-config) use it, and
+// all three rendered as broken images without it.
 const cspHeader = `
     default-src 'self';
-    script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://connect.facebook.net https://www.clarity.ms https://*.razorpay.com;
-    connect-src 'self' https://www.google-analytics.com https://www.facebook.com https://*.razorpay.com;
+    script-src 'self' 'unsafe-inline' https://*.googletagmanager.com https://connect.facebook.net https://*.clarity.ms https://*.razorpay.com;
+    connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://www.facebook.com https://*.clarity.ms https://*.razorpay.com;
     frame-src 'self' https://*.razorpay.com https://www.openstreetmap.org;
     style-src 'self' 'unsafe-inline';
-    img-src 'self' data: blob: https://ik.imagekit.io https://picsum.photos https://*.razorpay.com;
+    img-src 'self' data: blob: https://ik.imagekit.io https://picsum.photos https://images.unsplash.com https://*.razorpay.com https://*.google-analytics.com https://*.googletagmanager.com https://www.facebook.com https://connect.facebook.net https://*.clarity.ms https://c.bing.com;
     font-src 'self' data:;
     object-src 'none';
     base-uri 'self';

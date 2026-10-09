@@ -30,6 +30,7 @@ import { ValueComparison } from '@/components/ecommerce/ValueComparison';
 import { Reviews } from '@/components/ecommerce/Reviews';
 import { ExpertPicks } from '@/components/ecommerce/ExpertPicks';
 import { STORE_POLICIES } from '@/lib/policies';
+import { calculateProductPrice } from '@/lib/pricing';
 import * as motion from 'motion/react-m';
 import appleLogo from '@/assets/brands/apple.svg';
 import dellLogo from '@/assets/brands/dell.svg';
@@ -105,12 +106,33 @@ export default function Home({
     const [showEnquirySubmitted, setShowEnquirySubmitted] = useState(false);
     const handleLoginSuccess = async () => {
         setShowLogin(false);
+        // The customer clicked "Check Eligibility" to get here — finish that
+        // instead of making them click it again.
+        handleSubmit();
     };
 
-    // Memoize filters to prevent re-renders
-    const trendingProducts = useMemo(() => products.filter(p => p.isTrending).slice(0, 4), [products]);
-    const exploreProducts = useMemo(() => products.filter(p => !p.isTrending && p.category !== Category.ACCESSORIES).slice(0, 8), [products]);
-    const bestDeals = useMemo(() => products.filter(p => p.isBestDeal), [products]);
+    // In-stock first everywhere (stable sort keeps the admin's order within
+    // each group) — Flash Sale used to lead with sold-out laptops.
+    const inStockFirst = useMemo(
+        () => [...products].sort((a, b) => Number((b.stock ?? 0) > 0) - Number((a.stock ?? 0) > 0)),
+        [products]
+    );
+    const trendingProducts = useMemo(() => inStockFirst.filter(p => p.isTrending).slice(0, 4), [inStockFirst]);
+    // Excludes only the laptops already shown under Trending. It used to
+    // exclude every isTrending product — 24 of 26 are flagged, so Explore
+    // showed 2 laptops in a grid of 8.
+    const exploreProducts = useMemo(() => {
+        const shown = new Set(trendingProducts.map(p => p._id || p.productId));
+        return inStockFirst.filter(p => !shown.has(p._id || p.productId) && p.category !== Category.ACCESSORIES).slice(0, 8);
+    }, [inStockFirst, trendingProducts]);
+    // A sale can't sell what's out of stock.
+    const bestDeals = useMemo(() => inStockFirst.filter(p => p.isBestDeal && (p.stock ?? 0) > 0), [inStockFirst]);
+    // Category tiles with nothing in them led to an empty listing.
+    const categoryCounts = useMemo(() => {
+        const m = new Map<string, number>();
+        for (const p of products) m.set(p.category, (m.get(p.category) || 0) + 1);
+        return m;
+    }, [products]);
 
     // Only show the skeleton when we genuinely have nothing to render; with
     // server-supplied config + products the real markup ships in the HTML.
@@ -131,6 +153,7 @@ export default function Home({
 
         if (!mobile) {
             console.error("Mobile missing");
+            alert("We couldn't find a mobile number on your account. Please contact us to check EMI eligibility.");
             return;
         }
 
@@ -158,8 +181,9 @@ export default function Home({
                 return;
             }
 
-            // ❌ Real error
+            // ❌ Real error — was console-only, so the button just did nothing
             console.error("Loan enquiry error:", error);
+            alert("Something went wrong checking EMI eligibility. Please try again.");
         }
     };
 
@@ -296,7 +320,7 @@ export default function Home({
                         { icon: ServerCog, label: Category.WORKSTATIONS, from: "from-slate-600", to: "to-slate-800", tint: "bg-slate-100", ring: "ring-slate-200", text: "text-slate-700" },
                         { icon: GraduationCap, label: Category.STUDENT, from: "from-amber-500", to: "to-orange-600", tint: "bg-amber-50", ring: "ring-amber-100", text: "text-amber-600" },
                         { icon: Headphones, label: Category.ACCESSORIES, from: "from-rose-500", to: "to-pink-600", tint: "bg-rose-50", ring: "ring-rose-100", text: "text-rose-600" },
-                    ].map((cat, i) => (
+                    ].filter(cat => (categoryCounts.get(cat.label) || 0) > 0).map((cat, i) => (
                         <Link
                             key={i}
                             href={`/products?category=${encodeURIComponent(cat.label)}`}
@@ -530,7 +554,7 @@ export default function Home({
             )}
 
             {/* Flash Sale */}
-            {sections?.flashSale && (
+            {sections?.flashSale && bestDeals.length > 0 && (
                 <Reveal className="bg-slate-900 text-white py-12 md:py-24 overflow-hidden relative">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
                         <SectionHeader
@@ -542,12 +566,18 @@ export default function Home({
 
                         <Carousel opts={{ align: "start", dragFree: true }} className="md:static">
                             <CarouselContent className="md:mx-0">
-                                {bestDeals.slice(0, 6).map((product) => (
+                                {bestDeals.slice(0, 6).map((product) => {
+                                    // Same price the product page, cart and checkout charge —
+                                    // this card showed finalPrice before the Extra Offer
+                                    // (₹22,000 for a laptop that sells at ₹19,000).
+                                    const salePrice = calculateProductPrice(product.finalPrice || 0, product.extraOffer).finalPrice;
+                                    const savePct = product.price > 0 ? Math.round((1 - salePrice / product.price) * 100) : Math.round(product.discountPercent || 0);
+                                    return (
                                     <CarouselItem key={product.productId} className="basis-[280px] md:basis-1/3">
                                         <Card className="h-full gap-0 rounded-2xl md:rounded-3xl bg-slate-800/50 p-5 md:p-6 ring-slate-700 backdrop-blur-sm hover:ring-slate-500 transition-all duration-300 group">
                                             <div className="flex justify-between items-start mb-6">
                                                 <Badge className="rounded-md bg-rose-500 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white hover:bg-rose-500">
-                                                    Save {Math.round(product.discountPercent)}%
+                                                    Save {savePct}%
                                                 </Badge>
                                             </div>
 
@@ -557,7 +587,7 @@ export default function Home({
 
                                             <h3 className="text-base md:text-lg font-bold mb-2 line-clamp-1 text-white">{product.title}</h3>
                                             <div className="flex items-baseline gap-3 mb-6">
-                                                <span className="text-xl md:text-2xl font-bold text-white">₹{product.finalPrice.toLocaleString('en-IN')}</span>
+                                                <span className="text-xl md:text-2xl font-bold text-white">₹{salePrice.toLocaleString('en-IN')}</span>
                                                 <span className="text-xs md:text-sm text-slate-500 line-through">₹{product.price.toLocaleString('en-IN')}</span>
                                             </div>
 
@@ -572,7 +602,8 @@ export default function Home({
                                             </Link>
                                         </Card>
                                     </CarouselItem>
-                                ))}
+                                    );
+                                })}
                             </CarouselContent>
                             <CarouselPrevious className="hidden md:flex -left-4 border-slate-700 bg-slate-800 text-white hover:bg-slate-700" />
                             <CarouselNext className="hidden md:flex -right-4 border-slate-700 bg-slate-800 text-white hover:bg-slate-700" />
