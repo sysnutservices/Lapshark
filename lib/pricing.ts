@@ -81,6 +81,9 @@ export interface PricedCartItem extends CartItem {
   // the cart (spec: "revalidate at checkout, don't silently charge a
   // different amount").
   priceChanged: boolean;
+  // Live product stock, or undefined when the product isn't in the loaded
+  // catalogue — the cart flags lines that ask for more than this.
+  liveStock?: number;
 }
 
 // Cart/checkout revalidation: the cart only stores a finalPrice snapshot
@@ -102,7 +105,7 @@ export function priceCartItem(item: CartItem, products: Product[]): PricedCartIt
     // Product no longer in the live catalogue (deleted/unpublished) — fall
     // back to the stored snapshot rather than crash; checkout's own
     // per-item product lookup will reject it properly if it's really gone.
-    return { ...item, livePrice: item.finalPrice, originalSellingPrice: item.finalPrice, offer: null, priceChanged: false };
+    return { ...item, livePrice: item.finalPrice, originalSellingPrice: item.finalPrice, offer: null, priceChanged: false, liveStock: undefined };
   }
 
   const pricing = calculateProductPrice(liveProduct.finalPrice, liveProduct.extraOffer);
@@ -113,6 +116,7 @@ export function priceCartItem(item: CartItem, products: Product[]): PricedCartIt
     originalSellingPrice: pricing.sellingPrice + configCost,
     offer: pricing.offer,
     priceChanged: Math.abs(livePrice - item.finalPrice) >= 1,
+    liveStock: typeof liveProduct.stock === "number" ? liveProduct.stock : undefined,
   };
 }
 

@@ -11,6 +11,7 @@ import { Product, CartItem } from "../types";
 import { api } from "@/api/api";
 import { migrateKey } from "@/lib/localStorage";
 import { trackEvent } from "@/lib/analytics";
+import { useAuth } from "./AuthContext";
 
 interface CartContextType {
   cart: CartItem[];
@@ -48,15 +49,20 @@ export const cartItemKey = (item: { lineId?: string; productId?: string }) =>
 export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-  /* =========================
-     AUTH DETECTION (SSR SAFE)
-  ========================= */
-
-  useEffect(() => {
-    setIsLoggedIn(!!localStorage.getItem("token"));
-  }, []);
+  // False until the guest cart has been read from localStorage. The persist
+  // effect below used to run in the same commit as that first read, before
+  // its setCart applied, so it wrote the initial [] over the saved cart: a
+  // logged-in visitor's syncGuestCart then read [] and their guest items
+  // were lost, and React dev mode's double effect run wiped every cart.
+  const [hydrated, setHydrated] = useState(false);
+  // Follows AuthContext rather than reading localStorage["token"] once on
+  // mount. The one-off read missed logins/logouts that happen without a page
+  // reload (the cart/checkout login popups), so a guest's items were never
+  // saved to their account; and because this effect ran before
+  // AuthProvider's (child effects run first), an expired 30-day token still
+  // read as logged in, so every Add to Cart silently 401'd.
+  const { user } = useAuth();
+  const isLoggedIn = !!user;
 
   /* =========================
      INITIAL LOAD
@@ -70,14 +76,16 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       // server-side but nothing on screen showed it until a manual refresh.
       syncGuestCart().then(fetchCart);
     } else {
+      // Always replace: on logout this drops the account's cart instead of
+      // leaving it on screen (and persisting it as a guest cart).
       const saved = localStorage.getItem(CART_KEY);
-      if (saved) {
-        try {
-          setCart(JSON.parse(saved));
-        } catch {
-          localStorage.removeItem(CART_KEY);
-        }
+      try {
+        setCart(saved ? JSON.parse(saved) : []);
+      } catch {
+        localStorage.removeItem(CART_KEY);
+        setCart([]);
       }
+      setHydrated(true);
     }
   }, [isLoggedIn]);
 
@@ -86,10 +94,10 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   ========================= */
 
   useEffect(() => {
-    if (!isLoggedIn) {
+    if (!isLoggedIn && hydrated) {
       localStorage.setItem(CART_KEY, JSON.stringify(cart));
     }
-  }, [cart, isLoggedIn]);
+  }, [cart, isLoggedIn, hydrated]);
 
   /* =========================
      API HELPERS
