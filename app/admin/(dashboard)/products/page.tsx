@@ -40,13 +40,13 @@ interface IConfigOptions {
 const DEFAULT_CONFIG_OPTIONS: IConfigOptions = {
     ram: [
         { label: "8GB RAM", value: "8GB", price: 0 },
-        { label: "16GB RAM", value: "16GB", price: 4000 },
-        { label: "32GB RAM", value: "32GB", price: 8000 },
+        { label: "16GB RAM", value: "16GB", price: 4500 },
+        { label: "32GB RAM", value: "32GB", price: 13500 },
     ],
     storage: [
         { label: "256GB SSD", value: "256GB", price: 0 },
-        { label: "512GB SSD", value: "512GB", price: 3000 },
-        { label: "1TB SSD", value: "1TB", price: 6000 },
+        { label: "512GB SSD", value: "512GB", price: 4000 },
+        { label: "1TB SSD", value: "1TB", price: 9000 },
     ],
     // Derived from STORE_POLICIES.extendedWarrantyOptions (lib/policies.ts) —
     // was a second hardcoded copy of the same three prices/labels, drifting
