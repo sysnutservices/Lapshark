@@ -117,6 +117,8 @@ export default async function ProductPage({ params }) {
             <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{
+                    // "<" escaped so text like "</script>" in a description
+                    // can't close the tag early.
                     __html: JSON.stringify({
                         "@context": "https://schema.org/",
                         "@type": "Product",
@@ -183,7 +185,7 @@ export default async function ProductPage({ params }) {
                                 },
                             },
                         },
-                    }),
+                    }).replace(/</g, "\\u003c"),
                 }}
             ></script>
 

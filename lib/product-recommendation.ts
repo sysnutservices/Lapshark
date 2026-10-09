@@ -117,8 +117,14 @@ export function similarProducts(products: Product[], reference: Product, limit =
     const refUseCases = productUseCases(reference);
     const refBudget = budgetRangeForPrice(reference.finalPrice);
 
+    // Products from the API carry _id/productId but no `id` — comparing `id`
+    // was undefined !== undefined (false) for every product, so this always
+    // returned [] and "Similar Models" / out-of-stock alternatives never
+    // rendered anywhere.
+    const identity = (p: Product) => p._id || p.productId || p.id;
+    const refId = identity(reference);
     return products
-        .filter((p) => p._id !== reference._id && p.id !== reference.id && p.stock > 0)
+        .filter((p) => identity(p) !== refId && p.stock > 0)
         .map((product) => {
             let score = 0;
             if (product.brand === reference.brand) score += 2;

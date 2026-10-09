@@ -65,7 +65,7 @@ export default function CompareContent() {
                             {compareList.map(product => (
                                 <th key={product.id} className="p-4 border-b min-w-[250px] relative bg-white">
                                     <button
-                                        onClick={() => removeFromCompare(product.id!)}
+                                        onClick={() => removeFromCompare(product.productId)}
                                         className="absolute top-2 right-2 p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
                                     >
                                         <X className="w-5 h-5" />
