@@ -23,7 +23,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const savedUser = localStorage.getItem("user");
     const token = localStorage.getItem("token");
 
-    if (savedUser) {
+    // A user with no token can't call any authenticated API — treat it as
+    // logged out rather than half-logged-in (CartContext keys off `user`).
+    if (savedUser && !token) {
+      localStorage.removeItem("user");
+    } else if (savedUser) {
       try {
         setUser(JSON.parse(savedUser));
       } catch {
@@ -48,6 +52,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       } catch {
         localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        setUser(null);
       }
     }
   }, []);

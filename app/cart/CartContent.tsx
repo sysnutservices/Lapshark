@@ -42,6 +42,15 @@ export default function CartContent() {
     // Shipping — shared with Checkout via lib/pricing.ts instead of each
     // hardcoding its own copy of the threshold/rate.
     const shippingCost = getShippingCost(totalPrice);
+    // A line asking for more than the live stock (sold out while it sat in
+    // the cart, or + pressed past what's left). createOrder rejects these
+    // at payment anyway — flag them here instead of letting the customer
+    // get all the way to the Pay button first.
+    const overStock = (i: { quantity: number; liveStock?: number }) => i.liveStock !== undefined && i.quantity > i.liveStock;
+    const maxQty = (i: { liveStock?: number }) => Math.min(5, i.liveStock ?? 5);
+    const stockNote = (i: { quantity: number; liveStock?: number }) =>
+        !overStock(i) ? null : (i.liveStock ?? 0) <= 0 ? "Out of stock — please remove to continue" : `Only ${i.liveStock} left — reduce quantity to continue`;
+    const hasStockIssue = pricedCart.some(overStock);
     const finalTotal = totalPrice + shippingCost;
     const handleLoginSuccess = async () => {
         setShowLogin(false);
@@ -83,6 +92,10 @@ export default function CartContent() {
         );
     }
     const handleCheckout = () => {
+        if (hasStockIssue) {
+            alert("Some items in your cart aren't available in that quantity. Please update them to continue.");
+            return;
+        }
         const token = localStorage.getItem("token");
 
         // 1️⃣ User not logged in → show login
@@ -105,7 +118,7 @@ export default function CartContent() {
     return (
         <>
 
-            <div className="bg-slate-50 min-h-screen py-6 md:py-12 pb-40 md:pb-12">
+            <div className="bg-slate-50 min-h-screen py-6 md:py-12 pb-40 lg:pb-12">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     {/* Header */}
                     <div className="flex items-center justify-between mb-6 md:mb-8">
@@ -154,8 +167,7 @@ export default function CartContent() {
                                             <div className="flex-1 flex flex-col justify-between min-w-0">
                                                 <div className="pr-6">
                                                     <Link
-                                                        href={`/products/${item.originalId || item.productId
-                                                            }`}
+                                                        href={item.slug ? `/products/${item.slug}` : "/products"}
                                                         className="font-bold text-slate-900 line-clamp-2 text-sm leading-snug mb-1"
                                                     >
                                                         {item.title}
@@ -163,6 +175,7 @@ export default function CartContent() {
                                                     <p className="text-xs text-slate-500 line-clamp-1">
                                                         {item.specs.processor} • {item.specs.ram}
                                                     </p>
+                                                    {stockNote(item) && <p className="text-xs font-semibold text-red-600 mt-1">{stockNote(item)}</p>}
                                                 </div>
 
                                                 <div className="flex items-end justify-between mt-3">
@@ -192,7 +205,8 @@ export default function CartContent() {
                                                         </span>
                                                         <button
                                                             onClick={() => updateQuantity(cartItemKey(item), item.quantity + 1)}
-                                                            className="w-6 h-full flex items-center justify-center text-slate-600 rounded-r-lg"
+                                                            disabled={item.quantity >= maxQty(item)}
+                                                            className="w-6 h-full flex items-center justify-center text-slate-600 rounded-r-lg disabled:opacity-30"
                                                         >
                                                             <Plus className="w-4 h-4" />
                                                         </button>
@@ -233,9 +247,11 @@ export default function CartContent() {
                                                     </div>
                                                     <div className="flex-1">
                                                         <div className="flex items-center gap-2 mb-1">
-                                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-50 text-teal-600 uppercase tracking-wider">
-                                                                {item.brand}
-                                                            </span>
+                                                            {item.brand && (
+                                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-50 text-teal-600 uppercase tracking-wider">
+                                                                    {item.brand}
+                                                                </span>
+                                                            )}
                                                             {item.isNew && (
                                                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-50 text-green-600 uppercase tracking-wider">
                                                                     New
@@ -243,8 +259,7 @@ export default function CartContent() {
                                                             )}
                                                         </div>
                                                         <Link
-                                                            href={`/products/${item.originalId || item.productId
-                                                                }`}
+                                                            href={item.slug ? `/products/${item.slug}` : "/products"}
                                                             className="font-bold text-slate-900 hover:text-teal-600 transition-colors line-clamp-1 mb-1 block"
                                                         >
                                                             {item.title}
@@ -252,6 +267,7 @@ export default function CartContent() {
                                                         <p className="text-xs text-slate-500 mb-2 line-clamp-1">
                                                             {item.specs.processor} • {item.specs.ram}
                                                         </p>
+                                                        {stockNote(item) && <p className="text-xs font-semibold text-red-600 mb-2">{stockNote(item)}</p>}
                                                         <button
                                                             onClick={() => removeFromCart(cartItemKey(item))}
                                                             className="text-red-500 text-xs font-medium hover:underline flex items-center"
@@ -288,7 +304,8 @@ export default function CartContent() {
                                                         </span>
                                                         <button
                                                             onClick={() => updateQuantity(cartItemKey(item), item.quantity + 1)}
-                                                            className="w-8 h-8 flex items-center justify-center text-slate-500 hover:bg-slate-50 rounded-r-lg transition-colors"
+                                                            disabled={item.quantity >= maxQty(item)}
+                                                            className="w-8 h-8 flex items-center justify-center text-slate-500 hover:bg-slate-50 rounded-r-lg transition-colors disabled:opacity-30"
                                                         >
                                                             <Plus className="w-3.5 h-3.5" />
                                                         </button>
@@ -356,7 +373,7 @@ export default function CartContent() {
                                         </div>
                                     </div>
                                 )}
-                                <div className="md:hidden">
+                                <div className="lg:hidden">
                                     <Link
                                         href="/products"
                                         className="w-full bg-teal-600 text-base text-white font-bold p-4 rounded-xl hover:bg-teal-700 transition-all flex items-center justify-center gap-2 active:scale-95"
@@ -398,9 +415,9 @@ export default function CartContent() {
                                         </span>
                                     </div>
                                     <div className="flex justify-between text-slate-600">
-                                        <span>Tax Estimate</span>
-                                        <span className="text-slate-400 italic">
-                                            Calculated at next step
+                                        <span>Taxes</span>
+                                        <span className="text-slate-500">
+                                            Included in price
                                         </span>
                                     </div>
                                 </div>
@@ -413,7 +430,7 @@ export default function CartContent() {
                                 </div>
 
                                 <p className="text-xs text-slate-400 mb-4 text-center">
-                                    Shipping & taxes calculated at checkout
+                                    All prices include taxes
                                 </p>
 
                                 <button
@@ -426,10 +443,10 @@ export default function CartContent() {
                                     </span>
                                 </button>
                             </div>
-                            <div className="absolute bottom-6 left-0 right-0 px-6 hidden md:flex justify-center">
+                            <div className="mt-4 flex justify-center">
                                 <Link
                                     href="/products"
-                                    className="w-56 bg-teal-600 text-white font-bold p-4 rounded-xl hover:bg-teal-700 transition-all flex items-center justify-center gap-2 active:scale-95"
+                                    className="w-full bg-teal-600 text-white font-bold p-4 rounded-xl hover:bg-teal-700 transition-all flex items-center justify-center gap-2 active:scale-95"
                                 >
                                     <ShoppingBag className="w-5 h-5" /> Shop More
                                 </Link>
@@ -438,8 +455,10 @@ export default function CartContent() {
                     </div>
                 </div>
 
-                {/* Mobile Sticky Footer */}
-                <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 shadow-[0_-4px_20px_-1px_rgba(0,0,0,0.1)] md:hidden z-30 flex items-center justify-between gap-4 pb-6">
+                {/* Mobile/tablet sticky footer — lg:hidden, not md:hidden: the
+                    summary with its own Checkout button only shows at lg, so
+                    768-1023px had no total and no way to check out. */}
+                <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 shadow-[0_-4px_20px_-1px_rgba(0,0,0,0.1)] lg:hidden z-30 flex items-center justify-between gap-4 pb-6">
                     <div className="flex flex-col">
                         <span className="text-xs text-slate-500 font-medium">
                             Total Price
