@@ -58,6 +58,7 @@ interface StoreContextType {
   rejectCancellation: (orderId: string, reason?: string) => Promise<Order>;
   requestReview: (orderId: string) => Promise<void>;
   setCodCollected: (orderId: string, collected: boolean) => Promise<Order>;
+  syncPayment: (orderId: string) => Promise<{ order: Order; paid: boolean; message: string }>;
 
   // Coupons
   addCoupon: (coupon: Coupon) => Promise<void>;
@@ -318,6 +319,15 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     return updated;
   };
 
+  // Asks Razorpay whether an order still unpaid here was actually paid
+  // (backend marks it Paid if so).
+  const syncPayment = async (orderId: string) => {
+    const res = await api.post(`/orders/${orderId}/sync-payment`, {}, { headers: authHeaders() });
+    const updated = res.data.order as Order;
+    setOrders(prev => prev.map(o => (o.orderId === orderId ? updated : o)));
+    return { order: updated, paid: !!res.data.paid, message: res.data.message as string };
+  };
+
   // ------------------------
   // COUPONS
   // ------------------------
@@ -427,6 +437,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         rejectCancellation,
         requestReview,
         setCodCollected,
+        syncPayment,
         addCoupon,
         updateCoupon,
         validateCoupon,

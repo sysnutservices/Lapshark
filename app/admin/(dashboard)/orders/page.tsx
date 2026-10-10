@@ -20,7 +20,9 @@ export default function OrdersPage() {
 const PAYMENT_FILTERS = ['All', 'Paid', 'Fully Paid', 'Partially Paid', 'Awaiting Settlement', 'Pending', 'Abandoned', 'Failed', 'Refunded'];
 
 function OrderManager() {
-    const { orders, updateOrderStatus, setItemSerialNumber, approveCancellation, rejectCancellation, requestReview, setCodCollected } = useStore();
+    const { orders, updateOrderStatus, setItemSerialNumber, approveCancellation, rejectCancellation, requestReview, setCodCollected, syncPayment } = useStore();
+    const [paymentSyncing, setPaymentSyncing] = useState(false);
+    const [paymentSyncMessage, setPaymentSyncMessage] = useState('');
     const [reviewRequesting, setReviewRequesting] = useState(false);
     const [reviewRequestSent, setReviewRequestSent] = useState(false);
     const [codUpdating, setCodUpdating] = useState(false);
@@ -78,6 +80,22 @@ function OrderManager() {
         setManualTrackingUrl('');
         setReviewRequestSent(false);
         setEditingItemId(null);
+        setPaymentSyncMessage('');
+    };
+
+    const checkPaymentWithRazorpay = async () => {
+        if (!selectedOrder) return;
+        setPaymentSyncing(true);
+        setPaymentSyncMessage('');
+        try {
+            const { order, message } = await syncPayment(selectedOrder.orderId);
+            setSelectedOrder(order);
+            setPaymentSyncMessage(message);
+        } catch (err: any) {
+            setPaymentSyncMessage(err?.response?.data?.message || "Couldn't check with Razorpay");
+        } finally {
+            setPaymentSyncing(false);
+        }
     };
 
     const sendReviewRequest = async () => {
@@ -336,6 +354,21 @@ function OrderManager() {
                     })}</p>
                     <p className="text-sm font-medium text-gray-500">Payment: {selectedOrder.paymentMethod}</p>
                     <p className="text-sm text-gray-500">Payment Status: <span className={`px-2 rounded-full text-xs font-bold border ${getPaymentColor(getPaymentLabel(selectedOrder))}`}>{getPaymentLabel(selectedOrder)}</span></p>
+                    {/* Customer paid but neither the browser callback nor the
+                        webhook reached us — Razorpay itself has the answer. */}
+                    {selectedOrder.paymentStatus !== 'Paid' && selectedOrder.razorpayOrderId?.startsWith('order_') && (
+                        <div>
+                            <button
+                                onClick={checkPaymentWithRazorpay}
+                                disabled={paymentSyncing}
+                                className="mt-1 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                            >
+                                <ShieldCheck className="w-3.5 h-3.5" />
+                                {paymentSyncing ? 'Checking…' : 'Check with Razorpay'}
+                            </button>
+                        </div>
+                    )}
+                    {paymentSyncMessage && <p className="text-xs text-gray-600">{paymentSyncMessage}</p>}
                     {(() => {
                         // Mirrors backend isCOD check (lapshark_backend/src/services/ekart.ts)
                         // so this reflects exactly what createShipment will send to Ekart.
@@ -347,7 +380,12 @@ function OrderManager() {
                             </p>
                         );
                     })()}
-                    {selectedOrder.paymentMethod === 'COD' && !!selectedOrder.advanceAmount && selectedOrder.status !== 'Cancelled' && (
+                    {selectedOrder.paymentMethod === 'COD' && !!selectedOrder.advanceAmount && selectedOrder.status !== 'Cancelled' && selectedOrder.paymentStatus !== 'Paid' && (
+                        <p className="text-sm text-gray-500">
+                            Advance <span className="font-bold text-red-600">not paid</span> (₹{selectedOrder.advanceAmount.toLocaleString('en-IN')} due before dispatch)
+                        </p>
+                    )}
+                    {selectedOrder.paymentMethod === 'COD' && !!selectedOrder.advanceAmount && selectedOrder.status !== 'Cancelled' && selectedOrder.paymentStatus === 'Paid' && (
                         <p className="text-sm text-gray-500">
                             Advance paid: ₹{selectedOrder.advanceAmount.toLocaleString('en-IN')} ·{' '}
                             {selectedOrder.codCollected?.at ? (
