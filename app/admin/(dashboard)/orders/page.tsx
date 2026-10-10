@@ -27,9 +27,9 @@ function OrderManager() {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('All');
     const [paymentFilter, setPaymentFilter] = useState<string>('All');
-    // Abandoned checkouts (see isAbandoned) are hidden unless asked for —
-    // they outnumber real orders and were never paid.
-    const [showAbandoned, setShowAbandoned] = useState(false);
+    // Abandoned checkouts (see isAbandoned) are listed with a grey badge so
+    // admins can follow up with those customers; this lets them be hidden.
+    const [showAbandoned, setShowAbandoned] = useState(true);
     // ?payment= pre-selects the payment filter — used by the dashboard's
     // Settlement Pending card. Re-read on every navigation.
     const paymentParam = useSearchParams().get('payment');
@@ -827,7 +827,7 @@ function OrderManager() {
                         className="hover:underline"
                     >
                         {showAbandoned
-                            ? <>Hide {abandonedCount} abandoned</>
+                            ? <>Abandoned checkouts: <span className="font-medium text-gray-700">{abandonedCount}</span> · Hide</>
                             : <>Abandoned checkouts: <span className="font-medium text-gray-700">{abandonedCount} hidden</span> · Show</>}
                     </button>
                 )}
