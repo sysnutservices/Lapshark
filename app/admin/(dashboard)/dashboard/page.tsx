@@ -6,7 +6,7 @@ import { DollarSign, ShoppingCart, Package, Users, TrendingUp, AlertTriangle, Ho
 import Link from 'next/link';
 import { useStore } from '@/context/StoreContext';
 import { Order } from '@/types';
-import { settlementPending } from '@/lib/orderPayment';
+import { isAbandoned, settlementPending } from '@/lib/orderPayment';
 
 // Last 7 calendar days' real order totals, grouped by day — same
 // all-orders-regardless-of-status convention as stats.totalRevenue below,
@@ -44,7 +44,8 @@ export default function Dashboard() {
     // settlement (not capped — that list is the point of the filter).
     const [ordersView, setOrdersView] = useState<'recent' | 'pending'>('recent');
     const showPending = ordersView === 'pending';
-    const tableOrders = showPending ? pendingOrders : orders.slice(0, 5);
+    // Abandoned checkouts were never paid — not "recent orders".
+    const tableOrders = showPending ? pendingOrders : orders.filter((o) => !isAbandoned(o)).slice(0, 5);
 
     return (
         <div className="space-y-6">
