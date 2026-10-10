@@ -413,17 +413,32 @@ export default function CheckoutContent() {
                     // order was left sitting unpaid in the database with no
                     // way for the customer to know or retry.
                     try {
-                        const verifyRes = await fetch(`${API_URL}/orders/verify`, {
-                            method: "POST",
-                            headers: {
-                                "Content-Type": "application/json",
-                                "Authorization": `Bearer ${localStorage.getItem("token")}`
-                            },
-                            body: JSON.stringify(response)
-                        });
-                        const verifyData = await verifyRes.json();
+                        // Retried: one network blip (common on mobile right
+                        // after switching back from a UPI app) shouldn't
+                        // strand a paid order. An invalid signature (400)
+                        // won't fix itself, so that isn't retried.
+                        let verifyRes: Response | undefined;
+                        let verifyData: any;
+                        for (let attempt = 0; attempt < 3; attempt++) {
+                            if (attempt) await new Promise(r => setTimeout(r, attempt * 2000));
+                            try {
+                                verifyRes = await fetch(`${API_URL}/orders/verify`, {
+                                    method: "POST",
+                                    headers: {
+                                        "Content-Type": "application/json",
+                                        "Authorization": `Bearer ${localStorage.getItem("token")}`
+                                    },
+                                    body: JSON.stringify(response)
+                                });
+                                verifyData = await verifyRes.json();
+                            } catch {
+                                verifyRes = undefined;
+                                continue;
+                            }
+                            if ((verifyRes.ok && verifyData?.success) || verifyRes.status === 400) break;
+                        }
 
-                        if (!verifyRes.ok || !verifyData?.success) {
+                        if (!verifyRes?.ok || !verifyData?.success) {
                             throw new Error(verifyData?.message || "Payment verification failed");
                         }
 
@@ -452,7 +467,9 @@ export default function CheckoutContent() {
                         setIsProcessing(false);
                         MySwal.fire({
                             title: "Payment received, confirmation pending",
-                            text: `Your payment went through but we couldn't confirm it automatically. Please contact support with this reference: ${response.razorpay_payment_id}`,
+                            // The backend's payment reconciler checks Razorpay
+                            // every few minutes and records it on its own.
+                            text: `Your payment went through. Your order will be confirmed automatically within a few minutes. If it isn't, contact support with this reference: ${response.razorpay_payment_id}`,
                             icon: "warning"
                         });
                     }
