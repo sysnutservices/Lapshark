@@ -164,6 +164,8 @@ export interface Order {
   status: 'Pending' | 'Processing' | 'Shipped' | 'Out for Delivery' | 'Delivered' | 'Cancelled' | 'RTO';
   paymentStatus: 'Paid' | 'Pending' | 'Failed' | 'Refunded';
   paymentMethod: 'Razorpay' | 'COD' | 'Card';
+  // Razorpay checkout order id (order_xxx); legacy orders used it as orderId.
+  razorpayOrderId?: string;
   items: CartItem[];
   shippingAddress?: Address;
   shipment?: {
