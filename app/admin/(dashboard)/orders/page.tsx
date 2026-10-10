@@ -4,7 +4,7 @@ import React, { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useStore } from '@/context/StoreContext';
 import { Order } from '@/types';
-import { getPaymentLabel, settlementPending } from '@/lib/orderPayment';
+import { getPaymentLabel, isAbandoned, settlementPending } from '@/lib/orderPayment';
 import { Search, Filter, ChevronDown, Check, X, Clock, Truck, Package, Pencil, ShieldCheck, Download } from 'lucide-react';
 
 // useSearchParams needs a Suspense boundary or `next build` fails the page's
@@ -17,7 +17,7 @@ export default function OrdersPage() {
     );
 }
 
-const PAYMENT_FILTERS = ['All', 'Paid', 'Fully Paid', 'Partially Paid', 'Awaiting Settlement', 'Pending', 'Failed', 'Refunded'];
+const PAYMENT_FILTERS = ['All', 'Paid', 'Fully Paid', 'Partially Paid', 'Awaiting Settlement', 'Pending', 'Abandoned', 'Failed', 'Refunded'];
 
 function OrderManager() {
     const { orders, updateOrderStatus, setItemSerialNumber, approveCancellation, rejectCancellation, requestReview, setCodCollected } = useStore();
@@ -27,6 +27,9 @@ function OrderManager() {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('All');
     const [paymentFilter, setPaymentFilter] = useState<string>('All');
+    // Abandoned checkouts (see isAbandoned) are hidden unless asked for —
+    // they outnumber real orders and were never paid.
+    const [showAbandoned, setShowAbandoned] = useState(false);
     // ?payment= pre-selects the payment filter — used by the dashboard's
     // Settlement Pending card. Re-read on every navigation.
     const paymentParam = useSearchParams().get('payment');
@@ -183,26 +186,31 @@ function OrderManager() {
             (isPhoneTerm && !!phoneDigits &&
                 (order.shippingAddress?.phone?.replace(/\D/g, '').includes(phoneDigits) ?? false));
         const matchesStatus = statusFilter === 'All' || order.status === statusFilter;
-        // Fully Paid / Partially Paid / Awaiting Settlement are sub-splits of
-        // 'Paid' (see getPaymentLabel); the rest match the raw paymentStatus.
+        // 'Paid (all)' is the raw paymentStatus; every other option is a
+        // getPaymentLabel value (Fully/Partially Paid split Paid, Abandoned
+        // splits Pending).
         const matchesPayment = paymentFilter === 'All'
-            || (['Fully Paid', 'Partially Paid', 'Awaiting Settlement'].includes(paymentFilter)
-                ? getPaymentLabel(order) === paymentFilter
-                : order.paymentStatus === paymentFilter);
+            || (paymentFilter === 'Paid'
+                ? order.paymentStatus === 'Paid'
+                : getPaymentLabel(order) === paymentFilter);
         const orderTime = new Date(order.date).getTime();
         const matchesDate =
             (!dateRange.start || orderTime >= dateRange.start.getTime()) &&
             (!dateRange.end || orderTime < dateRange.end.getTime());
         return matchesSearch && matchesStatus && matchesPayment && matchesDate;
     };
+    // Picking the Abandoned payment filter shows them regardless of the toggle.
+    const hideAbandoned = !showAbandoned && paymentFilter !== 'Abandoned';
+    const isListed = (order: Order) => matchesFilters(order) && !(hideAbandoned && isAbandoned(order));
+    const abandonedCount = orders.filter(o => isAbandoned(o) && matchesFilters(o)).length;
     // Keep the expanded order in the list even once it stops matching —
     // e.g. filtered to "Pending" and just marked Processing — otherwise
     // its details vanish mid-edit along with the row.
     const filteredOrders = orders.filter(order =>
-        order.orderId === selectedOrder?.orderId || matchesFilters(order)
+        order.orderId === selectedOrder?.orderId || isListed(order)
     );
     // Summary counts only genuine matches, not a pinned expanded order.
-    const matchingOrders = orders.filter(matchesFilters);
+    const matchingOrders = orders.filter(isListed);
     // Cancelled/RTO orders never turned into revenue, so they're kept out of
     // the headline total and shown on their own instead.
     const isLostOrder = (o: Order) => o.status === 'Cancelled' || o.status === 'RTO';
@@ -301,6 +309,7 @@ function OrderManager() {
             case 'Partially Paid': return 'bg-amber-100 text-amber-700 border-amber-200';
             case 'Awaiting Settlement': return 'bg-purple-100 text-purple-700 border-purple-200';
             case 'Pending': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+            case 'Abandoned': return 'bg-gray-100 text-gray-500 border-gray-200';
             case 'Failed': return 'bg-red-100 text-red-700 border-red-200';
             case 'Refunded': return 'bg-blue-100 text-blue-700 border-blue-200';
         }
@@ -746,6 +755,7 @@ function OrderManager() {
                         <option value="Partially Paid">Partially Paid</option>
                         <option value="Awaiting Settlement">Awaiting Settlement</option>
                         <option value="Pending">Pending</option>
+                        <option value="Abandoned">Abandoned (unpaid)</option>
                         <option value="Failed">Failed</option>
                         <option value="Refunded">Refunded</option>
                     </select>
@@ -808,6 +818,18 @@ function OrderManager() {
                         Cancelled / RTO: <span className="font-medium text-red-600">{lostOrders.length} · ₹{lostTotal.toLocaleString('en-IN')}</span>
                         <span className="text-gray-400"> (not in revenue)</span>
                     </span>
+                )}
+                {abandonedCount > 0 && paymentFilter !== 'Abandoned' && (
+                    <button
+                        type="button"
+                        onClick={() => { setShowAbandoned(!showAbandoned); setSelectedOrder(null); }}
+                        title="Checkouts where the customer never completed payment"
+                        className="hover:underline"
+                    >
+                        {showAbandoned
+                            ? <>Hide {abandonedCount} abandoned</>
+                            : <>Abandoned checkouts: <span className="font-medium text-gray-700">{abandonedCount} hidden</span> · Show</>}
+                    </button>
                 )}
                 <button
                     type="button"
