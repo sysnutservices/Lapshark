@@ -59,6 +59,7 @@ interface StoreContextType {
   requestReview: (orderId: string) => Promise<void>;
   setCodCollected: (orderId: string, collected: boolean) => Promise<Order>;
   syncPayment: (orderId: string) => Promise<{ order: Order; paid: boolean; message: string }>;
+  sendPaymentReminder: (orderId: string) => Promise<{ order: Order; sent: boolean; message: string }>;
 
   // Coupons
   addCoupon: (coupon: Coupon) => Promise<void>;
@@ -328,6 +329,15 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     return { order: updated, paid: !!res.data.paid, message: res.data.message as string };
   };
 
+  // WhatsApps the customer a link to pay an abandoned order. If Razorpay
+  // shows it was paid after all, the backend marks it paid instead.
+  const sendPaymentReminder = async (orderId: string) => {
+    const res = await api.post(`/orders/${orderId}/payment-reminder`, {}, { headers: authHeaders() });
+    const updated = res.data.order as Order;
+    setOrders(prev => prev.map(o => (o.orderId === orderId ? updated : o)));
+    return { order: updated, sent: !!res.data.sent, message: res.data.message as string };
+  };
+
   // ------------------------
   // COUPONS
   // ------------------------
@@ -438,6 +448,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         requestReview,
         setCodCollected,
         syncPayment,
+        sendPaymentReminder,
         addCoupon,
         updateCoupon,
         validateCoupon,

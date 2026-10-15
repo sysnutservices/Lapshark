@@ -4,8 +4,8 @@ import React, { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useStore } from '@/context/StoreContext';
 import { Order } from '@/types';
-import { getPaymentLabel, isAbandoned, settlementPending } from '@/lib/orderPayment';
-import { Search, Filter, ChevronDown, Check, X, Clock, Truck, Package, Pencil, ShieldCheck, Download } from 'lucide-react';
+import { getPaymentLabel, isAbandoned, settlementPending, awaitingPayment, isRecovered } from '@/lib/orderPayment';
+import { Search, Filter, ChevronDown, Check, X, Clock, Truck, Package, Pencil, ShieldCheck, Download, Send } from 'lucide-react';
 
 // useSearchParams needs a Suspense boundary or `next build` fails the page's
 // static prerender (same as the customers page).
@@ -20,8 +20,9 @@ export default function OrdersPage() {
 const PAYMENT_FILTERS = ['All', 'Paid', 'Fully Paid', 'Partially Paid', 'Awaiting Settlement', 'Pending', 'Abandoned', 'Failed', 'Refunded'];
 
 function OrderManager() {
-    const { orders, updateOrderStatus, setItemSerialNumber, approveCancellation, rejectCancellation, requestReview, setCodCollected, syncPayment } = useStore();
+    const { orders, updateOrderStatus, setItemSerialNumber, approveCancellation, rejectCancellation, requestReview, setCodCollected, syncPayment, sendPaymentReminder } = useStore();
     const [paymentSyncing, setPaymentSyncing] = useState(false);
+    const [reminderSending, setReminderSending] = useState(false);
     const [paymentSyncMessage, setPaymentSyncMessage] = useState('');
     const [reviewRequesting, setReviewRequesting] = useState(false);
     const [reviewRequestSent, setReviewRequestSent] = useState(false);
@@ -95,6 +96,25 @@ function OrderManager() {
             setPaymentSyncMessage(err?.response?.data?.message || "Couldn't check with Razorpay");
         } finally {
             setPaymentSyncing(false);
+        }
+    };
+
+    // Shares paymentSyncMessage with Check with Razorpay: both answer "what
+    // happened with this unpaid order", and the reminder may itself find
+    // the payment and mark the order paid.
+    const remindToPay = async () => {
+        if (!selectedOrder) return;
+        if (!confirm(`Send ${selectedOrder.customerName} a WhatsApp with a link to pay for ${selectedOrder.orderId}?`)) return;
+        setReminderSending(true);
+        setPaymentSyncMessage('');
+        try {
+            const { order, message } = await sendPaymentReminder(selectedOrder.orderId);
+            setSelectedOrder(order);
+            setPaymentSyncMessage(message);
+        } catch (err: any) {
+            setPaymentSyncMessage(err?.response?.data?.message || "Couldn't send the reminder");
+        } finally {
+            setReminderSending(false);
         }
     };
 
@@ -221,6 +241,9 @@ function OrderManager() {
     const hideAbandoned = !showAbandoned && paymentFilter !== 'Abandoned';
     const isListed = (order: Order) => matchesFilters(order) && !(hideAbandoned && isAbandoned(order));
     const abandonedCount = orders.filter(o => isAbandoned(o) && matchesFilters(o)).length;
+    // Paid after a payment reminder: what the reminders actually brought in.
+    const recoveredOrders = orders.filter(o => isRecovered(o) && matchesFilters(o) && o.status !== 'Cancelled' && o.status !== 'RTO');
+    const recoveredTotal = recoveredOrders.reduce((sum, o) => sum + (o.total || 0), 0);
     // Keep the expanded order in the list even once it stops matching —
     // e.g. filtered to "Pending" and just marked Processing — otherwise
     // its details vanish mid-edit along with the row.
@@ -366,9 +389,26 @@ function OrderManager() {
                                 <ShieldCheck className="w-3.5 h-3.5" />
                                 {paymentSyncing ? 'Checking…' : 'Check with Razorpay'}
                             </button>
+                            {awaitingPayment(selectedOrder) && (
+                                <button
+                                    onClick={remindToPay}
+                                    disabled={reminderSending}
+                                    className="mt-1 ml-2 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+                                >
+                                    <Send className="w-3.5 h-3.5" />
+                                    {reminderSending ? 'Sending…' : 'Send payment reminder'}
+                                </button>
+                            )}
                         </div>
                     )}
                     {paymentSyncMessage && <p className="text-xs text-gray-600">{paymentSyncMessage}</p>}
+                    {selectedOrder.paymentReminder?.sentAt && (
+                        <p className="text-xs text-gray-500">
+                            {isRecovered(selectedOrder) ? 'Recovered: paid after a payment reminder. ' : ''}
+                            Reminder sent {new Date(selectedOrder.paymentReminder.sentAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                            {selectedOrder.paymentReminder.count > 1 ? ` (${selectedOrder.paymentReminder.count} times)` : ''}
+                        </p>
+                    )}
                     {(() => {
                         // Mirrors backend isCOD check (lapshark_backend/src/services/ekart.ts)
                         // so this reflects exactly what createShipment will send to Ekart.
@@ -857,6 +897,11 @@ function OrderManager() {
                         <span className="text-gray-400"> (not in revenue)</span>
                     </span>
                 )}
+                {recoveredOrders.length > 0 && (
+                    <span title="Abandoned checkouts paid after a WhatsApp payment reminder">
+                        Recovered: <span className="font-bold text-green-700">{recoveredOrders.length} · ₹{recoveredTotal.toLocaleString('en-IN')}</span>
+                    </span>
+                )}
                 {abandonedCount > 0 && paymentFilter !== 'Abandoned' && (
                     <button
                         type="button"
@@ -925,6 +970,16 @@ function OrderManager() {
                                         <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${getPaymentColor(getPaymentLabel(order))}`}>
                                             {getPaymentLabel(order)}
                                         </span>
+                                        {isRecovered(order) && (
+                                            <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold border bg-green-50 text-green-700 border-green-200" title="Paid after a payment reminder">
+                                                Recovered
+                                            </span>
+                                        )}
+                                        {isAbandoned(order) && order.paymentReminder?.sentAt && (
+                                            <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold border bg-gray-50 text-gray-500 border-gray-200">
+                                                Reminded
+                                            </span>
+                                        )}
                                         <p className="mt-1 text-xs text-gray-500">
                                             {order.paymentMethod === 'COD' ? 'COD' : 'Prepaid'}
                                             {(getPaymentLabel(order) === 'Partially Paid' || getPaymentLabel(order) === 'Awaiting Settlement')
