@@ -16,13 +16,7 @@ import { trackEvent, generateEventId, trackPurchaseConversion } from '@/lib/anal
 import { STORE_POLICIES } from '@/lib/policies';
 import { priceCartItem, getShippingCost } from '@/lib/pricing';
 import { ProductPromotionBadge } from '@/components/ecommerce/ProductPromotionBadge';
-
-// Declare Razorpay on window object to avoid TS errors
-declare global {
-    interface Window {
-        Razorpay: any;
-    }
-}
+import { loadRazorpayScript, openRazorpayCheckout, unverifiedPaymentText } from '@/lib/razorpayCheckout';
 
 export default function CheckoutContent() {
     const { cart, clearCart, removeFromCart } = useCart();
@@ -180,21 +174,6 @@ export default function CheckoutContent() {
     const isCODEligible = finalTotal > COD_ADVANCE_AMOUNT;
     const payNowAmount = paymentMethod === 'COD' && isCODEligible ? COD_ADVANCE_AMOUNT : finalTotal;
     const codBalance = paymentMethod === 'COD' && isCODEligible ? finalTotal - COD_ADVANCE_AMOUNT : 0;
-
-    // Helper to load Razorpay Script
-    const loadRazorpayScript = () => {
-        return new Promise((resolve) => {
-            const script = document.createElement('script');
-            script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-            script.onload = () => {
-                resolve(true);
-            };
-            script.onerror = () => {
-                resolve(false);
-            };
-            document.body.appendChild(script);
-        });
-    };
 
     const MySwal = withReactContent(Swal);
 
@@ -381,10 +360,10 @@ export default function CheckoutContent() {
                 return;
             }
 
-            const options = {
+            openRazorpayCheckout({
                 key: orderData.key,
                 amount: orderData.amount,
-                order_id: orderData.razorpayOrderId,
+                razorpayOrderId: orderData.razorpayOrderId,
                 // Without this, Razorpay's Standard Checkout has no idea who
                 // the customer is and always shows its own "enter your
                 // number" screen before the OTP step — even though we
@@ -402,95 +381,47 @@ export default function CheckoutContent() {
                         ? `+91${selectedAddress.phone.replace(/\D/g, "").slice(-10)}`
                         : undefined,
                 },
-                handler: async function (response: any) {
-                    // Money has already left the customer's account at this
-                    // point — Razorpay's own modal confirmed the charge.
-                    // This call is only asking our backend to record that,
-                    // so its result has to gate cart-clear/redirect: the
-                    // previous code ignored it entirely, meaning a failed
-                    // verify (network blip, server error, ...) still showed
-                    // "Order Success" and wiped the cart even though the
-                    // order was left sitting unpaid in the database with no
-                    // way for the customer to know or retry.
-                    try {
-                        // Retried: one network blip (common on mobile right
-                        // after switching back from a UPI app) shouldn't
-                        // strand a paid order. An invalid signature (400)
-                        // won't fix itself, so that isn't retried.
-                        let verifyRes: Response | undefined;
-                        let verifyData: any;
-                        for (let attempt = 0; attempt < 3; attempt++) {
-                            if (attempt) await new Promise(r => setTimeout(r, attempt * 2000));
-                            try {
-                                verifyRes = await fetch(`${API_URL}/orders/verify`, {
-                                    method: "POST",
-                                    headers: {
-                                        "Content-Type": "application/json",
-                                        "Authorization": `Bearer ${localStorage.getItem("token")}`
-                                    },
-                                    body: JSON.stringify(response)
-                                });
-                                verifyData = await verifyRes.json();
-                            } catch {
-                                verifyRes = undefined;
-                                continue;
-                            }
-                            if ((verifyRes.ok && verifyData?.success) || verifyRes.status === 400) break;
-                        }
+                // Cart-clear/redirect only once the backend has recorded the
+                // payment: a failed verify (network blip, server error, ...)
+                // used to still show "Order Success" and wipe the cart while
+                // the order sat unpaid in the database.
+                onVerified: () => {
+                    trackPurchaseConversion({
+                        eventId: metaEventId,
+                        orderId: orderData.order.orderId,
+                        total: finalTotal,
+                        items: finalCart.map(item => ({
+                            productId: item.productId,
+                            title: item.title,
+                            quantity: item.quantity,
+                            finalPrice: item.finalPrice,
+                            price: item.price,
+                        })),
+                    });
 
-                        if (!verifyRes?.ok || !verifyData?.success) {
-                            throw new Error(verifyData?.message || "Payment verification failed");
-                        }
-
-                        trackPurchaseConversion({
-                            eventId: metaEventId,
-                            orderId: orderData.order.orderId,
-                            total: finalTotal,
-                            items: finalCart.map(item => ({
-                                productId: item.productId,
-                                title: item.title,
-                                quantity: item.quantity,
-                                finalPrice: item.finalPrice,
-                                price: item.price,
-                            })),
-                        });
-
-                        setIsProcessing(false);
-                        clearCart();
-                        // The order's own orderId (LS-YYYYMMDD-NN), not
-                        // Razorpay's order_xxxxxxxxxxxxxx id — that's what
-                        // getOrderById looks up by, and what the customer
-                        // should see on the success/order-detail pages.
-                        router.push(`/order-success/${orderData.order.orderId}`);
-                    } catch (verifyError) {
-                        console.error("Payment verification error:", verifyError);
-                        setIsProcessing(false);
-                        MySwal.fire({
-                            title: "Payment received, confirmation pending",
-                            // The backend's payment reconciler checks Razorpay
-                            // every few minutes and records it on its own.
-                            text: `Your payment went through. Your order will be confirmed automatically within a few minutes. If it isn't, contact support with this reference: ${response.razorpay_payment_id}`,
-                            icon: "warning"
-                        });
-                    }
+                    setIsProcessing(false);
+                    clearCart();
+                    // The order's own orderId (LS-YYYYMMDD-NN), not
+                    // Razorpay's order_xxxxxxxxxxxxxx id — that's what
+                    // getOrderById looks up by, and what the customer
+                    // should see on the success/order-detail pages.
+                    router.push(`/order-success/${orderData.order.orderId}`);
                 },
-                modal: {
-                    ondismiss: function () {
-                        setIsProcessing(false);
-                    }
+                onUnverified: (response, verifyError) => {
+                    console.error("Payment verification error:", verifyError);
+                    setIsProcessing(false);
+                    MySwal.fire({
+                        title: "Payment received, confirmation pending",
+                        text: unverifiedPaymentText(response.razorpay_payment_id),
+                        icon: "warning"
+                    });
                 },
-                theme: {
-                    color: '#0F172A'
-                }
-            };
-
-            const rzp = new window.Razorpay(options);
-            rzp.open();
-
-            rzp.on("payment.failed", function (response: any) {
-                trackEvent("checkout_payment_failed", { reason: response?.error?.description });
-                alert(response.error.description);
-                setIsProcessing(false);
+                onDismiss: () => setIsProcessing(false),
+                onFailed: (description) => {
+                    trackEvent("checkout_payment_failed", { reason: description });
+                    alert(description);
+                    setIsProcessing(false);
+                },
             });
         } catch (error) {
             console.error("Payment error:", error);

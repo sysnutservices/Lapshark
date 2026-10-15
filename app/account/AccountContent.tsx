@@ -12,6 +12,7 @@ import { SEO } from '@/components/SEO';
 import Link from 'next/link';
 import { useStore } from '@/context/StoreContext';
 import { useRouter } from 'next/navigation';
+import { awaitingPayment } from '@/lib/orderPayment';
 
 // Types
 type OrderStatus = 'All' | 'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';
@@ -693,6 +694,21 @@ const OrderDetailsModal: React.FC<{ order: Order; onClose: () => void }> = ({ or
                                 ))}
                             </div>
                         </div>
+                    )}
+
+                    {/* Unpaid checkout: the order page has the button that
+                        reopens Razorpay for this same order. */}
+                    {awaitingPayment(order) && (
+                        <Link
+                            href={`/orders/${order.orderId}`}
+                            className="flex items-center justify-between gap-3 bg-amber-50 hover:bg-amber-100 transition-colors rounded-xl p-4 border border-amber-200"
+                        >
+                            <div className="flex items-center gap-3">
+                                <CreditCard className="w-5 h-5 text-amber-700" />
+                                <span className="font-bold text-amber-900 text-sm">Payment not received · Complete payment</span>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-amber-700" />
+                        </Link>
                     )}
 
                     {/* Warranty Card — same gate markOrderPaid uses server-side

@@ -196,6 +196,14 @@ export interface Order {
     rejectedAt?: string;
     rejectionReason?: string;
   };
+  // Set when a "complete your payment" WhatsApp went out while the order was
+  // unpaid. On a paid order it marks a recovered sale. See Order.ts's
+  // IOrder.paymentReminder.
+  paymentReminder?: {
+    sentAt: string;
+    count: number;
+    lastBy?: string;
+  };
 }
 
 export interface Address {

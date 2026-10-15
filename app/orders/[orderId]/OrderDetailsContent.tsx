@@ -10,6 +10,9 @@ import { Order } from '@/types';
 import { trackEvent } from '@/lib/analytics';
 import { resolveSupportPhone, resolveSupportPhoneDisplay } from '@/lib/whatsapp';
 import { useStore } from '@/context/StoreContext';
+import Swal from 'sweetalert2';
+import { loadRazorpayScript, openRazorpayCheckout, unverifiedPaymentText } from '@/lib/razorpayCheckout';
+import { awaitingPayment } from '@/lib/orderPayment';
 
 // Mirrors lapshark_backend/src/utils/cancellation.ts's CANCELLATION_REASONS —
 // keep in sync if that list ever changes.
@@ -39,6 +42,7 @@ export default function OrderDetailsContent() {
     const [cancelNote, setCancelNote] = useState('');
     const [cancelSubmitting, setCancelSubmitting] = useState(false);
     const [cancelError, setCancelError] = useState('');
+    const [paying, setPaying] = useState(false);
 
     // Fetch order data
     useEffect(() => {
@@ -85,6 +89,59 @@ export default function OrderDetailsContent() {
         }
     };
 
+    // Pays this same order (an abandoned checkout, or one a payment reminder
+    // linked to). The backend checks Razorpay and stock first and hands back
+    // the order's own Razorpay order, so the amount is what checkout showed.
+    const completePayment = async () => {
+        if (!order) return;
+        setPaying(true);
+        try {
+            const token = localStorage.getItem('token');
+            const { data } = await api.post(
+                `/orders/${order.orderId}/resume-payment`,
+                {},
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            if (data.alreadyPaid) {
+                setOrder(data.order);
+                setPaying(false);
+                Swal.fire({ title: 'Payment found', text: 'We found your payment for this order. It is now confirmed.', icon: 'success' });
+                return;
+            }
+            if (!(await loadRazorpayScript())) {
+                setPaying(false);
+                Swal.fire({ title: "Couldn't open payment", text: 'Please check your connection and try again.', icon: 'error' });
+                return;
+            }
+            const phone = order.shippingAddress?.phone?.replace(/\D/g, '').slice(-10);
+            openRazorpayCheckout({
+                key: data.key,
+                amount: data.amount,
+                razorpayOrderId: data.razorpayOrderId,
+                prefill: {
+                    name: order.customerName || undefined,
+                    email: order.customerEmail || undefined,
+                    contact: phone ? `+91${phone}` : undefined,
+                },
+                onVerified: () => router.push(`/order-success/${order.orderId}`),
+                onUnverified: (response, verifyError) => {
+                    console.error('Payment verification error:', verifyError);
+                    setPaying(false);
+                    Swal.fire({ title: 'Payment received, confirmation pending', text: unverifiedPaymentText(response.razorpay_payment_id), icon: 'warning' });
+                },
+                onDismiss: () => setPaying(false),
+                onFailed: (description) => {
+                    trackEvent('checkout_payment_failed', { reason: description });
+                    alert(description);
+                    setPaying(false);
+                },
+            });
+        } catch (err: any) {
+            setPaying(false);
+            Swal.fire({ title: "Couldn't start payment", text: err?.response?.data?.message || 'Please try again shortly.', icon: 'error' });
+        }
+    };
+
     // Loading state
     if (loading) {
         return (
@@ -122,6 +179,8 @@ export default function OrderDetailsContent() {
     // CUSTOMER_CANCELLABLE_STATUSES — the backend is the source of truth and
     // re-validates this on submit regardless, but keeps the button honest.
     const canRequestCancel = ['Pending', 'Processing'].includes(order.status) && order.cancellation?.status !== 'Requested';
+    // What Razorpay charges now: the advance on a COD order, else the total.
+    const dueNow = order.paymentMethod === 'COD' && order.advanceAmount ? order.advanceAmount : order.total;
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -166,6 +225,15 @@ export default function OrderDetailsContent() {
                                 <ShieldCheck className="w-4 h-4" /> Warranty Card
                             </Link>
                         )}
+                        {awaitingPayment(order) && (
+                            <button
+                                onClick={completePayment}
+                                disabled={paying}
+                                className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-bold hover:bg-teal-700 transition-colors shadow-lg shadow-teal-200 disabled:opacity-60"
+                            >
+                                <CreditCard className="w-4 h-4" /> {paying ? 'Opening…' : 'Complete payment'}
+                            </button>
+                        )}
                         {order.status === 'Delivered' && (
                             <button className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-bold hover:bg-teal-700 transition-colors shadow-lg shadow-teal-200">
                                 <ShoppingBag className="w-4 h-4" /> Buy Again
@@ -186,6 +254,28 @@ export default function OrderDetailsContent() {
                         )}
                     </div>
                 </div>
+
+                {awaitingPayment(order) && (
+                    <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-amber-50 border border-amber-200 rounded-2xl p-5">
+                        <div className="flex items-start gap-3">
+                            <Clock className="w-6 h-6 text-amber-600 flex-shrink-0" />
+                            <div>
+                                <p className="font-bold text-slate-900">Payment not received for this order</p>
+                                <p className="text-sm text-slate-600">
+                                    We'll start processing it as soon as you pay ₹{dueNow.toLocaleString('en-IN')}
+                                    {dueNow < order.total ? ' advance (the rest is cash on delivery)' : ''}.
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={completePayment}
+                            disabled={paying}
+                            className="px-6 py-3 bg-teal-600 text-white rounded-xl font-bold hover:bg-teal-700 transition-colors disabled:opacity-60 whitespace-nowrap"
+                        >
+                            {paying ? 'Opening…' : 'Complete payment'}
+                        </button>
+                    </div>
+                )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 

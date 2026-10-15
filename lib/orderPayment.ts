@@ -13,6 +13,17 @@ export function isAbandoned(o: Order): boolean {
   return Number.isFinite(created) && Date.now() - created > ABANDON_AFTER_MS;
 }
 
+// Unpaid and untouched, so the customer can still pay for it ("Complete
+// payment" on their order page). Same check the backend's resumePayment does.
+export function awaitingPayment(o: Order): boolean {
+  return o.paymentStatus === "Pending" && o.status === "Pending" && !o.cancellation?.status;
+}
+
+// Paid after we sent a payment reminder for it: a sale the reminder got back.
+export function isRecovered(o: Order): boolean {
+  return o.paymentStatus === "Paid" && !!o.paymentReminder?.sentAt;
+}
+
 // paymentStatus is 'Paid' for both a prepaid order and a COD order whose
 // ₹500 advance went through — split those so admins can tell at a glance
 // whether cash is still owed. Shared by the admin orders page and dashboard.
