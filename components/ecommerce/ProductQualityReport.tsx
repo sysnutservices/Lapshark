@@ -69,15 +69,14 @@ export function ProductQualityReport({ productId, qualityReport }: { productId: 
                 </p>
             ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
-                    {qualityReport?.batteryHealthPercent !== undefined && (
-                        <div className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-50">
-                            <Battery className="w-4 h-4 text-slate-500 flex-shrink-0" />
-                            <div>
-                                <p className="text-[11px] text-slate-400 font-semibold">Battery Health</p>
-                                <p className="text-sm font-bold text-slate-900">{qualityReport.batteryHealthPercent}%</p>
-                            </div>
+                    <div className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-50">
+                        <Battery className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                        <div className="min-w-0">
+                            <p className="text-[11px] text-slate-400 font-semibold">Battery Backup</p>
+                            <p className="text-sm font-bold text-slate-900">{STORE_POLICIES.batteryBackupLabel}</p>
+                            <p className="text-[11px] leading-tight text-emerald-600 font-semibold">{STORE_POLICIES.batteryBackupStatusLabel}</p>
                         </div>
-                    )}
+                    </div>
                     {qualityReport?.storageHealthPercent !== undefined && (
                         <div className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-50">
                             <HardDrive className="w-4 h-4 text-slate-500 flex-shrink-0" />

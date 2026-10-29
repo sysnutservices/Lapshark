@@ -33,6 +33,11 @@ export const STORE_POLICIES = {
   // term. app/contact/ContactClient.tsx previously claimed "batteries
   // covered for 3 months", which contradicted this; fixed to match.
   batteryPolicyLabel: "Battery covered under the standard 6-month warranty if it stops working entirely — wear-related capacity loss isn't covered.",
+  // Guaranteed battery backup from the offline customer warranty policy (per
+  // business owner). Shown on the Quality Report card in place of a battery
+  // health percentage.
+  batteryBackupLabel: "2 Hours",
+  batteryBackupStatusLabel: "Backup Warranty Included",
 
   qualityCheckPoints: 40,
   qualityCheckLabel: "40+ Point Quality Check",
