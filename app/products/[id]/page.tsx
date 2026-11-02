@@ -5,16 +5,7 @@ import { STORE_POLICIES } from "@/lib/policies";
 import ProductDetailsClient from "./ProductsDetailsClient";
 import { calculateProductPrice } from "@/lib/pricing";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
-
-// Markdown -> plain text for meta descriptions.
-function plainText(md?: string) {
-    return (md || "")
-        .replace(/!\[[^\]]*\]\([^)]*\)/g, "")   // images
-        .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1") // links -> label
-        .replace(/[*_`#>~]/g, "")                // emphasis, headings, code
-        .replace(/\s+/g, " ")
-        .trim();
-}
+import { plainText } from "@/lib/plainText";
 
 // Cut at a word boundary so meta descriptions don't end mid-word.
 function clamp(s: string, max: number) {
