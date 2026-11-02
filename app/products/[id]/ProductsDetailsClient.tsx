@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -412,6 +413,7 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
                                     <div>
                                         <h4 className="font-bold text-slate-900 text-sm md:text-base">{STORE_POLICIES.warrantyLabel}</h4>
                                         <p className="text-xs md:text-sm text-slate-500 mt-0.5 md:mt-1">{STORE_POLICIES.returnLabel}, doorstep delivery.</p>
+                                        <Link href="/store/bangalore" className="inline-block text-xs md:text-sm font-bold text-teal-700 hover:underline mt-1">Visit our Bangalore store</Link>
                                     </div>
                                 </div>
                             </div>
@@ -562,6 +564,7 @@ export default function ProductDetailsClient({ productSlug, initialProduct }: { 
                                 <div>
                                     <h4 className="font-bold text-slate-900 text-sm">{STORE_POLICIES.warrantyLabel}</h4>
                                     <p className="text-xs text-slate-500 mt-0.5">{STORE_POLICIES.returnLabel}, doorstep delivery.</p>
+                                    <Link href="/store/bangalore" className="inline-block text-xs font-bold text-teal-700 hover:underline mt-1">Visit our Bangalore store</Link>
                                 </div>
                             </div>
                         </div>

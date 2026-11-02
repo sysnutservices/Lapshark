@@ -45,6 +45,12 @@ export const STORE_POLICIES = {
   codAvailable: true,
   codAdvanceAmount: 500,
 
+  // Bangalore-only delivery speed, confirmed by the business owner on
+  // 2026-11-02 (same-day was proposed in an SEO plan and rejected as not
+  // reliably true). Pan-India timing is separate: ContactClient's FAQ says
+  // dispatch within 24h, 2-5 business days.
+  bangaloreDeliveryLabel: "Next-day delivery across Bangalore",
+
   // Paid warranty extensions offered at checkout (admin/products config) —
   // real add-on pricing, not part of the free standard warranty above.
   extendedWarrantyOptions: [

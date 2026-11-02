@@ -20,7 +20,13 @@ export function FAQSection({ heading, faqs }: { heading: string; faqs: FAQItem[]
     return (
         <section className="max-w-2xl mx-auto">
             <h2 className="text-xl md:text-2xl font-bold text-slate-900 mb-6 text-center">{heading}</h2>
-            <Accordion multiple className="rounded-2xl border border-slate-200 bg-white px-6">
+            {/* hiddenUntilFound: Base UI otherwise leaves closed panels out of
+                the DOM entirely, so the answers were missing from the server
+                HTML: crawlers saw only the questions, and the FAQPage JSON-LD
+                below described text that wasn't on the page. This keeps them
+                in the HTML as hidden="until-found" (also searchable with
+                find-in-page). */}
+            <Accordion multiple hiddenUntilFound className="rounded-2xl border border-slate-200 bg-white px-6">
                 {faqs.map((faq, index) => (
                     <AccordionItem key={index} value={`faq-${index}`}>
                         <AccordionTrigger className="text-left font-bold text-slate-900">

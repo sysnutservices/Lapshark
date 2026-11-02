@@ -259,7 +259,7 @@ export default function Home({
                     href="/refurbished-laptops-bangalore"
                     className="flex items-center justify-center gap-2 rounded-2xl border border-teal-100 bg-teal-50 px-4 py-3 text-sm font-bold text-teal-700 hover:bg-teal-100 transition-colors"
                 >
-                    Based in Bangalore? See laptops, brands, and our Banashankari store <ArrowRight className="w-4 h-4" />
+                    Based in Bangalore? Shop refurbished laptops in Bangalore or visit our Banashankari store <ArrowRight className="w-4 h-4" />
                 </Link>
             </Reveal>
 

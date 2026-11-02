@@ -19,7 +19,13 @@ export const STORE_ADDRESS = {
   addressCountry: "IN",
 } as const;
 
-export const STORE_ADDRESS_DISPLAY = `Lapshark, ${STORE_ADDRESS.streetAddress}, ${STORE_ADDRESS.addressLocality}, ${STORE_ADDRESS.addressRegion} ${STORE_ADDRESS.postalCode}`;
+// Shared JSON-LD @id for the physical store. app/layout.tsx emits a
+// sitewide ElectronicsStore node and /refurbished-laptops-bangalore emits a
+// ComputerStore node; the common @id tells Google both describe the same
+// business, rather than two separate stores at the same address.
+export const STORE_SCHEMA_ID = "https://lapshark.com/#store";
+
+export const STORE_ADDRESS_DISPLAY =`Lapshark, ${STORE_ADDRESS.streetAddress}, ${STORE_ADDRESS.addressLocality}, ${STORE_ADDRESS.addressRegion} ${STORE_ADDRESS.postalCode}`;
 
 // Same gap as resolveSupportPhone() in lib/whatsapp.ts: the admin editor's
 // Contact tab (siteConfig.contact.address) saves fine but was never read
