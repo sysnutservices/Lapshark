@@ -63,8 +63,6 @@ const isWorkstation = (p: Product) =>
 
 const minPrice = (list: Product[]) =>
     list.length ? Math.min(...list.map((p) => p.finalPrice)) : null;
-const maxPrice = (list: Product[]) =>
-    list.length ? Math.max(...list.map((p) => p.finalPrice)) : null;
 
 // Live price, not the plan's hardcoded ₹17,000: the description must stay
 // true when the cheapest unit sells out.
@@ -230,7 +228,6 @@ export default async function RefurbishedLaptopsBangalorePage() {
     const [products, siteConfig] = await Promise.all([getProductsServer(), getSiteConfigServer()]);
     const inStock = getInStockLaptops(products);
     const from = minPrice(inStock);
-    const upTo = maxPrice(inStock);
     const workstationFrom = minPrice(inStock.filter(isWorkstation));
     const availableBrands = BRAND_PAGES.filter((b) =>
         inStock.some((p) => p.brand?.toLowerCase() === b.brand.toLowerCase())
@@ -243,15 +240,20 @@ export default async function RefurbishedLaptopsBangalorePage() {
     const supportPhoneDisplay = resolveSupportPhoneDisplay(siteConfig);
     const faqs = getFaqs({ from, workstationFrom });
 
+    // Shares STORE_SCHEMA_ID with app/layout.tsx's ElectronicsStore, so
+    // Google merges the two into one business. Any field set in both must
+    // have the same value: `url` and `priceRange` were set here too
+    // (this page / a live price range vs lapshark.com / "₹₹") and the Rich
+    // Results Test flagged the merged node with 'Duplicate field "url"'
+    // (2 Nov 2026). They're left to the sitewide node; the page ties to the
+    // map listing via the Google Business Profile website link instead.
     const storeJsonLd = {
         "@context": "https://schema.org",
         "@type": "ComputerStore",
         "@id": STORE_SCHEMA_ID,
         name: "Lapshark",
         legalName: "Sysnut Technologies",
-        url: PAGE_URL,
         telephone: supportPhone,
-        ...(from && upTo ? { priceRange: `${formatINR(from)} - ${formatINR(upTo)}` } : {}),
         address: { "@type": "PostalAddress", ...STORE_ADDRESS },
         geo: { "@type": "GeoCoordinates", latitude: STORE_GEO.latitude, longitude: STORE_GEO.longitude },
         openingHoursSpecification: STORE_HOURS.map((h) => ({
