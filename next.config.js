@@ -30,7 +30,8 @@ const cspHeader = `
 `.replace(/\n/g, "");
 
 // Old-format product slugs ("...-hd-windows-10-refurbished" style) that
-// still appear in Google (Semrush India, 2 Nov 2026) or in past crawl logs,
+// still appear in Google (Semrush India, 2 Nov 2026), past crawl logs or
+// blog-post links,
 // and now 404. Rule: same model still listed -> that product page (out-of-
 // stock product pages still resolve); model no longer sold -> the brand's
 // listing page, so a visitor lands on in-stock alternatives.
@@ -45,6 +46,14 @@ const LEGACY_PRODUCT_REDIRECTS = {
     "dell-latitude-5400-intel-core-i7-8th-gen-14-hd-windows-10-refurbished": "/refurbished-dell-laptops-bangalore",
     "dell-5420-i5-11th-gen-refurbished-intel-core-i5-11-gen-ram-windows-11-pro":
         "/products/dell-latitude-5420-refurbished-laptop-intel-core-i5-11th-gen-14-display-windows-11",
+    // Linked from blog posts (stored in the backend DB), found 2026-11-02.
+    "dell-latitude-7450-intel-core-i5-5th-gen-14-hd-windows-10-refurbished":
+        "/products/dell-latitude-e7450-refurbished-laptop-intel-core-i5-5th-gen-14-display-windows-10",
+    "dell-latitude-5400-intel-i5-8-gen-14-hd-windows-10-refurbished": "/refurbished-dell-laptops-bangalore",
+    "dell-latitude-5470-intel-core-i5-6-gen-14-hd-windows-10-refurbished": "/refurbished-dell-laptops-bangalore",
+    "dell-latitude-7480-intel-i7-7-gen-14-hd-windows-10-refurbished": "/refurbished-dell-laptops-bangalore",
+    "lenovo-thinkpad-t470-intel-core-i5-6th-gen-14-hd-windows-10-refurbished": "/refurbished-lenovo-laptops-bangalore",
+    "lenovo-thinkpad-t470-intel-i7-6-gen-14-hd-windows-10-refurbished": "/refurbished-lenovo-laptops-bangalore",
 };
 
 // path-to-regexp treats "." specially; escape so "13.3" matches literally.
