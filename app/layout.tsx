@@ -8,7 +8,7 @@ import Script from "next/script";
 import { API_URL } from "@/api/api";
 import { STORE_POLICIES } from "@/lib/policies";
 import { resolveSupportPhone } from "@/lib/whatsapp";
-import { STORE_ADDRESS, STORE_GEO, STORE_HOURS } from "@/lib/store";
+import { STORE_ADDRESS, STORE_GEO, STORE_HOURS, STORE_SCHEMA_ID } from "@/lib/store";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
@@ -165,6 +165,7 @@ export default async function RootLayout({
                             // selling laptops) — was the generic Organization type, which
                             // carries no local-pack signal at all.
                             "@type": "ElectronicsStore",
+                            "@id": STORE_SCHEMA_ID,
                             name: "Lapshark",
                             legalName: "Sysnut Technologies",
                             url: SITE_URL,

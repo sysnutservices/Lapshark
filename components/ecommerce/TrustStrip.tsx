@@ -1,10 +1,10 @@
-import { ShieldCheck, RotateCcw, Truck, Lock, BadgeCheck } from "lucide-react";
+import { ShieldCheck, RotateCcw, Truck, Lock, BadgeCheck, type LucideIcon } from "lucide-react";
 import { STORE_POLICIES } from "@/lib/policies";
 
 // Compact 5-bullet strip for right below the hero — distinct from TrustStats
 // (the big animated-number band further down the page): this is a quick,
 // icon-led scan, not a headline stat.
-const ITEMS = [
+const ITEMS: TrustStripItem[] = [
     { icon: BadgeCheck, label: `${STORE_POLICIES.qualityCheckLabel}` },
     { icon: ShieldCheck, label: STORE_POLICIES.warrantyLabel },
     { icon: RotateCcw, label: STORE_POLICIES.returnLabel },
@@ -12,10 +12,18 @@ const ITEMS = [
     { icon: Lock, label: "Secure Payments" },
 ];
 
-export function TrustStrip({ className = "" }: { className?: string }) {
+export interface TrustStripItem {
+    icon: LucideIcon;
+    label: string;
+}
+
+// `items` lets a page swap in its own points (e.g. the Bangalore page's
+// "COD · EMI · Walk-in store") while keeping the same look; omitted, it's
+// the sitewide default above.
+export function TrustStrip({ className = "", items = ITEMS }: { className?: string; items?: TrustStripItem[] }) {
     return (
         <div className={`flex flex-wrap items-center justify-center gap-x-6 gap-y-3 md:gap-x-10 ${className}`}>
-            {ITEMS.map(({ icon: Icon, label }) => (
+            {items.map(({ icon: Icon, label }) => (
                 <div key={label} className="flex items-center gap-2 text-slate-700">
                     <Icon className="w-4 h-4 md:w-5 md:h-5 text-teal-600 flex-shrink-0" />
                     <span className="text-xs md:text-sm font-bold">{label}</span>

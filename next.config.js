@@ -29,12 +29,50 @@ const cspHeader = `
     frame-ancestors 'none';
 `.replace(/\n/g, "");
 
+// Old-format product slugs ("...-hd-windows-10-refurbished" style) that
+// still appear in Google (Semrush India, 2 Nov 2026) or in past crawl logs,
+// and now 404. Rule: same model still listed -> that product page (out-of-
+// stock product pages still resolve); model no longer sold -> the brand's
+// listing page, so a visitor lands on in-stock alternatives.
+const LEGACY_PRODUCT_REDIRECTS = {
+    "dell-latitude-7490-intel-core-i7-8-gen-14-hd-windows-10-refurbished":
+        "/products/dell-latitude-7490-refurbished-laptop-intel-core-i7-8th-gen-14-display-windows-11",
+    "hp-probook-640-g4-intel-i5-8-gen-14-hd-windows-10-refurbished": "/refurbished-hp-laptops-bangalore",
+    "lenovo-thinkpad-t490-intel-core-i7-8-gen-14-hd-windows-10-refurbished":
+        "/products/lenovo-thinkpad-t490-refurbished-laptop-intel-core-i5-8th-gen-14-display-windows-10",
+    "lenovo-thinkpad-t480-intel-i7-8-gen-14-hd-windows-10-refurbished": "/refurbished-lenovo-laptops-bangalore",
+    "dell-latitude-7389-intel-i7-7-gen-13.3-hd-windows-10-refurbished": "/refurbished-dell-laptops-bangalore",
+    "dell-latitude-5400-intel-core-i7-8th-gen-14-hd-windows-10-refurbished": "/refurbished-dell-laptops-bangalore",
+    "dell-5420-i5-11th-gen-refurbished-intel-core-i5-11-gen-ram-windows-11-pro":
+        "/products/dell-latitude-5420-refurbished-laptop-intel-core-i5-11th-gen-14-display-windows-11",
+};
+
+// path-to-regexp treats "." specially; escape so "13.3" matches literally.
+const escapeSource = (slug) => slug.replace(/\./g, "\\.");
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    // Legacy singular /product/... URLs from the pre-migration site still get
-    // traffic and currently 404, dropping any link equity they carry.
     async redirects() {
         return [
+            // www -> apex, every path (query strings carry over). Must be
+            // first so a www request never matches a later rule and lands on
+            // a www URL. Relies on the reverse proxy forwarding the original
+            // Host header; if www still returns 200 after deploy, add the
+            // equivalent redirect in nginx instead.
+            {
+                source: "/:path*",
+                has: [{ type: "host", value: "www.lapshark.com" }],
+                destination: "https://lapshark.com/:path*",
+                statusCode: 301,
+            },
+            // Listed before the generic /product/:slug rule so the singular
+            // form goes straight to the final page instead of two hops.
+            ...Object.entries(LEGACY_PRODUCT_REDIRECTS).flatMap(([slug, destination]) => [
+                { source: `/products/${escapeSource(slug)}`, destination, statusCode: 301 },
+                { source: `/product/${escapeSource(slug)}`, destination, statusCode: 301 },
+            ]),
+            // Legacy singular /product/... URLs from the pre-migration site still get
+            // traffic and currently 404, dropping any link equity they carry.
             { source: "/product/:slug", destination: "/products/:slug", permanent: true },
             { source: "/product", destination: "/products", permanent: true },
         ];

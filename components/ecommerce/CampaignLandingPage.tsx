@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { CheckCircle } from "lucide-react";
 import { Product } from "@/types";
 import { ProductCard } from "@/components/ProductCard";
@@ -15,12 +16,17 @@ export function CampaignLandingPage({
     whyPoints,
     products,
     whatsappMessage,
+    parentLink,
 }: {
     title: string;
     subtitle: string;
     whyPoints: string[];
     products: Product[];
     whatsappMessage: string;
+    // Optional "up one level" link (e.g. the Dell/HP/Lenovo Bangalore pages
+    // -> /refurbished-laptops-bangalore). `label` is the anchor text, which
+    // is what search engines read as the target page's topic.
+    parentLink?: { href: string; label: string; prefix?: string };
 }) {
     const inStock = products.filter((p) => p.stock > 0);
 
@@ -29,6 +35,14 @@ export function CampaignLandingPage({
             <div className="text-center max-w-2xl mx-auto mb-8 md:mb-12">
                 <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">{title}</h1>
                 <p className="mt-3 text-base text-slate-500">{subtitle}</p>
+                {parentLink && (
+                    <p className="mt-3 text-sm text-slate-600">
+                        {parentLink.prefix ? `${parentLink.prefix} ` : ""}
+                        <Link href={parentLink.href} className="font-bold text-teal-700 hover:underline">
+                            {parentLink.label}
+                        </Link>
+                    </p>
+                )}
             </div>
 
             <div className="mb-10 md:mb-14">

@@ -24,6 +24,7 @@ export default async function RefurbishedDellLaptopsBangalorePage() {
                 `${STORE_POLICIES.returnLabel} if it's not the right fit`,
             ]}
             products={matched}
+            parentLink={{ href: "/refurbished-laptops-bangalore", prefix: "Or browse", label: "all refurbished laptops in Bangalore" }}
             whatsappMessage="Hi Lapshark, I'm looking for a refurbished Dell laptop in Bangalore. Can you help me choose?"
         />
     );

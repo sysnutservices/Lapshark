@@ -11,13 +11,28 @@ import { TrustStrip } from "@/components/ecommerce/TrustStrip";
 import { StoreCTAs } from "@/components/ecommerce/StoreCTAs";
 import { FAQSection } from "@/components/ecommerce/FAQSection";
 
+// This page targets "Lapshark store" / "laptop shop Banashankari" searches
+// and hands the "refurbished laptops bangalore" keyword to
+// /refurbished-laptops-bangalore (docs/Lapshark Bangalore Page Rebuild.md),
+// so that phrase is kept out of the title and headings here.
+const PAGE_URL = "https://lapshark.com/store/bangalore";
+const PAGE_TITLE = "Lapshark Store Banashankari | Address, Hours & Directions";
+const PAGE_DESCRIPTION = `Visit the Lapshark store in Banashankari, Bangalore. ${STORE_ADDRESS_DISPLAY}. Open ${STORE_POLICIES.supportHoursLabel}.`;
+
 export const metadata: Metadata = {
-    // Root layout's title template already appends " | Lapshark" — no brand
-    // name here, or it renders twice (was "... Banashankari | Lapshark |
-    // Lapshark").
-    title: "Bangalore Store — Refurbished Laptop Store in Banashankari",
-    description: `Visit the Lapshark refurbished laptop store in Banashankari, Bangalore. ${STORE_ADDRESS_DISPLAY}. Open ${STORE_POLICIES.supportHoursLabel}.`,
-    alternates: { canonical: "https://lapshark.com/store/bangalore" },
+    // absolute: the title already starts with "Lapshark"; the root
+    // "%s | Lapshark" template would add the brand a second time.
+    title: { absolute: PAGE_TITLE },
+    description: PAGE_DESCRIPTION,
+    alternates: { canonical: PAGE_URL },
+    openGraph: {
+        type: "website",
+        siteName: "Lapshark",
+        locale: "en_IN",
+        url: PAGE_URL,
+        title: PAGE_TITLE,
+        description: PAGE_DESCRIPTION,
+    },
 };
 
 const BRAND_PAGES = [
@@ -75,10 +90,17 @@ export default async function StoreBangalorePage() {
             <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16">
                 <div className="text-center mb-10 md:mb-14">
                     <h1 className="text-3xl md:text-5xl font-extrabold text-slate-900 tracking-tight">
-                        Visit Lapshark — Refurbished Laptop Store in Bangalore
+                        Visit the Lapshark Store in Banashankari
                     </h1>
                     <p className="mt-4 text-base md:text-lg text-slate-600 max-w-2xl mx-auto">
-                        See and test our refurbished laptops in person before you buy, at our Banashankari store.
+                        See and test our laptops in person before you buy, at our Banashankari store.
+                    </p>
+                    <p className="mt-3 text-base font-medium text-slate-700">
+                        See all our{" "}
+                        <Link href="/refurbished-laptops-bangalore" className="font-bold text-teal-700 hover:underline">
+                            refurbished laptops in Bangalore
+                        </Link>
+                        .
                     </p>
                 </div>
 
