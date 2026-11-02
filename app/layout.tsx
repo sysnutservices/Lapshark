@@ -50,6 +50,13 @@ export const metadata: Metadata = {
     icons: {
         icon: "/favicon.ico",
     },
+    // Google site verification for lapshark.com, used by Merchant Center
+    // account 5388958547 to verify and claim the online store (the same
+    // token is also a DNS TXT record). Don't remove: Merchant Center
+    // re-checks it, and losing the claim disapproves every product.
+    verification: {
+        google: "dHbG3ozwqW39YE964-hbpW86xZlt2G-gd8krVwLT1dY",
+    },
     openGraph: {
         type: "website",
         siteName: "Lapshark",
