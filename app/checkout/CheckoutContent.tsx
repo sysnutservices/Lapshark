@@ -13,7 +13,7 @@ import { API_URL } from '@/api/api';
 import confetti from "canvas-confetti"
 import { CheckoutLogin } from '@/components/LoginComponent';
 import { trackEvent, generateEventId, trackPurchaseConversion } from '@/lib/analytics';
-import { STORE_POLICIES } from '@/lib/policies';
+import { STORE_POLICIES, isCodPincode } from '@/lib/policies';
 import { priceCartItem, getShippingCost } from '@/lib/pricing';
 import { ProductPromotionBadge } from '@/components/ecommerce/ProductPromotionBadge';
 import { loadRazorpayScript, openRazorpayCheckout, unverifiedPaymentText } from '@/lib/razorpayCheckout';
@@ -79,6 +79,14 @@ export default function CheckoutContent() {
             });
         return () => { cancelled = true; };
     }, [selectedAddress?.zip]);
+
+    // COD is Bangalore-only (560xxx). Switching to an address outside
+    // Bangalore drops a COD selection back to online payment; the backend
+    // rejects COD for those pincodes anyway.
+    const codAllowed = isCodPincode(selectedAddress?.zip);
+    useEffect(() => {
+        if (!codAllowed) setPaymentMethod((m) => (m === 'COD' ? 'Razorpay' : m));
+    }, [codAllowed]);
 
     useEffect(() => {
         // Fetch addresses
@@ -612,12 +620,15 @@ export default function CheckoutContent() {
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => selectPaymentMethod('COD')}
-                                        className={`text-left p-4 rounded-2xl border-2 transition-all ${paymentMethod === 'COD' ? 'border-teal-600 bg-teal-50' : 'border-slate-200 hover:border-slate-300'}`}
+                                        onClick={() => codAllowed && selectPaymentMethod('COD')}
+                                        disabled={!codAllowed}
+                                        className={`text-left p-4 rounded-2xl border-2 transition-all ${!codAllowed ? 'border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed' : paymentMethod === 'COD' ? 'border-teal-600 bg-teal-50' : 'border-slate-200 hover:border-slate-300'}`}
                                     >
                                         <span className="font-bold text-slate-900 text-sm block">Cash on Delivery</span>
                                         <span className="text-xs text-slate-500">
-                                            {isCODEligible ? `₹${COD_ADVANCE_AMOUNT} advance now, rest on delivery` : 'Full amount now (order too small for COD)'}
+                                            {!codAllowed
+                                                ? `Available only for ${STORE_POLICIES.codRegionLabel} addresses`
+                                                : isCODEligible ? `₹${COD_ADVANCE_AMOUNT} advance now, rest on delivery` : 'Full amount now (order too small for COD)'}
                                         </span>
                                     </button>
                                 </div>

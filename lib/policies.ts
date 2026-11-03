@@ -42,8 +42,12 @@ export const STORE_POLICIES = {
   qualityCheckPoints: 40,
   qualityCheckLabel: "40+ Point Quality Check",
 
+  // COD is Bangalore-only (owner decision, 2026-11-03): checkout offers it
+  // only for 560xxx pincodes (isCodPincode below), and the backend's
+  // createOrder rejects COD anywhere else.
   codAvailable: true,
   codAdvanceAmount: 500,
+  codRegionLabel: "Bangalore",
 
   // Bangalore-only delivery speed, confirmed by the business owner on
   // 2026-11-02 (same-day was proposed in an SEO plan and rejected as not
@@ -76,3 +80,7 @@ export const STORE_POLICIES = {
 // business policy, but centralized here for the same reason: one number,
 // not a copy in every component that shows it.
 export const LOW_STOCK_THRESHOLD = 3;
+
+// Bangalore pincodes are 560xxx. Mirrors isCodPincode in the backend's
+// orderController (the actual gate) — keep both in sync.
+export const isCodPincode = (zip?: string | null) => /^560\d{3}$/.test((zip ?? "").trim());

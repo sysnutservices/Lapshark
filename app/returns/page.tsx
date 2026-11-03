@@ -50,7 +50,7 @@ const faqs = [
     // content belongs on this page, not the warranty page.
     {
         q: "Do I need to pay in advance for Cash on Delivery?",
-        a: `If you choose Cash on Delivery (COD) as your payment method, you may be required to pay ₹${STORE_POLICIES.codAdvanceAmount} as an advance payment when placing the order.`,
+        a: `Cash on Delivery is available only for delivery addresses in ${STORE_POLICIES.codRegionLabel}. If you choose COD, you may be required to pay ₹${STORE_POLICIES.codAdvanceAmount} as an advance payment when placing the order.`,
     },
     {
         q: "When does Lapshark issue a refund for a wrong or damaged order?",
@@ -163,7 +163,7 @@ export default function Returns() {
                         <section>
                             <h2 className="text-2xl font-bold text-slate-900 mb-4">Cash on Delivery (COD)</h2>
                             <p className="text-slate-600">
-                                If you choose Cash on Delivery (COD) as your payment method, you may be required to pay <strong>₹{STORE_POLICIES.codAdvanceAmount}</strong> as an advance payment when placing the order — the remainder is collected on delivery.
+                                Cash on Delivery is available only for delivery addresses in {STORE_POLICIES.codRegionLabel}. If you choose COD, you may be required to pay <strong>₹{STORE_POLICIES.codAdvanceAmount}</strong> as an advance payment when placing the order — the remainder is collected on delivery.
                             </p>
                         </section>
 
