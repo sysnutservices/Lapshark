@@ -658,7 +658,7 @@ export default function Home({
                         { q: "Do you offer a warranty on refurbished laptops?", a: `Yes, every laptop comes with a ${STORE_POLICIES.warrantyMonths}-month official warranty covering the motherboard, screen, RAM, HDD/SSD, and original accessories.` },
                         { q: "How thoroughly are the laptops tested?", a: `Each unit goes through a ${STORE_POLICIES.qualityCheckPoints}+ point quality inspection covering the screen, battery health, keyboard, ports, and body condition before it's listed for sale.` },
                         { q: "Can I return a laptop if I don't like it?", a: `Yes — you have ${STORE_POLICIES.returnDays} days from delivery, as long as the device is in its original condition with all accessories and the warranty seal intact.` },
-                        { q: "Is Cash on Delivery (COD) available?", a: "Yes, COD is available nationwide, along with EMI options at checkout." },
+                        { q: "Is Cash on Delivery (COD) available?", a: `COD is available for delivery addresses in ${STORE_POLICIES.codRegionLabel}, with a ₹${STORE_POLICIES.codAdvanceAmount} advance to confirm the order. Everywhere else in India you can pay online or choose EMI at checkout.` },
                     ].map((item, i) => (
                         <AccordionItem key={i} value={`faq-${i}`}>
                             <AccordionTrigger className="text-left text-sm md:text-base font-bold text-slate-900">

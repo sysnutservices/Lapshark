@@ -16,7 +16,7 @@ const SITE_URL = "https://lapshark.com";
 // "no-cost EMI" was asserted here 3x while HomeClient's own Bajaj Finserv
 // banner says "attractive interest rates" — a real self-contradiction, not
 // a confirmed 0%-interest offer, so softened to "EMI" everywhere.
-const SITE_DESCRIPTION = `Buy verified refurbished and second hand laptops at unbeatable prices with doorstep delivery, COD, EMI, and a ${STORE_POLICIES.warrantyMonths}-month warranty across India.`;
+const SITE_DESCRIPTION = `Buy verified refurbished and second hand laptops at unbeatable prices with doorstep delivery, EMI, and a ${STORE_POLICIES.warrantyMonths}-month warranty across India.`;
 
 export const metadata: Metadata = {
     metadataBase: new URL(SITE_URL),
