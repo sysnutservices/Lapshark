@@ -17,6 +17,25 @@ export default function OrdersPage() {
     );
 }
 
+// What the customer actually bought: the specs snapshot saved at order time
+// (createOrder overwrites RAM/SSD with the chosen upgrade), falling back to
+// the raw selectedConfig on older orders placed before specs existed.
+const itemConfigParts = (item: any): string[] => {
+    const s = item?.specs || {};
+    const c = item?.selectedConfig || {};
+    const ram = s.ram || c.ram;
+    const ssd = s.storage || c.storage;
+    const warranty = item?.warranty?.label || c.warranty;
+    return [
+        s.processor && `Processor: ${s.processor}`,
+        ram && `RAM: ${ram}`,
+        ssd && `SSD: ${ssd}`,
+        s.display && `Display: ${s.display}`,
+        s.graphics && `Graphics: ${s.graphics}`,
+        warranty && `Warranty: ${warranty}`,
+    ].filter(Boolean) as string[];
+};
+
 const PAYMENT_FILTERS = ['All', 'Paid', 'Fully Paid', 'Partially Paid', 'Awaiting Settlement', 'Pending', 'Abandoned', 'Failed', 'Refunded'];
 
 function OrderManager() {
@@ -302,7 +321,10 @@ function OrderManager() {
                 { header: header('City'), cell: (o: Order) => text(o.shippingAddress?.city), width: 14 },
                 { header: header('State'), cell: (o: Order) => text(o.shippingAddress?.state), width: 14 },
                 { header: header('PIN'), cell: (o: Order) => text(o.shippingAddress?.zip), width: 9 },
-                { header: header('Items'), cell: (o: Order) => text(o.items.map(i => `${i.title} × ${i.quantity}`).join('; ')), width: 45 },
+                { header: header('Items'), cell: (o: Order) => text(o.items.map(i => {
+                    const cfg = itemConfigParts(i);
+                    return `${i.title}${cfg.length ? ` (${cfg.join(', ')})` : ''} × ${i.quantity}`;
+                }).join('; ')), width: 60 },
                 { header: header('Serial Numbers'), cell: (o: Order) => text(o.items.map(i => i.serialNumber).filter(Boolean).join('; ')), width: 20 },
                 { header: header('Order Status'), cell: (o: Order) => text(o.status), width: 15 },
                 { header: header('Payment Method'), cell: (o: Order) => text(o.paymentMethod), width: 15 },
@@ -498,6 +520,13 @@ function OrderManager() {
                                             <img src={item.image} className="w-8 h-8 rounded object-cover    " alt="" />
                                             <div>
                                                 <span className="font-medium text-gray-900">{item.title}</span>
+                                                {itemConfigParts(item).length > 0 && (
+                                                    <div className="mt-1 flex flex-wrap gap-1">
+                                                        {itemConfigParts(item).map((part) => (
+                                                            <span key={part} className="text-[11px] bg-gray-100 text-gray-700 rounded px-1.5 py-0.5">{part}</span>
+                                                        ))}
+                                                    </div>
+                                                )}
                                                 {/* Snapshot frozen at purchase time — never recomputed
                                                     from the live product, so this stays accurate even
                                                     after the offer expires or is edited/removed. */}
