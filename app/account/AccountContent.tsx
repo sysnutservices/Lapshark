@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { itemRamSsdText } from '@/lib/orderItemConfig';
 import {
     Package, MapPin, LogOut, LogIn, Settings, Heart, ShoppingBag, X, CreditCard, Truck, CheckCircle, Clock, XCircle, ChevronRight, ShieldCheck
 } from 'lucide-react';
@@ -764,6 +765,9 @@ const OrderDetailsModal: React.FC<{ order: Order; onClose: () => void }> = ({ or
                                         <div className="flex-1 min-w-0">
                                             <h4 className="font-bold text-slate-900 mb-1 line-clamp-2">{item.title}</h4>
                                             <p className="text-sm text-slate-600 mb-2">{item.brand}</p>
+                                            {itemRamSsdText(item) && (
+                                                <p className="text-sm text-slate-500 mb-2">{itemRamSsdText(item)}</p>
+                                            )}
                                             <div className="flex items-center gap-4 flex-wrap">
                                                 <span className="text-sm text-slate-600">Qty: <span className="font-bold text-slate-900">{item.quantity}</span></span>
                                                 <span className="text-lg font-bold text-slate-900">₹{item.finalPrice.toLocaleString('en-IN')}</span>
