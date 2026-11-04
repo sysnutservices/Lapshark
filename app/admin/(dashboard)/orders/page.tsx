@@ -1,6 +1,7 @@
 "use client";
 
 import React, { Suspense, useEffect, useState } from 'react';
+import { itemConfigParts } from '@/lib/orderItemConfig';
 import { useSearchParams } from 'next/navigation';
 import { useStore } from '@/context/StoreContext';
 import { Order } from '@/types';
@@ -16,25 +17,6 @@ export default function OrdersPage() {
         </Suspense>
     );
 }
-
-// What the customer actually bought: the specs snapshot saved at order time
-// (createOrder overwrites RAM/SSD with the chosen upgrade), falling back to
-// the raw selectedConfig on older orders placed before specs existed.
-const itemConfigParts = (item: any): string[] => {
-    const s = item?.specs || {};
-    const c = item?.selectedConfig || {};
-    const ram = s.ram || c.ram;
-    const ssd = s.storage || c.storage;
-    const warranty = item?.warranty?.label || c.warranty;
-    return [
-        s.processor && `Processor: ${s.processor}`,
-        ram && `RAM: ${ram}`,
-        ssd && `SSD: ${ssd}`,
-        s.display && `Display: ${s.display}`,
-        s.graphics && `Graphics: ${s.graphics}`,
-        warranty && `Warranty: ${warranty}`,
-    ].filter(Boolean) as string[];
-};
 
 const PAYMENT_FILTERS = ['All', 'Paid', 'Fully Paid', 'Partially Paid', 'Awaiting Settlement', 'Pending', 'Abandoned', 'Failed', 'Refunded'];
 
