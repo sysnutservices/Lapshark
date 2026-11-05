@@ -58,7 +58,7 @@ export default function CheckoutContent() {
     // so there's one frontend source instead of two that can drift.
     const COD_ADVANCE_AMOUNT = STORE_POLICIES.codAdvanceAmount;
 
-    // Pincode check against Ekart — pure checkout UX guardrail (fails open on
+    // Pincode check against the courier (Delhivery) — pure checkout UX guardrail (fails open on
     // any error/pincode format the backend rejects), not the actual gate on
     // whether an order can ship. Re-runs whenever the selected address changes.
     useEffect(() => {
@@ -381,7 +381,7 @@ export default function CheckoutContent() {
                 // Stored address phone numbers aren't consistently
                 // formatted (some have +91, spaces, etc.) — normalize to
                 // bare digits and take the last 10 before adding +91, same
-                // approach the backend's Ekart integration uses.
+                // approach the backend's courier integration uses.
                 prefill: {
                     name: selectedAddress?.name || undefined,
                     email: selectedAddress?.email || undefined,

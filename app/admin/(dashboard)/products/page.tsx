@@ -1211,7 +1211,7 @@ export default function ProductsPage() {
                                         </div>
                                     </div>
 
-                                    {/* Shipping package dims — used to book the Ekart shipment (rate +
+                                    {/* Shipping package dims — used to book the courier shipment (rate +
                                         serviceability); defaults to a typical boxed-laptop parcel so this
                                         is optional, override only when a product's real package differs. */}
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

@@ -49,8 +49,8 @@ function OrderManager() {
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [statusUpdating, setStatusUpdating] = useState(false);
     // Inline "ship without a courier" form — separate from the Shipped
-    // button since it skips the real Ekart booking entirely (local
-    // delivery, a courier Ekart doesn't cover, etc.).
+    // button since it skips the real courier booking entirely (local
+    // delivery, an area the courier doesn't cover, etc.).
     const [showManualShip, setShowManualShip] = useState(false);
     const [manualCourierName, setManualCourierName] = useState('');
     const [manualTrackingNumber, setManualTrackingNumber] = useState('');
@@ -414,13 +414,13 @@ function OrderManager() {
                         </p>
                     )}
                     {(() => {
-                        // Mirrors backend isCOD check (lapshark_backend/src/services/ekart.ts)
-                        // so this reflects exactly what createShipment will send to Ekart.
+                        // Mirrors backend isCOD check (lapshark_backend/src/services/delhivery.ts)
+                        // so this reflects exactly what createShipment will send to the courier.
                         const codAmount = selectedOrder.codCollected?.at ? 0 : selectedOrder.total - (selectedOrder.advanceAmount || 0);
                         const isCOD = selectedOrder.paymentMethod === 'COD' && codAmount > 0;
                         return (
                             <p className="text-sm text-gray-500">
-                                Ekart payment mode: <span className="font-bold">{isCOD ? 'COD' : 'Prepaid'}</span>
+                                Courier payment mode: <span className="font-bold">{isCOD ? 'COD' : 'Prepaid'}</span>
                             </p>
                         );
                     })()}
@@ -621,7 +621,7 @@ function OrderManager() {
                             onClick={async () => {
                                 setStatusUpdating(true);
                                 try {
-                                    // "Shipped" books the real Ekart shipment server-side, so this
+                                    // "Shipped" books the real courier shipment server-side, so this
                                     // waits for the response instead of updating optimistically —
                                     // a courier-side failure must not show "Shipped" when it isn't.
                                     const updated = await updateOrderStatus(selectedOrder.orderId, status as any);
