@@ -255,7 +255,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     setOrders((prev) => [res.data, ...prev]);
   };
 
-  // No optimistic update here: moving to "Shipped" now books a real Ekart
+  // No optimistic update here: moving to "Shipped" now books a real courier
   // shipment server-side and can fail (courier down, bad address, ...) — the
   // old optimistic set-then-fetch showed "Shipped" even when the backend
   // rejected the change, leaving the UI out of sync with what's actually true.
