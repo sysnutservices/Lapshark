@@ -17,6 +17,8 @@ import { STORE_POLICIES, isCodPincode } from '@/lib/policies';
 import { priceCartItem, getShippingCost } from '@/lib/pricing';
 import { ProductPromotionBadge } from '@/components/ecommerce/ProductPromotionBadge';
 import { loadRazorpayScript, openRazorpayCheckout, unverifiedPaymentText } from '@/lib/razorpayCheckout';
+import { referralForCheckout } from '@/lib/referral';
+import { partnerApi, PublicQuote } from '@/lib/partnerApi';
 
 export default function CheckoutContent() {
     const { cart, clearCart, removeFromCart } = useCart();
@@ -24,7 +26,43 @@ export default function CheckoutContent() {
     // Live-priced, not the stale add-to-cart snapshot — same shared
     // calculation CartContent uses, so the number shown here never drifts
     // from what the cart page just showed.
-    const finalCart = cart.map((item) => priceCartItem(item, products));
+    // Quotation mode (/checkout?quote=<token>, from a Sales Ambassador's
+    // quotation link): the lines and prices come from the quotation, not the
+    // cart, and the customer's own cart is left untouched. The server
+    // (createOrder + quotationToken) re-validates everything and charges the
+    // quoted price, never more than today's live price.
+    const [quoteToken, setQuoteToken] = useState<string | null>(null);
+    const [quote, setQuote] = useState<PublicQuote | null>(null);
+    const [quoteError, setQuoteError] = useState("");
+    useEffect(() => {
+        const t = new URLSearchParams(window.location.search).get("quote");
+        if (!t) return;
+        setQuoteToken(t);
+        partnerApi.publicQuote(t)
+            .then((r) => (r.quotation.status === "active" && (!r.quotation.validUntil || new Date(r.quotation.validUntil) > new Date()) ? setQuote(r.quotation) : setQuoteError("This quotation can no longer be used. Open the quotation link again or ask your partner for a new one.")))
+            .catch(() => setQuoteError("This quotation link isn't valid."));
+    }, []);
+    const cartLines = cart.map((item) => priceCartItem(item, products));
+    const finalCart: typeof cartLines = quote
+        ? quote.items.map((i) => ({
+              productId: i.productId,
+              title: i.title,
+              image: i.image || "",
+              quantity: i.quantity,
+              config: i.config,
+              price: i.listedUnitPrice,
+              finalPrice: i.unitPrice,
+              livePrice: i.unitPrice,
+              originalSellingPrice: i.unitPrice,
+              offer: null,
+              priceChanged: false,
+              specs: {},
+              quoteLabels: i.configLabels.join(" · "),
+          })) as unknown as typeof cartLines
+        : quoteToken
+          ? []
+          : cartLines;
+    const specLine = (item: any) => item.quoteLabels ?? `${item.specs?.processor ?? ""} • ${item.specs?.ram ?? ""}`;
     const totalPrice = finalCart.reduce((sum, i) => sum + i.livePrice * i.quantity, 0);
     const totalOfferSavings = finalCart.reduce((sum, i) => sum + (i.offer ? (i.originalSellingPrice - i.livePrice) * i.quantity : 0), 0);
     // Pre-offer amount for the "Subtotal" line (see CartContent) so the
@@ -174,7 +212,23 @@ export default function CheckoutContent() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [totalPrice, appliedCoupon]);
 
-    if (cart.length === 0) {
+    if (quoteToken && !quote) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 px-4">
+                {quoteError ? (
+                    <>
+                        <h2 className="text-2xl font-bold text-slate-900 mb-2">Quotation unavailable</h2>
+                        <p className="text-slate-500 mb-8 text-center max-w-md">{quoteError}</p>
+                        <Link href={`/quote/${encodeURIComponent(quoteToken)}`} className="bg-teal-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-teal-700">Back to the quotation</Link>
+                    </>
+                ) : (
+                    <p className="text-slate-500">Loading your quotation…</p>
+                )}
+            </div>
+        );
+    }
+
+    if (finalCart.length === 0) {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 px-4 animate-in fade-in duration-500">
                 <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-lg mb-6">
@@ -287,7 +341,8 @@ export default function CheckoutContent() {
                     type: selectedAddress?.type || "Home",
                 },
                 mapLink: mapLink, // Include map link
-                coupon: activeCoupon?.code || null,
+                coupon: quote ? null : activeCoupon?.code || null,
+                ...(quote && quoteToken ? { quotationToken: quoteToken } : {}),
                 discount: discount || 0,
                 total: finalTotal,
                 paymentMethod,
@@ -296,6 +351,10 @@ export default function CheckoutContent() {
                 // is what lets Meta dedupe the browser Pixel hit and the
                 // server CAPI hit into one conversion instead of two.
                 metaEventId,
+                // Sales Ambassador referral, if the customer arrived via a
+                // partner link — the server validates it and never fails
+                // checkout over a bad code.
+                ...referralForCheckout(),
                 items: finalCart.map(item => ({
                     productId: item.productId,
                     quantity: item.quantity,
@@ -309,7 +368,10 @@ export default function CheckoutContent() {
                     // fresh calculation and rejects (instead of silently
                     // charging a different amount) if a product offer
                     // changed underneath the cart.
-                    expectedFinalPrice: item.livePrice,
+                    // Quotation lines: the server charges the quoted price
+                    // (or today's live price if that's lower), so there's no
+                    // stale display price to compare against.
+                    ...(quote ? {} : { expectedFinalPrice: item.livePrice }),
                 }))
 
             })
@@ -421,7 +483,7 @@ export default function CheckoutContent() {
                     });
 
                     setIsProcessing(false);
-                    clearCart();
+                    if (!quote) clearCart();
                     // The order's own orderId (LS-YYYYMMDD-NN), not
                     // Razorpay's order_xxxxxxxxxxxxxx id — that's what
                     // getOrderById looks up by, and what the customer
@@ -511,21 +573,21 @@ export default function CheckoutContent() {
                                                         <h3 className="line-clamp-1 mr-4">{item.title}</h3>
                                                         <p className="whitespace-nowrap font-bold">₹{(item.livePrice * item.quantity).toLocaleString('en-IN')}</p>
                                                     </div>
-                                                    <p className="text-xs text-slate-500 truncate">{item.specs.processor} • {item.specs.ram}</p>
+                                                    <p className="text-xs text-slate-500 truncate">{specLine(item)}</p>
                                                     <div className="flex items-center justify-between mt-1">
                                                         {item.offer ? <ProductPromotionBadge offer={item.offer} className="self-start" /> : <span />}
-                                                        <button
+                                                        {!quote && <button
                                                             onClick={() => removeFromCart(cartItemKey(item))}
                                                             className="text-red-500 text-xs font-medium hover:underline flex items-center flex-shrink-0"
                                                         >
                                                             <Trash2 className="w-3 h-3 mr-1" /> Remove
-                                                        </button>
+                                                        </button>}
                                                     </div>
                                                 </div>
                                             </div>
                                         ))}
                                     </div>
-                                    <div className="flex gap-3 w-full">
+                                    {quote ? <QuoteNote quote={quote} /> : <div className="flex gap-3 w-full">
                                         <input
                                             type="text"
                                             value={couponCode}
@@ -536,7 +598,7 @@ export default function CheckoutContent() {
                                         <button onClick={handleValidateCoupon} className="bg-teal-600 text-white px-6 py-3 rounded-xl text-xs font-bold hover:bg-teal-700 transition-colors shadow-sm">
                                             Apply
                                         </button>
-                                    </div>
+                                    </div>}
                                     <div className="pt-4 space-y-2 text-sm">
                                         <div className="flex font-bold justify-between text-slate-500">
                                             <span>Subtotal</span>
@@ -718,15 +780,15 @@ export default function CheckoutContent() {
                                                     <h3 className="text-sm font-bold text-slate-900 line-clamp-2 pr-4 leading-relaxed">{item.title}</h3>
                                                     <p className="text-sm font-bold text-slate-900 whitespace-nowrap">₹{(item.livePrice * item.quantity).toLocaleString('en-IN')}</p>
                                                 </div>
-                                                <p className="mt-1 text-xs text-slate-500 font-medium">{item.specs.processor} • {item.specs.ram}</p>
+                                                <p className="mt-1 text-xs text-slate-500 font-medium">{specLine(item)}</p>
                                                 <div className="flex items-center justify-between mt-1.5">
                                                     {item.offer ? <ProductPromotionBadge offer={item.offer} className="self-start" /> : <span />}
-                                                    <button
+                                                    {!quote && <button
                                                         onClick={() => removeFromCart(cartItemKey(item))}
                                                         className="text-red-500 text-xs font-medium hover:underline flex items-center flex-shrink-0"
                                                     >
                                                         <Trash2 className="w-3 h-3 mr-1" /> Remove
-                                                    </button>
+                                                    </button>}
                                                 </div>
                                             </div>
                                         </div>
@@ -734,8 +796,8 @@ export default function CheckoutContent() {
                                 </div>
 
                                 <div className="border-t border-slate-200 p-8 bg-slate-50/30 space-y-6">
-                                    {/* Coupon Input */}
-                                    <div className="flex gap-3">
+                                    {/* Coupon Input (not in quotation mode: no coupon on a negotiated price) */}
+                                    {quote ? <QuoteNote quote={quote} /> : <div className="flex gap-3">
                                         <input
                                             type="text"
                                             value={couponCode}
@@ -746,7 +808,7 @@ export default function CheckoutContent() {
                                         <button onClick={handleValidateCoupon} className="bg-teal-600 text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-teal-700 transition-colors shadow-sm">
                                             Apply
                                         </button>
-                                    </div>
+                                    </div>}
 
                                     <div className="space-y-3 pt-2">
                                         <div className="flex items-center justify-between text-sm text-slate-600">
@@ -821,3 +883,12 @@ export default function CheckoutContent() {
         </>
     );
 };
+
+function QuoteNote({ quote }: { quote: PublicQuote }) {
+    return (
+        <div className="w-full rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 text-xs text-teal-900">
+            <p className="font-bold">Quotation {quote.quoteNumber} · price locked</p>
+            {quote.validUntil && <p className="mt-0.5">Valid until {new Date(quote.validUntil).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}. Coupons can't be added to a quotation price.</p>}
+        </div>
+    );
+}
