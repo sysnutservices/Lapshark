@@ -59,6 +59,7 @@ interface StoreContextType {
   requestReview: (orderId: string) => Promise<void>;
   setCodCollected: (orderId: string, collected: boolean) => Promise<Order>;
   syncPayment: (orderId: string) => Promise<{ order: Order; paid: boolean; message: string }>;
+  retryRefund: (orderId: string) => Promise<{ order: Order; message: string }>;
   sendPaymentReminder: (orderId: string) => Promise<{ order: Order; sent: boolean; message: string }>;
 
   // Coupons
@@ -329,6 +330,15 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     return { order: updated, paid: !!res.data.paid, message: res.data.message as string };
   };
 
+  // Re-attempts a failed cancellation refund. Errors still carry the updated
+  // order (refund.error set) so the caller can show Razorpay's reason.
+  const retryRefund = async (orderId: string) => {
+    const res = await api.post(`/orders/${orderId}/retry-refund`, {}, { headers: authHeaders() });
+    const updated = res.data.order as Order;
+    setOrders(prev => prev.map(o => (o.orderId === orderId ? updated : o)));
+    return { order: updated, message: res.data.message as string };
+  };
+
   // WhatsApps the customer a link to pay an abandoned order. If Razorpay
   // shows it was paid after all, the backend marks it paid instead.
   const sendPaymentReminder = async (orderId: string) => {
@@ -448,6 +458,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         requestReview,
         setCodCollected,
         syncPayment,
+        retryRefund,
         sendPaymentReminder,
         addCoupon,
         updateCoupon,

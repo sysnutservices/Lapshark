@@ -450,7 +450,7 @@ export default function OrderDetailsContent() {
                                     <div className="flex justify-between items-center text-sm pt-2 border-t border-dashed border-slate-200">
                                         <span className="text-slate-500">Refund</span>
                                         <span className="font-bold text-blue-700">
-                                            {order.refund.status === 'failed'
+                                            {order.refund.status === 'failed' || order.refund.status === 'retrying'
                                                 ? "Failed — we'll follow up manually"
                                                 : `₹${(order.refund.amount || 0).toLocaleString('en-IN')} (${order.refund.status})`}
                                         </span>

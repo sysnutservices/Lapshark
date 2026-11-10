@@ -166,6 +166,7 @@ export interface Order {
   paymentMethod: 'Razorpay' | 'COD' | 'Card';
   // Razorpay checkout order id (order_xxx); legacy orders used it as orderId.
   razorpayOrderId?: string;
+  razorpayPaymentId?: string;
   items: CartItem[];
   shippingAddress?: Address;
   shipment?: {
@@ -181,8 +182,9 @@ export interface Order {
   refund?: {
     id?: string;
     amount?: number;
-    status?: string;
+    status?: string; // 'pending' | 'processed' | 'failed' | 'retrying'
     refundedAt?: string;
+    error?: string; // admin-only: Razorpay's reason for the last failed attempt
   };
   // Customer request -> admin approve/reject workflow. Absent until a
   // cancellation is first requested. See lapshark_backend/src/models/

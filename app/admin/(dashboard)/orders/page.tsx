@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { useStore } from '@/context/StoreContext';
 import { Order } from '@/types';
 import { getPaymentLabel, isAbandoned, settlementPending, awaitingPayment, isRecovered } from '@/lib/orderPayment';
-import { Search, Filter, ChevronDown, Check, X, Clock, Truck, Package, Pencil, ShieldCheck, Download, Send } from 'lucide-react';
+import { Search, Filter, ChevronDown, Check, X, Clock, Truck, Package, Pencil, ShieldCheck, Download, Send, RotateCcw } from 'lucide-react';
 
 // useSearchParams needs a Suspense boundary or `next build` fails the page's
 // static prerender (same as the customers page).
@@ -21,13 +21,15 @@ export default function OrdersPage() {
 const PAYMENT_FILTERS = ['All', 'Paid', 'Fully Paid', 'Partially Paid', 'Awaiting Settlement', 'Pending', 'Abandoned', 'Failed', 'Refunded'];
 
 function OrderManager() {
-    const { orders, updateOrderStatus, setItemSerialNumber, approveCancellation, rejectCancellation, requestReview, setCodCollected, syncPayment, sendPaymentReminder } = useStore();
+    const { orders, updateOrderStatus, setItemSerialNumber, approveCancellation, rejectCancellation, requestReview, setCodCollected, syncPayment, retryRefund, sendPaymentReminder } = useStore();
     const [paymentSyncing, setPaymentSyncing] = useState(false);
     const [reminderSending, setReminderSending] = useState(false);
     const [paymentSyncMessage, setPaymentSyncMessage] = useState('');
     const [reviewRequesting, setReviewRequesting] = useState(false);
     const [reviewRequestSent, setReviewRequestSent] = useState(false);
     const [codUpdating, setCodUpdating] = useState(false);
+    const [refundRetrying, setRefundRetrying] = useState(false);
+    const [refundMessage, setRefundMessage] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('All');
     const [paymentFilter, setPaymentFilter] = useState<string>('All');
@@ -83,6 +85,27 @@ function OrderManager() {
         setReviewRequestSent(false);
         setEditingItemId(null);
         setPaymentSyncMessage('');
+        setRefundMessage('');
+    };
+
+    // Failed cancellation refund: the backend checks Razorpay first, so a
+    // refund already issued from the Razorpay dashboard is just recorded.
+    const retryFailedRefund = async () => {
+        if (!selectedOrder) return;
+        if (!confirm(`Retry the Razorpay refund for ${selectedOrder.orderId}? If it succeeds, ${selectedOrder.customerName} gets the "refund initiated" WhatsApp.`)) return;
+        setRefundRetrying(true);
+        setRefundMessage('');
+        try {
+            const { order, message } = await retryRefund(selectedOrder.orderId);
+            setSelectedOrder(order);
+            setRefundMessage(message);
+        } catch (err: any) {
+            const order = err?.response?.data?.order as Order | undefined;
+            if (order) setSelectedOrder(order);
+            setRefundMessage(err?.response?.data?.message || "Couldn't retry the refund");
+        } finally {
+            setRefundRetrying(false);
+        }
     };
 
     const checkPaymentWithRazorpay = async () => {
@@ -464,13 +487,31 @@ function OrderManager() {
                         )
                     )}
                     {selectedOrder.refund && (
-                        <p className="text-sm text-gray-500">
-                            Refund: ₹{(selectedOrder.refund.amount || 0).toLocaleString('en-IN')} —{' '}
-                            <span className={`font-bold ${selectedOrder.refund.status === 'failed' ? 'text-red-600' : 'text-blue-600'}`}>
-                                {selectedOrder.refund.status === 'failed' ? 'Failed — refund manually' : selectedOrder.refund.status}
-                            </span>
-                        </p>
+                        selectedOrder.refund.status === 'failed' || selectedOrder.refund.status === 'retrying' ? (
+                            <div className="text-sm text-gray-500 space-y-1">
+                                <p>
+                                    Refund: <span className="font-bold text-red-600">Failed</span>
+                                    {selectedOrder.refund.error && <span className="block text-xs text-red-500">Razorpay: {selectedOrder.refund.error}</span>}
+                                </p>
+                                {selectedOrder.status === 'Cancelled' && selectedOrder.razorpayPaymentId && (
+                                    <button
+                                        onClick={retryFailedRefund}
+                                        disabled={refundRetrying}
+                                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+                                    >
+                                        <RotateCcw className="w-3.5 h-3.5" />
+                                        {refundRetrying ? 'Retrying…' : 'Retry refund'}
+                                    </button>
+                                )}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-gray-500">
+                                Refund: ₹{(selectedOrder.refund.amount || 0).toLocaleString('en-IN')} —{' '}
+                                <span className="font-bold text-blue-600">{selectedOrder.refund.status}</span>
+                            </p>
+                        )
                     )}
+                    {refundMessage && <p className="text-xs text-gray-600">{refundMessage}</p>}
                 </div>
                 <div className="space-y-1">
                     <label className="text-xs font-bold text-gray-400 uppercase">Shipping Address</label>
