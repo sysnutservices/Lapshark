@@ -46,7 +46,9 @@ export default function CheckoutContent() {
     const [showLogin, setShowLogin] = useState(false);
     const [locationReady, setLocationReady] = useState(false);
     const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-    const [serviceability, setServiceability] = useState<{ checked: boolean; serviceable: boolean; message?: string }>({ checked: false, serviceable: true });
+    // zip records which pincode the result is for, so a stale answer for the
+    // previous address never decides COD for the new one.
+    const [serviceability, setServiceability] = useState<{ zip?: string; checked: boolean; serviceable: boolean; cod?: boolean; message?: string }>({ checked: false, serviceable: true });
     const [paymentMethod, setPaymentMethod] = useState<'Razorpay' | 'COD'>('Razorpay');
     const selectPaymentMethod = (method: 'Razorpay' | 'COD') => {
         setPaymentMethod(method);
@@ -72,18 +74,29 @@ export default function CheckoutContent() {
             .then((res) => res.json())
             .then((data) => {
                 if (cancelled) return;
-                setServiceability({ checked: true, serviceable: data.serviceable !== false, message: data.message });
+                setServiceability({
+                    zip,
+                    checked: true,
+                    serviceable: data.serviceable !== false,
+                    cod: typeof data.cod === 'boolean' ? data.cod : undefined,
+                    message: data.message,
+                });
             })
             .catch(() => {
-                if (!cancelled) setServiceability({ checked: true, serviceable: true });
+                if (!cancelled) setServiceability({ zip, checked: true, serviceable: true });
             });
         return () => { cancelled = true; };
     }, [selectedAddress?.zip]);
 
-    // COD is Bangalore-only (560xxx). Switching to an address outside
-    // Bangalore drops a COD selection back to online payment; the backend
-    // rejects COD for those pincodes anyway.
-    const codAllowed = isCodPincode(selectedAddress?.zip);
+    // COD is offered wherever the courier collects cash for this pincode
+    // (the backend's check returns cod). With no answer (check failed, or
+    // the courier doesn't report COD) it falls back to Bangalore-only
+    // (560xxx). Switching to an address without COD drops a COD selection
+    // back to online payment; the backend rejects COD there anyway.
+    const codChecking = !!selectedAddress?.zip && serviceability.zip !== selectedAddress.zip;
+    const codAllowed = !codChecking && typeof serviceability.cod === 'boolean'
+        ? serviceability.cod
+        : isCodPincode(selectedAddress?.zip);
     useEffect(() => {
         if (!codAllowed) setPaymentMethod((m) => (m === 'COD' ? 'Razorpay' : m));
     }, [codAllowed]);
@@ -627,7 +640,7 @@ export default function CheckoutContent() {
                                         <span className="font-bold text-slate-900 text-sm block">Cash on Delivery</span>
                                         <span className="text-xs text-slate-500">
                                             {!codAllowed
-                                                ? `Available only for ${STORE_POLICIES.codRegionLabel} addresses`
+                                                ? (codChecking ? 'Checking your pincode…' : 'Not available for this pincode')
                                                 : isCODEligible ? `₹${COD_ADVANCE_AMOUNT} advance now, rest on delivery` : 'Full amount now (order too small for COD)'}
                                         </span>
                                     </button>

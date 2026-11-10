@@ -52,7 +52,7 @@ export function ProductEMIOptions({ price }: { price: number }) {
             </div>
             {STORE_POLICIES.codAvailable && (
                 <p className="text-xs text-slate-500 mt-4 pt-4 border-t border-slate-100">
-                    <span className="font-bold text-slate-700">Cash on Delivery</span> available for {STORE_POLICIES.codRegionLabel} addresses only.
+                    <span className="font-bold text-slate-700">Cash on Delivery</span> available {STORE_POLICIES.codCoverageLabel}.
                     {price > STORE_POLICIES.codAdvanceAmount
                         ? ` A ₹${STORE_POLICIES.codAdvanceAmount} advance is required to confirm COD orders — the rest is collected on delivery.`
                         : " Pay the full amount on delivery."}

@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     // itself, or it renders with no brand at all. Confirmed by testing:
     // stripping "| Lapshark" here produced a bare title with no suffix.
     title: "Refurbished & Second Hand Laptops Online | Lapshark",
-    description: `Buy refurbished and second hand laptops online in India. Quality-checked Dell, HP and Lenovo business models with a ${STORE_POLICIES.warrantyMonths}-month warranty, EMI and doorstep delivery.`,
+    description: `Buy refurbished and second hand laptops online in India. Quality-checked Dell, HP and Lenovo business models with a ${STORE_POLICIES.warrantyMonths}-month warranty, COD, EMI and doorstep delivery.`,
 };
 
 export default async function HomePage() {

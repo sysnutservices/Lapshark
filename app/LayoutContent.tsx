@@ -24,7 +24,7 @@ const MarqueeBar = () => {
     const items = [
         `${STORE_POLICIES.returnDays} DAYS EASY RETURNS`,
         "•",
-        `COD AVAILABLE IN ${STORE_POLICIES.codRegionLabel.toUpperCase()}`,
+        "COD AVAILABLE ACROSS INDIA",
         "•",
         "EMI AVAILABLE",
         "•",
