@@ -63,7 +63,7 @@ export function generateMetadata({
 
     return {
         title: `${config.category} Refurbished Laptops | LapShark`,
-        description: `Buy ${config.category.toLowerCase()} refurbished laptops with warranty & EMI.`,
+        description: `Buy ${config.category.toLowerCase()} refurbished laptops with warranty, EMI & COD.`,
     };
 }
 

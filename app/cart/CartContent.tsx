@@ -363,7 +363,7 @@ export default function CartContent() {
                                         </div>
                                         <div>
                                             <h4 className="font-bold text-sm text-slate-900">
-                                                Cash on Delivery ({STORE_POLICIES.codRegionLabel} only)
+                                                Cash on Delivery across India
                                             </h4>
                                             <p className="text-xs text-slate-500">
                                                 {finalTotal > STORE_POLICIES.codAdvanceAmount

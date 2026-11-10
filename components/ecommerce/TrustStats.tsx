@@ -32,7 +32,7 @@ export function TrustStats({ className = "" }: { className?: string }) {
             {STORE_POLICIES.codAvailable && (
                 <div>
                     <span className="block text-3xl md:text-5xl font-extrabold tracking-tight text-teal-400">COD</span>
-                    <p className="mt-2 text-xs md:text-sm font-semibold text-slate-400 uppercase tracking-wide">In {STORE_POLICIES.codRegionLabel}</p>
+                    <p className="mt-2 text-xs md:text-sm font-semibold text-slate-400 uppercase tracking-wide">Across India</p>
                 </div>
             )}
         </div>
