@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Package, ShoppingCart, ShoppingBag, Users, Monitor, Settings, Ticket, LogOut, Globe, Menu, X, MessageCircle, BarChart3, Mail, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingCart, ShoppingBag, Users, Monitor, Settings, Ticket, LogOut, Globe, Menu, X, MessageCircle, BarChart3, Mail, ShieldCheck, Handshake } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { WHATSAPP_URL } from '@/api/api';
 import { LoginAlerts } from '@/components/admin/LoginAlerts';
@@ -52,6 +52,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
         { icon: ShoppingCart, label: 'Orders', path: '/admin/orders' },
         { icon: ShoppingBag, label: 'Active Carts', path: '/admin/carts' },
         { icon: Users, label: 'Customers', path: '/admin/users' },
+        { icon: Handshake, label: 'Ambassadors', path: '/admin/ambassadors' },
         { icon: Mail, label: 'Messages', path: '/admin/messages' },
         { icon: BarChart3, label: 'Analytics', path: '/admin/analytics' },
         { icon: Ticket, label: 'Coupons', path: '/admin/coupons' },

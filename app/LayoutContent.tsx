@@ -10,6 +10,7 @@ import { Phone, MapPin, ArrowRight } from "lucide-react";
 import React, { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { trackEvent, trackPageView } from "@/lib/analytics";
+import { captureReferralFromUrl } from "@/lib/referral";
 import { STORE_POLICIES } from "@/lib/policies";
 import { resolveSupportPhone, resolveSupportPhoneDisplay } from "@/lib/whatsapp";
 import { STORE_DIRECTIONS_URL, resolveStoreAddressDisplay } from "@/lib/store";
@@ -74,6 +75,8 @@ export function LayoutContent({ children, initialSiteConfig }: { children: React
     useEffect(() => {
         if (isAdminPage || !pathname) return;
         trackPageView(pathname);
+        // Sales Ambassador ?ref= links work on any page (lib/referral.ts).
+        captureReferralFromUrl();
     }, [pathname, isAdminPage]);
 
     if (isAdminPage) {
