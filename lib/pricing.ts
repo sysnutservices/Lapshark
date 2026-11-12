@@ -102,10 +102,14 @@ export function priceCartItem(item: CartItem, products: Product[]): PricedCartIt
     ((item as any).configOptions?.warranty?.price || 0);
 
   if (!liveProduct) {
-    // Product no longer in the live catalogue (deleted/unpublished) — fall
-    // back to the stored snapshot rather than crash; checkout's own
-    // per-item product lookup will reject it properly if it's really gone.
-    return { ...item, livePrice: item.finalPrice, originalSellingPrice: item.finalPrice, offer: null, priceChanged: false, liveStock: undefined };
+    // Product no longer in the live catalogue — fall back to the stored
+    // price snapshot rather than crash. The storefront feed omits sold-out
+    // laptops (and deleted ones are gone entirely), so once the catalogue
+    // has loaded, "missing" means "can't be bought": liveStock 0 makes the
+    // cart show "Out of stock — please remove" instead of letting it through
+    // to a checkout-time rejection. Left undefined while the list is empty
+    // (still loading / failed) so nothing flashes as sold out.
+    return { ...item, livePrice: item.finalPrice, originalSellingPrice: item.finalPrice, offer: null, priceChanged: false, liveStock: products.length ? 0 : undefined };
   }
 
   const pricing = calculateProductPrice(liveProduct.finalPrice, liveProduct.extraOffer);
