@@ -120,7 +120,9 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
           // section came back looking unchanged for minutes after a reload (no
           // Remove button, empty form), which reads as "delete/edit does nothing".
           // Cache-bust the admin copy only; the storefront keeps its cache.
-          api.get(isAdminRoute ? `/products?_=${Date.now()}` : "/products").catch(() => ({ data: [] })),
+          // The storefront feed omits out-of-stock laptops (hidden until
+          // restocked); the admin panel needs them to edit stock back up.
+          api.get(isAdminRoute ? `/products?includeOutOfStock=1&_=${Date.now()}` : "/products").catch(() => ({ data: [] })),
           // In the admin panel, pull the draft-inclusive feed so unpublished
           // posts are editable; the storefront gets the cached public one.
           isAdminRoute && token
