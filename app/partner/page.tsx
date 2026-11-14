@@ -6,7 +6,10 @@ import {
     BadgeIndianRupee, Boxes, Clock, Handshake, Headphones, MapPin, PackageCheck, RotateCcw, ShieldCheck, Store, Truck, Users,
 } from "lucide-react";
 import { STORE_POLICIES } from "@/lib/policies";
-import { ILLUSTRATIVE_REFERRAL_SLABS, ILLUSTRATIVE_INDEPENDENT } from "@/lib/illustrativeCommission";
+import { ILLUSTRATIVE_REFERRAL_SLABS, ILLUSTRATIVE_INDEPENDENT, FOUNDING_RATE_LOCK_MONTHS } from "@/lib/illustrativeCommission";
+
+// The table's independent row: sold at ₹26,000, approved minimum ₹24,000.
+const INDEPENDENT_EXAMPLE_SHARE = Math.floor((26000 - 24000) * ILLUSTRATIVE_INDEPENDENT.sharePercent / 100);
 import dell from "@/assets/brands/dell.svg";
 import hp from "@/assets/brands/hp.svg";
 import lenovo from "@/assets/brands/lenovo.svg";
@@ -44,7 +47,8 @@ const NAV = [
 const faqs = [
     { q: "Do I need to buy laptops or keep stock?", a: "No. Lapshark owns all inventory. You never purchase, store or ship anything." },
     { q: "Do customers pay me?", a: "Never. Customers always pay Lapshark directly on lapshark.com or through a Lapshark invoice. Partners must not collect payments into personal accounts." },
-    { q: "How much will I earn?", a: "Commission is set per laptop by Lapshark and depends on the selling price. The numbers on this page are examples. You see the exact commission for every sale in your dashboard. We don't promise any fixed or monthly income: you earn only on delivered, paid sales." },
+    { q: "How much will I earn?", a: "Commission is set per laptop by Lapshark and depends on the selling price. The numbers on this page are examples at founding partner rates. You see the exact commission for every sale in your dashboard. We don't promise any fixed or monthly income: you earn only on delivered, paid sales." },
+    { q: "What does the founding rate lock mean?", a: `If you join in the founding cohort, the commission rates in force when you're approved won't go down for your first ${FOUNDING_RATE_LOCK_MONTHS} months. If we raise rates during that time, you get the higher rate.` },
     { q: "When is commission paid?", a: `After the laptop is delivered, the customer's payment has fully cleared and the ${STORE_POLICIES.returnDays}-day return window has passed. Payouts go to your verified bank account or UPI ID.` },
     { q: "Why is there a limited founding cohort?", a: "We're starting with a small group in Bangalore so every partner gets proper onboarding and support while we fine-tune the programme. More partners will be invited in batches after that." },
     { q: "What does \"first come\" mean for customers?", a: "When you register a customer as your lead (with their consent), they're yours for 30 days: if they buy, the sale is credited to you. If another partner registered them first, they can't be credited to you during that time." },
@@ -183,7 +187,8 @@ export default function PartnerLandingPage() {
                         <div className="min-w-0 space-y-8">
                             <div>
                                 <h2 className="text-[28px] font-medium leading-[1.15] tracking-[-0.01em] text-[#111827]">Commission and earnings</h2>
-                                <p className="mt-3 text-[15px] text-[#4b5565]">You earn on every laptop that&apos;s delivered and paid for. Example pilot rates</p>
+                                <p className="mt-3 text-[15px] text-[#4b5565]">You earn on every laptop that&apos;s delivered and paid for. Founding partner rates</p>
+                                <p className="mt-3 inline-flex rounded-full bg-[#0f766e]/10 px-3 py-1 text-[13px] font-medium text-[#0f766e]">Join in the founding cohort and your rates are locked for your first {FOUNDING_RATE_LOCK_MONTHS} months</p>
                             </div>
                             <div className="overflow-hidden rounded-2xl ring-1 ring-[#111827]/[0.08]">
                                 <table className="w-full text-sm">
@@ -195,13 +200,13 @@ export default function PartnerLandingPage() {
                                             <tr key={s.label}>
                                                 {i === 0 && <td rowSpan={ILLUSTRATIVE_REFERRAL_SLABS.length} className="px-5 py-3 align-top"><span className="text-[#111827]">Referral</span><span className="mt-1 block text-[13px] text-[#6b7487]">Fixed per sale</span></td>}
                                                 <td className={`${MONO} px-5 py-3 text-[#4b5565]`}>{s.label}</td>
-                                                <td className={`${MONO} px-5 py-3 text-right text-[#111827]`}>₹{s.commission}</td>
+                                                <td className={`${MONO} px-5 py-3 text-right text-[#111827]`}>₹{s.commission.toLocaleString("en-IN")}</td>
                                             </tr>
                                         ))}
                                         <tr>
                                             <td className="px-5 py-3 align-top"><span className="text-[#111827]">Independent</span><span className="mt-1 block text-[13px] text-[#6b7487]">Base + margin share</span></td>
                                             <td className="px-5 py-3 text-[#4b5565]">Sold at <span className={MONO}>₹26,000</span>, approved minimum <span className={MONO}>₹24,000</span></td>
-                                            <td className={`${MONO} px-5 py-3 text-right text-[#111827]`}>₹{ILLUSTRATIVE_INDEPENDENT.base} + ₹1,000 = <span className="text-[#0f766e]">₹1,300</span></td>
+                                            <td className={`${MONO} px-5 py-3 text-right text-[#111827]`}>₹{ILLUSTRATIVE_INDEPENDENT.base.toLocaleString("en-IN")} + ₹{INDEPENDENT_EXAMPLE_SHARE.toLocaleString("en-IN")} = <span className="text-[#0f766e]">₹{(ILLUSTRATIVE_INDEPENDENT.base + INDEPENDENT_EXAMPLE_SHARE).toLocaleString("en-IN")}</span></td>
                                         </tr>
                                     </tbody>
                                 </table>
