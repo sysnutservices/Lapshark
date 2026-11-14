@@ -20,7 +20,7 @@ import { apiError, partnerApi, Programme } from "@/lib/partnerApi";
 import { calculateProductPrice } from "@/lib/pricing";
 import { STORE_POLICIES } from "@/lib/policies";
 import {
-    ILLUSTRATIVE_INDEPENDENT, ILLUSTRATIVE_REFERRAL_SLABS, illustrativeIndependentCommission, illustrativeReferralCommission,
+    FOUNDING_RATE_LOCK_MONTHS, ILLUSTRATIVE_INDEPENDENT, ILLUSTRATIVE_REFERRAL_SLABS, illustrativeIndependentCommission, illustrativeReferralCommission,
 } from "@/lib/illustrativeCommission";
 
 // Shared classes. Ink ramp: #111827 primary, #4b5565 secondary, #6b7487 muted,
@@ -115,6 +115,11 @@ export function SeatStrip({ tone = "light", detail = true }: { tone?: "light" | 
                 <span className={META}>{full ? "Founding cohort full" : `${s.left} of ${s.size}`}</span>
                 {!full && <span className={dark ? "text-[#a3a9b8]" : "text-[#4b5565]"}> founding spots left in Bangalore</span>}
             </p>
+            {!full && (
+                <p className={`mt-1 text-[13px] font-medium ${dark ? "text-[#5eead4]" : "text-[#0f766e]"}`}>
+                    Founding partner rates, locked for your first {FOUNDING_RATE_LOCK_MONTHS} months
+                </p>
+            )}
             {detail && (
                 <p className={`mt-1 text-[13px] ${dark ? "text-[#7a8296]" : "text-[#6b7487]"}`}>
                     {full
@@ -172,7 +177,7 @@ export function HeroVisual() {
                     <div className="my-3 border-t border-dashed border-[#1f1b16]/20" />
                     <p className="text-[12px] text-[#7b7266]">Example referral commission</p>
                     <p className={`${MONO} text-[22px] leading-tight text-[#0f766e]`}>{example ? rupees(example) : "Set per laptop"}</p>
-                    <p className="mt-2 text-[11px] leading-snug text-[#7b7266]">Pilot example, paid after delivery and the {STORE_POLICIES.returnDays}-day return window</p>
+                    <p className="mt-2 text-[11px] leading-snug text-[#7b7266]">Founding partner rate, paid after delivery and the {STORE_POLICIES.returnDays}-day return window</p>
                 </div>
             )}
         </div>
@@ -253,7 +258,7 @@ export function EarningsCalculator() {
                 </div>
             </div>
             <p className="mt-6 text-[12px] leading-relaxed text-[#7a8296]">
-                Illustrative only, at example pilot rates{type === "independent" ? ` (₹${ILLUSTRATIVE_INDEPENDENT.base} base + ${ILLUSTRATIVE_INDEPENDENT.sharePercent}% of the price above the minimum)` : ""}. Not a promise of income: actual rates are set per laptop by Lapshark and shown in your dashboard, and you earn only on delivered, paid sales.
+                Illustrative only, at founding partner rates{type === "independent" ? ` (₹${ILLUSTRATIVE_INDEPENDENT.base} base + ${ILLUSTRATIVE_INDEPENDENT.sharePercent}% of the price above the minimum)` : ""}. Not a promise of income: actual rates are set per laptop by Lapshark and shown in your dashboard, and you earn only on delivered, paid sales.
             </p>
         </div>
     );
