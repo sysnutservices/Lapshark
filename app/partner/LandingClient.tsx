@@ -237,7 +237,7 @@ export function EarningsCalculator() {
             {type === "referral" ? (
                 <label className="mt-5 block text-sm">
                     <span className="text-[#a3a9b8]">Typical laptop price</span>
-                    <select value={slab} onChange={(e) => setSlab(Number(e.target.value))} className="mt-2 h-10 w-full rounded-[8px] bg-[#1a1e28] px-3 text-[#eef0f5] ring-1 ring-white/[0.08] focus:outline-none focus:ring-2 focus:ring-[#2dd4bf] [&>option]:text-[#111827]">
+                    <select value={slab} onChange={(e) => setSlab(Number(e.target.value))} className="mt-2 h-10 w-full rounded-[8px] bg-[#1a1e28] px-3 text-[#eef0f5] ring-1 ring-white/[0.08] focus:outline-none focus:ring-2 focus:ring-[#2dd4bf] [color-scheme:dark] [&>option]:bg-[#1a1e28] [&>option]:text-[#eef0f5]">
                         {ILLUSTRATIVE_REFERRAL_SLABS.map((s, i) => <option key={s.label} value={i}>{s.label}</option>)}
                     </select>
                 </label>
