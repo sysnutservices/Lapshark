@@ -16,6 +16,13 @@ export const ILLUSTRATIVE_REFERRAL_SLABS = [
 // Independent: base + 50% of the price above the approved minimum.
 export const ILLUSTRATIVE_INDEPENDENT = { base: 600, sharePercent: 50 } as const;
 
+// Negotiating room = listed price minus the laptop's approved minimum (admin
+// "Laptop minimums" tab). Quotes can't go above the listed price, so this caps
+// the share. Live on 2026-11-14: ₹1,000 on most laptops, ₹2,000 at most.
+// Keep the page's example and calculator inside what the admin minimums allow.
+export const ILLUSTRATIVE_TYPICAL_ROOM = 1000;
+export const ILLUSTRATIVE_MAX_ROOM = 2000;
+
 // Founding partners keep the rates in force when they join for this long:
 // they won't go down during it. A promise — honour it in the admin rules.
 export const FOUNDING_RATE_LOCK_MONTHS = 6;

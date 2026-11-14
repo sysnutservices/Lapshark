@@ -6,10 +6,13 @@ import {
     BadgeIndianRupee, Boxes, Clock, Handshake, Headphones, MapPin, PackageCheck, RotateCcw, ShieldCheck, Store, Truck, Users,
 } from "lucide-react";
 import { STORE_POLICIES } from "@/lib/policies";
-import { ILLUSTRATIVE_REFERRAL_SLABS, ILLUSTRATIVE_INDEPENDENT, FOUNDING_RATE_LOCK_MONTHS } from "@/lib/illustrativeCommission";
+import { ILLUSTRATIVE_REFERRAL_SLABS, ILLUSTRATIVE_INDEPENDENT, ILLUSTRATIVE_TYPICAL_ROOM, FOUNDING_RATE_LOCK_MONTHS } from "@/lib/illustrativeCommission";
 
-// The table's independent row: sold at ₹26,000, approved minimum ₹24,000.
-const INDEPENDENT_EXAMPLE_SHARE = Math.floor((26000 - 24000) * ILLUSTRATIVE_INDEPENDENT.sharePercent / 100);
+// The table's independent row: sold at the listed price, with the typical
+// negotiating room between it and the approved minimum.
+const INDEPENDENT_EXAMPLE_SOLD = 26000;
+const INDEPENDENT_EXAMPLE_MINIMUM = INDEPENDENT_EXAMPLE_SOLD - ILLUSTRATIVE_TYPICAL_ROOM;
+const INDEPENDENT_EXAMPLE_SHARE = Math.floor((INDEPENDENT_EXAMPLE_SOLD - INDEPENDENT_EXAMPLE_MINIMUM) * ILLUSTRATIVE_INDEPENDENT.sharePercent / 100);
 import dell from "@/assets/brands/dell.svg";
 import hp from "@/assets/brands/hp.svg";
 import lenovo from "@/assets/brands/lenovo.svg";
@@ -205,7 +208,7 @@ export default function PartnerLandingPage() {
                                         ))}
                                         <tr>
                                             <td className="px-5 py-3 align-top"><span className="text-[#111827]">Independent</span><span className="mt-1 block text-[13px] text-[#6b7487]">Base + margin share</span></td>
-                                            <td className="px-5 py-3 text-[#4b5565]">Sold at <span className={MONO}>₹26,000</span>, approved minimum <span className={MONO}>₹24,000</span></td>
+                                            <td className="px-5 py-3 text-[#4b5565]">Sold at <span className={MONO}>₹{INDEPENDENT_EXAMPLE_SOLD.toLocaleString("en-IN")}</span>, approved minimum <span className={MONO}>₹{INDEPENDENT_EXAMPLE_MINIMUM.toLocaleString("en-IN")}</span></td>
                                             <td className={`${MONO} px-5 py-3 text-right text-[#111827]`}>₹{ILLUSTRATIVE_INDEPENDENT.base.toLocaleString("en-IN")} + ₹{INDEPENDENT_EXAMPLE_SHARE.toLocaleString("en-IN")} = <span className="text-[#0f766e]">₹{(ILLUSTRATIVE_INDEPENDENT.base + INDEPENDENT_EXAMPLE_SHARE).toLocaleString("en-IN")}</span></td>
                                         </tr>
                                     </tbody>

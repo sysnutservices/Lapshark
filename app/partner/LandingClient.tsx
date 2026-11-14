@@ -20,7 +20,7 @@ import { apiError, partnerApi, Programme } from "@/lib/partnerApi";
 import { calculateProductPrice } from "@/lib/pricing";
 import { STORE_POLICIES } from "@/lib/policies";
 import {
-    FOUNDING_RATE_LOCK_MONTHS, ILLUSTRATIVE_INDEPENDENT, ILLUSTRATIVE_REFERRAL_SLABS, illustrativeIndependentCommission, illustrativeReferralCommission,
+    FOUNDING_RATE_LOCK_MONTHS, ILLUSTRATIVE_INDEPENDENT, ILLUSTRATIVE_MAX_ROOM, ILLUSTRATIVE_REFERRAL_SLABS, ILLUSTRATIVE_TYPICAL_ROOM, illustrativeIndependentCommission, illustrativeReferralCommission,
 } from "@/lib/illustrativeCommission";
 
 // Shared classes. Ink ramp: #111827 primary, #4b5565 secondary, #6b7487 muted,
@@ -213,7 +213,7 @@ export function EarningsCalculator() {
     const [type, setType] = useState<"referral" | "independent">("referral");
     const [perMonth, setPerMonth] = useState(3);
     const [slab, setSlab] = useState(1);
-    const [above, setAbove] = useState(2000);
+    const [above, setAbove] = useState<number>(ILLUSTRATIVE_TYPICAL_ROOM);
     const perSale = type === "referral" ? ILLUSTRATIVE_REFERRAL_SLABS[slab].commission : illustrativeIndependentCommission(above);
     const month = perSale * perMonth;
     return (
@@ -244,7 +244,7 @@ export function EarningsCalculator() {
             ) : (
                 <label className="mt-5 block text-sm">
                     <span className="flex justify-between text-[#a3a9b8]"><span>You sell above the approved minimum by</span><span className={`${MONO} text-[#eef0f5]`}>{rupees(above)}</span></span>
-                    <input type="range" min={0} max={5000} step={250} value={above} onChange={(e) => setAbove(Number(e.target.value))} className="mt-3 w-full accent-[#2dd4bf]" />
+                    <input type="range" min={0} max={ILLUSTRATIVE_MAX_ROOM} step={250} value={above} onChange={(e) => setAbove(Number(e.target.value))} className="mt-3 w-full accent-[#2dd4bf]" />
                 </label>
             )}
             <div className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-xl bg-white/[0.08]">
