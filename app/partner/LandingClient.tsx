@@ -13,14 +13,14 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from "
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import axios from "axios";
-import { ArrowRight, CheckCircle2, Laptop, Loader2, Lock } from "lucide-react";
+import { ArrowRight, CheckCircle2, Info, Laptop, Loader2, Lock } from "lucide-react";
 import { API_URL } from "@/api/api";
 import { useAuth } from "@/context/AuthContext";
 import { apiError, partnerApi, Programme } from "@/lib/partnerApi";
 import { calculateProductPrice } from "@/lib/pricing";
 import { STORE_POLICIES } from "@/lib/policies";
 import {
-    FOUNDING_RATE_LOCK_MONTHS, ILLUSTRATIVE_INDEPENDENT, ILLUSTRATIVE_REFERRAL_SLABS, illustrativeIndependentCommission, illustrativeReferralCommission,
+    FOUNDING_RATE_LOCK_MONTHS, ILLUSTRATIVE_INDEPENDENT, ILLUSTRATIVE_MAX_ROOM, ILLUSTRATIVE_REFERRAL_SLABS, ILLUSTRATIVE_TYPICAL_ROOM, illustrativeIndependentCommission, illustrativeReferralCommission,
 } from "@/lib/illustrativeCommission";
 
 // Shared classes. Ink ramp: #111827 primary, #4b5565 secondary, #6b7487 muted,
@@ -213,7 +213,7 @@ export function EarningsCalculator() {
     const [type, setType] = useState<"referral" | "independent">("referral");
     const [perMonth, setPerMonth] = useState(3);
     const [slab, setSlab] = useState(1);
-    const [above, setAbove] = useState(2000);
+    const [above, setAbove] = useState<number>(ILLUSTRATIVE_TYPICAL_ROOM);
     const perSale = type === "referral" ? ILLUSTRATIVE_REFERRAL_SLABS[slab].commission : illustrativeIndependentCommission(above);
     const month = perSale * perMonth;
     return (
@@ -244,7 +244,7 @@ export function EarningsCalculator() {
             ) : (
                 <label className="mt-5 block text-sm">
                     <span className="flex justify-between text-[#a3a9b8]"><span>You sell above the approved minimum by</span><span className={`${MONO} text-[#eef0f5]`}>{rupees(above)}</span></span>
-                    <input type="range" min={0} max={5000} step={250} value={above} onChange={(e) => setAbove(Number(e.target.value))} className="mt-3 w-full accent-[#2dd4bf]" />
+                    <input type="range" min={0} max={ILLUSTRATIVE_MAX_ROOM} step={250} value={above} onChange={(e) => setAbove(Number(e.target.value))} className="mt-3 w-full accent-[#2dd4bf]" />
                 </label>
             )}
             <div className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-xl bg-white/[0.08]">
@@ -312,12 +312,49 @@ type Mode = "loading" | "waitlist" | "apply" | "closed";
 
 // Module-level (not inside JoinForm): a component defined during render is a
 // new type every render, which remounts its inputs and drops focus per key.
-function Row({ label, req, error, children }: { label: string; req?: boolean; error?: string; children: React.ReactNode }) {
+function Row({ label, req, error, info, children }: { label: string; req?: boolean; error?: string; info?: React.ReactNode; children: React.ReactNode }) {
     return (
         <div className="grid gap-2 sm:grid-cols-[120px_1fr] sm:items-center sm:gap-4">
-            <span className="text-sm text-[#4b5565]">{label}{req && <span className="text-[#dc2626]"> *</span>}</span>
+            <span className="relative flex items-center gap-1.5 text-sm text-[#4b5565]">{label}{req && <span className="text-[#dc2626]"> *</span>}{info}</span>
             <div>{children}{error && <p className="mt-1 text-[13px] text-[#dc2626]">{error}</p>}</div>
         </div>
+    );
+}
+
+// Hover (or tap, on phones) the info icon next to "Partner type" to compare
+// the two types. Rates come from the same constants as the earnings section.
+function PartnerTypeInfo() {
+    const slabs = ILLUSTRATIVE_REFERRAL_SLABS;
+    const rows: [string, string, string][] = [
+        ["Your job", "Bring interested buyers. Our team sells and closes", "Find the customer, negotiate and close the sale yourself"],
+        ["Price to customer", "Website price", "Your quote, between the laptop's approved minimum and the website price"],
+        ["Quotations", "Not needed", "Send price-locked quotations, valid 24 hours"],
+        ["Commission", `Fixed by laptop price: ₹${slabs[0].commission.toLocaleString("en-IN")} to ₹${slabs[slabs.length - 1].commission.toLocaleString("en-IN")} on laptops up to ₹40,000`, `₹${ILLUSTRATIVE_INDEPENDENT.base.toLocaleString("en-IN")} base + ${ILLUSTRATIVE_INDEPENDENT.sharePercent}% of the price above the approved minimum`],
+        ["Best if", "You know buyers but don't want to sell", "You enjoy selling"],
+    ];
+    return (
+        <span className="group inline-flex">
+            <button type="button" aria-label="Compare partner types" aria-describedby="ptype-info" className="rounded-full text-[#6b7487] outline-none transition-colors duration-150 hover:text-[#0f766e] focus-visible:text-[#0f766e] focus-visible:ring-2 focus-visible:ring-[#0f766e]/40">
+                <Info className="h-4 w-4" strokeWidth={1.5} />
+            </button>
+            <span id="ptype-info" role="tooltip" className="pointer-events-none invisible absolute left-0 top-full z-30 mt-2 w-[min(calc(100vw-3rem),420px)] rounded-[12px] bg-white p-4 text-left opacity-0 shadow-lg ring-1 ring-[#111827]/[0.12] transition-opacity duration-150 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+                <span className="grid grid-cols-[88px_1fr_1fr] gap-x-3 gap-y-2 text-[12px] leading-snug">
+                    <span />
+                    <span className="font-medium text-[#111827]">Referral</span>
+                    <span className="font-medium text-[#111827]">Independent</span>
+                    {rows.map(([k, r, i]) => (
+                        <React.Fragment key={k}>
+                            <span className="text-[#6b7487]">{k}</span>
+                            <span className="text-[#4b5565]">{r}</span>
+                            <span className="text-[#4b5565]">{i}</span>
+                        </React.Fragment>
+                    ))}
+                </span>
+                <span className="mt-3 block border-t border-[#111827]/[0.08] pt-3 text-[12px] leading-snug text-[#6b7487]">
+                    Same for both: a referral link and lead tracking, commission paid only on delivered, paid sales after the {STORE_POLICIES.returnDays}-day return window, and founding rates locked for your first {FOUNDING_RATE_LOCK_MONTHS} months. RAM, SSD and warranty upgrades don&apos;t change commission.
+                </span>
+            </span>
+        </span>
     );
 }
 
@@ -484,7 +521,7 @@ export function JoinForm() {
                             {OCCUPATIONS.map((o) => <option key={o}>{o}</option>)}
                         </select>
                     </Row>
-                    <Row label="Partner type" req>
+                    <Row label="Partner type" req info={<PartnerTypeInfo />}>
                         <div className="grid gap-2">
                             {([
                                 ["referral", "Referral Ambassador", "Refer customers to Lapshark"],
