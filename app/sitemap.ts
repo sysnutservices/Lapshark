@@ -34,6 +34,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         { url: `${SITE_URL}/products`, changeFrequency: "daily", priority: 0.9 },
         { url: `${SITE_URL}/refurbished-laptops-bangalore`, changeFrequency: "weekly", priority: 0.9 },
         { url: `${SITE_URL}/store/bangalore`, changeFrequency: "monthly", priority: 0.8 },
+        { url: `${SITE_URL}/dealers`, changeFrequency: "monthly", priority: 0.6 },
         { url: `${SITE_URL}/laptops-for-students`, changeFrequency: "weekly", priority: 0.7 },
         { url: `${SITE_URL}/laptops-for-programming`, changeFrequency: "weekly", priority: 0.7 },
         { url: `${SITE_URL}/laptops-under-20000`, changeFrequency: "weekly", priority: 0.7 },

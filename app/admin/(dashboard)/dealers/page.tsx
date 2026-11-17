@@ -6,24 +6,31 @@ import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle, Banknote, Boxes, ClipboardList, PackageCheck, Store, Truck, UserPlus } from "lucide-react";
 import { apiError } from "@/lib/partnerApi";
 import {
+    BUSINESS_TYPE_LABEL,
     CLAIM_STATUS_LABEL,
     CLAIM_TYPE_LABEL,
     ClaimStatus,
     DEALER_STATUS_LABEL,
     dealerAdminApi as A,
+    DealerEnquiry,
+    DealerEnquiryStatus,
     DealerOrder,
     DealerOrderStatus,
     DealerProfile,
+    DealerVetting,
+    ENQUIRY_STATUS_LABEL,
+    MONTHLY_VOLUME_LABEL,
     ORDER_STATUS_LABEL,
     orderTone,
     PAYMENT_LABEL,
     PaymentMethod,
     rs,
     rupeesInputToPaise,
+    YEARS_IN_BUSINESS_LABEL,
 } from "@/lib/dealerApi";
 import { Banner, Btn, Card, Empty, Field, fmtDate, fmtDateTime, inputCls, Modal, Pill, Spinner, Stat } from "@/components/partner/ui";
 
-const TABS = ["Overview", "Dealers", "Orders", "Prices", "Serial lookup", "Settings"] as const;
+const TABS = ["Overview", "Dealers", "Enquiries", "Orders", "Prices", "Serial lookup", "Settings"] as const;
 type Tab = (typeof TABS)[number];
 
 export default function DealersAdminPage() {
@@ -42,6 +49,7 @@ export default function DealersAdminPage() {
             </div>
             {tab === "Overview" && <OverviewTab go={(t, f) => { setOrderFilter(f || ""); setTab(t); }} />}
             {tab === "Dealers" && <DealersTab />}
+            {tab === "Enquiries" && <EnquiriesTab />}
             {tab === "Orders" && <OrdersTab initial={orderFilter} />}
             {tab === "Prices" && <PricesTab />}
             {tab === "Serial lookup" && <SerialTab />}
@@ -70,6 +78,7 @@ function OverviewTab({ go }: { go: (t: Tab, filter?: string) => void }) {
             {!data.settings.enabled && <Banner tone="amber">Dealer ordering is <b>off</b>. Set dealer prices first, then turn it on under Settings.</Banner>}
             {data.settings.enabled && !data.settings.bankTransferInstructions && <Banner tone="amber">Dealers paying by bank transfer see no bank details yet. Add them under Settings.</Banner>}
             {data.dealers.applied > 0 && <Banner>{data.dealers.applied} dealer application(s) waiting for review. <button className="underline font-semibold" onClick={() => go("Dealers")}>Review</button></Banner>}
+            {data.enquiries?.new > 0 && <Banner>{data.enquiries.new} new dealer {data.enquiries.new === 1 ? "enquiry" : "enquiries"} from lapshark.com/dealers to call back. <button className="underline font-semibold" onClick={() => go("Enquiries")}>View</button></Banner>}
             {data.openClaims > 0 && <Banner tone="amber">{data.openClaims} open dealer claim(s). <button className="underline font-semibold" onClick={() => go("Orders", "open_claims")}>Review</button></Banner>}
             <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
                 <Stat label="Applications to review" value={data.dealers.applied} icon={UserPlus} tone="blue" />
@@ -91,7 +100,7 @@ function OverviewTab({ go }: { go: (t: Tab, filter?: string) => void }) {
 }
 
 // ---------------------------------------------------------------- Dealers
-type AdminDealer = DealerProfile & { statusHistory: { status: string; at: string; reason?: string }[]; flags: { type: string; detail?: string; at: string }[]; notes: string };
+type AdminDealer = DealerProfile & { statusHistory: { status: string; at: string; reason?: string }[]; flags: { type: string; detail?: string; at: string }[]; notes: string; vetting: DealerVetting | null };
 
 function DealersTab() {
     const [status, setStatus] = useState("");
@@ -158,6 +167,14 @@ function DealerModal({ id, onClose }: { id: string; onClose: () => void }) {
                         <p><span className="text-gray-500">GSTIN</span> <span className="font-mono">{revealed ? revealed.gstin || "—" : d.gstinMasked || "—"}</span></p>
                         <p><span className="text-gray-500">PAN</span> <span className="font-mono">{revealed ? revealed.pan || "—" : d.panMasked || "—"}</span></p>
                         <p><span className="text-gray-500">Terms</span> {d.agreementVersion}</p>
+                        {d.vetting && (
+                            <>
+                                <p><span className="text-gray-500">Business</span> {BUSINESS_TYPE_LABEL[d.vetting.businessType] ?? d.vetting.businessType}</p>
+                                <p><span className="text-gray-500">In business</span> {YEARS_IN_BUSINESS_LABEL[d.vetting.yearsInBusiness] ?? d.vetting.yearsInBusiness}</p>
+                                <p><span className="text-gray-500">Expects to buy</span> {MONTHLY_VOLUME_LABEL[d.vetting.monthlyVolume] ?? d.vetting.monthlyVolume} a month</p>
+                                {d.vetting.interests && <p className="sm:col-span-2"><span className="text-gray-500">Wants</span> {d.vetting.interests}</p>}
+                            </>
+                        )}
                     </div>
                     {!revealed && <Btn variant="ghost" onClick={() => act(async () => setRevealed(await A.post(`/admin/dealers/${id}/reveal`)))}>Show full GSTIN / PAN (logged)</Btn>}
                     <Field label="Reason (needed to reject or suspend)"><input className={inputCls} value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
@@ -183,6 +200,59 @@ function DealerModal({ id, onClose }: { id: string; onClose: () => void }) {
                 </div>
             )}
         </Modal>
+    );
+}
+
+// ---------------------------------------------------------------- Enquiries
+// Interest left on the public /dealers page while registration is closed.
+// Not applications: no GSTIN/PAN, mobile not verified. Call them back.
+function EnquiriesTab() {
+    const [status, setStatus] = useState<DealerEnquiryStatus | "">("new");
+    const [q, setQ] = useState("");
+    const [msg, setMsg] = useState("");
+    const { data, error, load } = useLoad<{ enquiries: DealerEnquiry[] }>(() => A.get("/admin/dealer-enquiries", { status, q }), [status, q]);
+    const setTo = async (id: string, to: DealerEnquiryStatus) => {
+        setMsg("");
+        try { await A.patch(`/admin/dealer-enquiries/${id}/status`, { status: to }); load(); } catch (e) { setMsg(apiError(e).message); }
+    };
+    return (
+        <div className="space-y-4">
+            <div className="flex flex-wrap gap-2">
+                <select className={`${inputCls} w-auto`} value={status} onChange={(e) => setStatus(e.target.value as DealerEnquiryStatus | "")}>
+                    <option value="">All</option>
+                    {Object.entries(ENQUIRY_STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
+                <input className={`${inputCls} w-64`} placeholder="Search business, name, mobile, city" value={q} onChange={(e) => setQ(e.target.value)} />
+            </div>
+            <p className="text-sm text-gray-500">Left on lapshark.com/dealers while registration is closed. The mobile number isn&apos;t verified. Once registration is open, ask them to apply on the same page.</p>
+            {(error || msg) && <Banner tone="red">{error || msg}</Banner>}
+            {!data ? <Spinner /> : data.enquiries.length === 0 ? <Empty title="No enquiries" /> : (
+                <Card className="p-0 overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                        <thead className="text-left text-gray-500"><tr className="border-b">
+                            <th className="px-4 py-3">Received</th><th className="px-4 py-3">Business</th><th className="px-4 py-3">Mobile</th><th className="px-4 py-3">City</th><th className="px-4 py-3">Type</th><th className="px-4 py-3">Per month</th><th className="px-4 py-3">Status</th>
+                        </tr></thead>
+                        <tbody>
+                            {data.enquiries.map((e) => (
+                                <tr key={e.id} className="border-b last:border-0 align-top">
+                                    <td className="px-4 py-3 whitespace-nowrap">{fmtDate(e.createdAt)}{e.source?.utmSource && <div className="text-xs text-gray-500">{e.source.utmSource}</div>}</td>
+                                    <td className="px-4 py-3">{e.businessName}<div className="text-xs text-gray-500">{e.contactName}</div>{e.message && <div className="mt-1 max-w-xs text-xs text-gray-600">{e.message}</div>}</td>
+                                    <td className="px-4 py-3 whitespace-nowrap"><a className="text-blue-700 underline" href={`tel:+91${e.phone}`}>{e.phone}</a></td>
+                                    <td className="px-4 py-3">{e.city}</td>
+                                    <td className="px-4 py-3">{BUSINESS_TYPE_LABEL[e.businessType] ?? e.businessType}</td>
+                                    <td className="px-4 py-3 whitespace-nowrap">{MONTHLY_VOLUME_LABEL[e.monthlyVolume] ?? e.monthlyVolume}</td>
+                                    <td className="px-4 py-3">
+                                        <select className={`${inputCls} w-auto py-1`} value={e.status} onChange={(ev) => setTo(e.id, ev.target.value as DealerEnquiryStatus)}>
+                                            {Object.entries(ENQUIRY_STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                                        </select>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </Card>
+            )}
+        </div>
     );
 }
 

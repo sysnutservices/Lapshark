@@ -36,6 +36,46 @@ export interface DealerProfile {
     createdAt: string;
 }
 
+// Vetting answers on an application (and business type / volume on an
+// enquiry). Codes mirror DEALER_* in the backend's dealer/logic.ts.
+export const BUSINESS_TYPE_LABEL = {
+    retail_shop: "Laptop or computer shop",
+    online_seller: "Online seller (Amazon, Flipkart, Instagram, own site)",
+    it_reseller: "IT services or corporate supplier",
+    refurbisher: "Refurbisher or repair shop",
+    other: "Other",
+} as const;
+export const YEARS_IN_BUSINESS_LABEL = { lt1: "Less than 1 year", "1to3": "1 to 3 years", "3to5": "3 to 5 years", "5plus": "More than 5 years" } as const;
+export const MONTHLY_VOLUME_LABEL = { "1to5": "1 to 5 laptops", "6to20": "6 to 20 laptops", "21to50": "21 to 50 laptops", "50plus": "More than 50 laptops" } as const;
+export type BusinessType = keyof typeof BUSINESS_TYPE_LABEL;
+export type YearsInBusiness = keyof typeof YEARS_IN_BUSINESS_LABEL;
+export type MonthlyVolume = keyof typeof MONTHLY_VOLUME_LABEL;
+
+export interface DealerVetting {
+    businessType: BusinessType;
+    yearsInBusiness: YearsInBusiness;
+    monthlyVolume: MonthlyVolume;
+    interests?: string;
+}
+
+export type DealerEnquiryStatus = "new" | "contacted" | "closed";
+export interface DealerEnquiry {
+    id: string;
+    phone: string;
+    businessName: string;
+    contactName: string;
+    city: string;
+    businessType: BusinessType;
+    monthlyVolume: MonthlyVolume;
+    message: string;
+    source: { utmSource?: string; utmMedium?: string; utmCampaign?: string; referrer?: string };
+    status: DealerEnquiryStatus;
+    statusAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+export const ENQUIRY_STATUS_LABEL: Record<DealerEnquiryStatus, string> = { new: "New", contacted: "Contacted", closed: "Closed" };
+
 export interface DealerProgramme {
     enabled: boolean;
     registrationOpen: boolean;
@@ -121,6 +161,7 @@ export interface PaymentInstructions {
 export const dealerApi = {
     programme: () => api.get<DealerProgramme>("/dealers/programme").then((r) => r.data),
     profile: () => api.get<{ profile: DealerProfile | null; programme: DealerProgramme }>("/dealers/profile", { headers: auth() }).then((r) => r.data),
+    enquire: (body: unknown) => api.post<{ ok: true; alreadyEnquired: boolean }>("/dealers/enquiries", body).then((r) => r.data),
     register: (body: unknown) => api.post<{ profile: DealerProfile }>("/dealers/register", body, { headers: auth() }).then((r) => r.data),
     catalogue: () => api.get<{ products: CatalogueProduct[] }>("/dealers/catalogue", { headers: auth() }).then((r) => r.data),
     orders: () => api.get<{ orders: DealerOrder[] }>("/dealers/orders", { headers: auth() }).then((r) => r.data),
