@@ -2,27 +2,21 @@
 
 import { useState } from "react";
 import { apiError } from "@/lib/partnerApi";
-import { dealerApi, DealerProgramme } from "@/lib/dealerApi";
+import { BUSINESS_TYPE_LABEL, dealerApi, DealerProgramme, MONTHLY_VOLUME_LABEL, YEARS_IN_BUSINESS_LABEL } from "@/lib/dealerApi";
 import { Banner, Btn, Card, Field, inputCls } from "@/components/partner/ui";
+import { dealerTerms } from "@/lib/dealerTerms";
 
-// The terms a dealer accepts. Only rules the system actually enforces;
-// the full agreement text is still to come from Lapshark's lawyer.
-const terms = (claimDays: number) => [
-    "You buy laptops from Lapshark and resell them under your own name, on your own bill, to your own customers.",
-    "Laptops come without Lapshark warranty unless you add warranty to a laptop when ordering. That warranty covers you, the dealer, not your customer.",
-    `Damage in transit, or a laptop that doesn't match your order, must be reported within ${claimDays} days of delivery. There are no other returns.`,
-    "Payment is by bank transfer or cash, before the laptops are dispatched or handed over. Cash is accepted only below ₹2,00,000 per order and per day.",
-    "Don't present yourself as Lapshark or promise a Lapshark warranty to your customers.",
-];
 
-export default function DealerRegister({ programme, onDone }: { programme: DealerProgramme; onDone: () => void }) {
-    const [f, setF] = useState({ businessName: "", contactName: "", email: "", gstin: "", pan: "", line1: "", line2: "", city: "", state: "", pincode: "" });
+// Used on /dealer (signed in, no application yet) and embedded in the
+// /dealers landing page, where the page already has its own h1.
+export default function DealerRegister({ programme, onDone, embedded = false }: { programme: DealerProgramme; onDone: () => void; embedded?: boolean }) {
+    const [f, setF] = useState({ businessName: "", contactName: "", email: "", gstin: "", pan: "", line1: "", line2: "", city: "", state: "", pincode: "", businessType: "", yearsInBusiness: "", monthlyVolume: "", interests: "" });
     const [agree, setAgree] = useState(false);
     const [noWarranty, setNoWarranty] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [error, setError] = useState("");
     const [saving, setSaving] = useState(false);
-    const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
+    const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value });
 
     const submit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -37,6 +31,10 @@ export default function DealerRegister({ programme, onDone }: { programme: Deale
                 gstin: f.gstin || undefined,
                 pan: f.pan || undefined,
                 address: { line1: f.line1, line2: f.line2 || undefined, city: f.city, state: f.state, pincode: f.pincode },
+                businessType: f.businessType || undefined,
+                yearsInBusiness: f.yearsInBusiness || undefined,
+                monthlyVolume: f.monthlyVolume || undefined,
+                interests: f.interests || undefined,
                 agreementVersion: agree ? programme.agreementVersion : "",
                 noWarrantyAcknowledged: noWarranty,
             });
@@ -52,7 +50,7 @@ export default function DealerRegister({ programme, onDone }: { programme: Deale
 
     return (
         <Card>
-            <h1 className="text-xl font-medium text-slate-900">Apply as a Lapshark dealer</h1>
+            {embedded ? <h2 className="text-xl font-medium text-slate-900">Apply as a Lapshark dealer</h2> : <h1 className="text-xl font-medium text-slate-900">Apply as a Lapshark dealer</h1>}
             <p className="mt-1 text-sm text-slate-600">We review every application before you can order.</p>
             <form onSubmit={submit} className="mt-6 space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -68,9 +66,32 @@ export default function DealerRegister({ programme, onDone }: { programme: Deale
                     <Field label="Pincode" error={errors["address.pincode"]}><input className={inputCls} value={f.pincode} onChange={set("pincode")} inputMode="numeric" maxLength={6} autoComplete="postal-code" /></Field>
                 </div>
 
+                <div className="grid gap-4 border-t border-slate-200 pt-4 sm:grid-cols-2">
+                    <p className="text-sm font-medium text-slate-900 sm:col-span-2">About your business</p>
+                    <Field label="Type of business" error={errors.businessType} className="sm:col-span-2">
+                        <select className={inputCls} value={f.businessType} onChange={set("businessType")}>
+                            <option value="">Select</option>
+                            {Object.entries(BUSINESS_TYPE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                        </select>
+                    </Field>
+                    <Field label="Years in business" error={errors.yearsInBusiness}>
+                        <select className={inputCls} value={f.yearsInBusiness} onChange={set("yearsInBusiness")}>
+                            <option value="">Select</option>
+                            {Object.entries(YEARS_IN_BUSINESS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                        </select>
+                    </Field>
+                    <Field label="Laptops you expect to buy a month" error={errors.monthlyVolume}>
+                        <select className={inputCls} value={f.monthlyVolume} onChange={set("monthlyVolume")}>
+                            <option value="">Select</option>
+                            {Object.entries(MONTHLY_VOLUME_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                        </select>
+                    </Field>
+                    <Field label="Brands or models you want (optional)" className="sm:col-span-2"><input className={inputCls} value={f.interests} onChange={set("interests")} maxLength={300} placeholder="e.g. Dell Latitude, Lenovo ThinkPad, i5 8th gen" /></Field>
+                </div>
+
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                     <p className="text-sm font-medium text-slate-900">Dealer terms</p>
-                    <ul className="mt-2 space-y-1.5 text-sm text-slate-700 list-disc pl-5">{terms(programme.claimWindowDays).map((t) => <li key={t}>{t}</li>)}</ul>
+                    <ul className="mt-2 space-y-1.5 text-sm text-slate-700 list-disc pl-5">{dealerTerms(programme.claimWindowDays).map((t) => <li key={t}>{t}</li>)}</ul>
                     <p className="mt-2 text-xs text-slate-500">Terms version {programme.agreementVersion}</p>
                 </div>
                 <label className="flex items-start gap-3 text-sm text-slate-800">
