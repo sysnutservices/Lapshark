@@ -13,7 +13,7 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from "
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import axios from "axios";
-import { ArrowRight, CheckCircle2, Info, Laptop, Loader2, Lock } from "lucide-react";
+import { ArrowRight, CheckCircle2, Info, Laptop, Loader2, Lock, Store } from "lucide-react";
 import { API_URL } from "@/api/api";
 import { useAuth } from "@/context/AuthContext";
 import { apiError, partnerApi, Programme } from "@/lib/partnerApi";
@@ -532,6 +532,13 @@ export function JoinForm() {
                                     <span><span className="block text-sm text-[#111827]">{t}</span><span className="block text-[13px] text-[#6b7487]">{d}</span></span>
                                 </label>
                             ))}
+                            {/* Dealers are a separate channel (app/dealer) with their own
+                                registration, so this is a link out, not a third radio. */}
+                            <Link href="/dealer" className="group flex items-start gap-3 rounded-[10px] border border-dashed border-[#111827]/[0.2] p-[11px] transition-colors duration-150 hover:border-[#0f766e]">
+                                <Store className="mt-0.5 h-4 w-4 shrink-0 text-[#6b7487] group-hover:text-[#0f766e]" strokeWidth={1.5} />
+                                <span className="flex-1"><span className="block text-sm text-[#111827]">Dealer / Reseller</span><span className="block text-[13px] text-[#6b7487]">Buy laptops at trade prices to resell from your shop. Separate sign-up</span></span>
+                                <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-[#6b7487] transition-transform duration-150 group-hover:translate-x-0.5 group-hover:text-[#0f766e]" strokeWidth={1.5} />
+                            </Link>
                         </div>
                     </Row>
                     <label className="flex items-start gap-3 pt-1 text-sm text-[#4b5565]">
