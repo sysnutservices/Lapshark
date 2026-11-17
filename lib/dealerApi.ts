@@ -68,6 +68,7 @@ export interface DealerEnquiry {
     businessType: BusinessType;
     monthlyVolume: MonthlyVolume;
     message: string;
+    gstin: string | null;
     source: { utmSource?: string; utmMedium?: string; utmCampaign?: string; referrer?: string };
     status: DealerEnquiryStatus;
     statusAt: string | null;

@@ -56,7 +56,7 @@ function Row({ label, req, error, children }: { label: string; req?: boolean; er
 }
 
 function Enquiry() {
-    const [f, setF] = useState({ businessName: "", contactName: "", phone: "", city: "", businessType: "", monthlyVolume: "", message: "", consent: false });
+    const [f, setF] = useState({ businessName: "", contactName: "", phone: "", city: "", gstin: "", businessType: "", monthlyVolume: "", message: "", consent: false });
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [error, setError] = useState("");
     const [busy, setBusy] = useState(false);
@@ -72,6 +72,7 @@ function Enquiry() {
         if (f.contactName.trim().length < 2) e.contactName = "Enter your name";
         if (!/^[6-9]\d{9}$/.test(f.phone)) e.phone = "Enter a valid 10-digit mobile number";
         if (!f.city.trim()) e.city = "Enter your city";
+        if (f.gstin && !/^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(f.gstin)) e.gstin = "Enter a valid 15-character GSTIN, or leave it blank";
         if (!f.businessType) e.businessType = "Choose your type of business";
         if (!f.monthlyVolume) e.monthlyVolume = "Choose how many laptops a month";
         if (!f.consent) e.consent = "Please agree to be contacted";
@@ -87,7 +88,7 @@ function Enquiry() {
         try {
             const q = new URLSearchParams(window.location.search);
             const r = await dealerApi.enquire({
-                businessName: f.businessName, contactName: f.contactName, phone: f.phone, city: f.city, businessType: f.businessType, monthlyVolume: f.monthlyVolume,
+                businessName: f.businessName, contactName: f.contactName, phone: f.phone, city: f.city, gstin: f.gstin || undefined, businessType: f.businessType, monthlyVolume: f.monthlyVolume,
                 message: f.message || undefined, consent: true,
                 utmSource: q.get("utm_source") || undefined, utmMedium: q.get("utm_medium") || undefined, utmCampaign: q.get("utm_campaign") || undefined, referrer: document.referrer || undefined,
             });
@@ -126,6 +127,11 @@ function Enquiry() {
                 </Row>
                 <Row label="City" req error={errors.city}><input className={input} value={f.city} onChange={(e) => set("city", e.target.value)} autoComplete="address-level2" /></Row>
                 <div className="sm:col-span-2">
+                    <Row label="GSTIN (optional)" error={errors.gstin}>
+                        <input className={`${input} uppercase tabular-nums placeholder:normal-case`} value={f.gstin} onChange={(e) => set("gstin", e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, "").slice(0, 15))} maxLength={15} autoComplete="off" spellCheck={false} placeholder="15-character GST number, if your business has one" />
+                    </Row>
+                </div>
+                <div className="sm:col-span-2">
                     <Row label="Type of business" req error={errors.businessType}>
                         <select className={input} value={f.businessType} onChange={(e) => set("businessType", e.target.value)}>
                             <option value="">Select</option>
@@ -156,7 +162,7 @@ function Enquiry() {
                 Send my details
                 {!busy && <ArrowRight className="h-4 w-4" strokeWidth={1.5} />}
             </button>
-            <p className="mt-3 flex items-center justify-center gap-2 text-[13px] text-[#6b7487]"><Lock className="h-4 w-4" strokeWidth={1.5} />No GSTIN, PAN or documents needed now</p>
+            <p className="mt-3 flex items-center justify-center gap-2 text-[13px] text-[#6b7487]"><Lock className="h-4 w-4" strokeWidth={1.5} />No PAN or documents needed now. GSTIN is stored encrypted</p>
         </form>
     );
 }
