@@ -224,7 +224,7 @@ function EnquiriesTab() {
                 </select>
                 <input className={`${inputCls} w-64`} placeholder="Search business, name, mobile, city" value={q} onChange={(e) => setQ(e.target.value)} />
             </div>
-            <p className="text-sm text-gray-500">Left on lapshark.com/dealers while registration is closed. The mobile number isn&apos;t verified. Once registration is open, ask them to apply on the same page.</p>
+            <p className="text-sm text-gray-500">Left on lapshark.com/dealers while registration is closed. The mobile number and GSTIN (optional) aren&apos;t verified. Once registration is open, ask them to apply on the same page.</p>
             {(error || msg) && <Banner tone="red">{error || msg}</Banner>}
             {!data ? <Spinner /> : data.enquiries.length === 0 ? <Empty title="No enquiries" /> : (
                 <Card className="p-0 overflow-x-auto">
@@ -236,7 +236,7 @@ function EnquiriesTab() {
                             {data.enquiries.map((e) => (
                                 <tr key={e.id} className="border-b last:border-0 align-top">
                                     <td className="px-4 py-3 whitespace-nowrap">{fmtDate(e.createdAt)}{e.source?.utmSource && <div className="text-xs text-gray-500">{e.source.utmSource}</div>}</td>
-                                    <td className="px-4 py-3">{e.businessName}<div className="text-xs text-gray-500">{e.contactName}</div>{e.message && <div className="mt-1 max-w-xs text-xs text-gray-600">{e.message}</div>}</td>
+                                    <td className="px-4 py-3">{e.businessName}<div className="text-xs text-gray-500">{e.contactName}</div>{e.gstin && <div className="mt-1 font-mono text-xs text-gray-700">GSTIN {e.gstin}</div>}{e.message && <div className="mt-1 max-w-xs text-xs text-gray-600">{e.message}</div>}</td>
                                     <td className="px-4 py-3 whitespace-nowrap"><a className="text-blue-700 underline" href={`tel:+91${e.phone}`}>{e.phone}</a></td>
                                     <td className="px-4 py-3">{e.city}</td>
                                     <td className="px-4 py-3">{BUSINESS_TYPE_LABEL[e.businessType] ?? e.businessType}</td>
