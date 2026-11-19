@@ -4,7 +4,7 @@ import React, { Suspense, useEffect, useState } from 'react';
 import { itemConfigParts } from '@/lib/orderItemConfig';
 import { useSearchParams } from 'next/navigation';
 import { useStore } from '@/context/StoreContext';
-import { Order } from '@/types';
+import { Order, PaymentAttempt } from '@/types';
 import { getPaymentLabel, isAbandoned, settlementPending, awaitingPayment, isRecovered } from '@/lib/orderPayment';
 import { Search, Filter, ChevronDown, Check, X, Clock, Truck, Package, Pencil, ShieldCheck, Download, Send, RotateCcw } from 'lucide-react';
 
@@ -21,10 +21,14 @@ export default function OrdersPage() {
 const PAYMENT_FILTERS = ['All', 'Paid', 'Fully Paid', 'Partially Paid', 'Awaiting Settlement', 'Pending', 'Abandoned', 'Failed', 'Refunded'];
 
 function OrderManager() {
-    const { orders, updateOrderStatus, setItemSerialNumber, approveCancellation, rejectCancellation, requestReview, setCodCollected, syncPayment, retryRefund, sendPaymentReminder } = useStore();
+    const { orders, updateOrderStatus, setItemSerialNumber, approveCancellation, rejectCancellation, requestReview, setCodCollected, syncPayment, getPaymentAttempts, retryRefund, sendPaymentReminder } = useStore();
     const [paymentSyncing, setPaymentSyncing] = useState(false);
     const [reminderSending, setReminderSending] = useState(false);
     const [paymentSyncMessage, setPaymentSyncMessage] = useState('');
+    // Razorpay's payment attempts for the open order, when it's unpaid.
+    const [paymentAttempts, setPaymentAttempts] = useState<PaymentAttempt[] | null>(null);
+    const [attemptsLoading, setAttemptsLoading] = useState(false);
+    const [attemptsError, setAttemptsError] = useState('');
     const [reviewRequesting, setReviewRequesting] = useState(false);
     const [reviewRequestSent, setReviewRequestSent] = useState(false);
     const [codUpdating, setCodUpdating] = useState(false);
@@ -72,6 +76,28 @@ function OrderManager() {
 
     // Clicking an order's row expands its details inline; clicking it again
     // (or another order) collapses it. Per-order form state resets on switch.
+    // Opening an unpaid order asks Razorpay what happened to its checkout
+    // (read-only), so the payment section can say why it was abandoned.
+    const openOrderId = selectedOrder?.orderId;
+    const openOrderUnpaid = !!selectedOrder && selectedOrder.paymentStatus !== 'Paid' && !!selectedOrder.razorpayOrderId?.startsWith('order_');
+    useEffect(() => {
+        setPaymentAttempts(null);
+        setAttemptsError('');
+        if (!openOrderId || !openOrderUnpaid) return;
+        let cancelled = false;
+        setAttemptsLoading(true);
+        getPaymentAttempts(openOrderId)
+            .then(({ summary, attempts }) => {
+                if (cancelled) return;
+                setPaymentAttempts(attempts);
+                setSelectedOrder(prev => (prev?.orderId === openOrderId ? { ...prev, paymentAttempts: summary } : prev));
+            })
+            .catch((err: any) => { if (!cancelled) setAttemptsError(err?.response?.data?.message || "Couldn't load Razorpay payment attempts"); })
+            .finally(() => { if (!cancelled) setAttemptsLoading(false); });
+        return () => { cancelled = true; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [openOrderId, openOrderUnpaid]);
+
     const toggleOrder = (order: Order) => {
         if (selectedOrder?.orderId === order.orderId) {
             setSelectedOrder(null);
@@ -334,6 +360,8 @@ function OrderManager() {
                 { header: header('Order Status'), cell: (o: Order) => text(o.status), width: 15 },
                 { header: header('Payment Method'), cell: (o: Order) => text(o.paymentMethod), width: 15 },
                 { header: header('Payment Status'), cell: (o: Order) => text(getPaymentLabel(o)), width: 20 },
+                // Razorpay's reason an unpaid order wasn't paid; blank once paid.
+                { header: header('Unpaid Reason'), cell: (o: Order) => text(o.paymentStatus === 'Paid' ? '' : [o.paymentAttempts?.reason, o.paymentAttempts?.detail].filter(Boolean).join(': ')), width: 30 },
                 { header: header('Shipping (₹)'), cell: (o: Order) => money(o.shippingCost || 0), width: 12 },
                 { header: header('Order Total (₹)'), cell: (o: Order) => money(o.total || 0), width: 15 },
                 { header: header('Advance Paid (₹)'), cell: (o: Order) => money(o.paymentMethod === 'COD' && o.paymentStatus === 'Paid' ? o.advanceAmount || 0 : 0), width: 16 },
@@ -404,6 +432,38 @@ function OrderManager() {
                     })}</p>
                     <p className="text-sm font-medium text-gray-500">Payment: {selectedOrder.paymentMethod}</p>
                     <p className="text-sm text-gray-500">Payment Status: <span className={`px-2 rounded-full text-xs font-bold border ${getPaymentColor(getPaymentLabel(selectedOrder))}`}>{getPaymentLabel(selectedOrder)}</span></p>
+                    {openOrderUnpaid && (
+                        <div className="text-xs text-gray-600 rounded-lg border border-gray-200 bg-gray-50 p-2 space-y-1">
+                            <p>
+                                <span className="font-bold text-gray-500">Why unpaid: </span>
+                                {selectedOrder.paymentAttempts
+                                    ? <span className="font-medium text-gray-800">{selectedOrder.paymentAttempts.reason}</span>
+                                    : attemptsLoading ? 'Asking Razorpay…' : '—'}
+                                {selectedOrder.paymentAttempts && (
+                                    <span className="text-gray-400">
+                                        {' · '}{selectedOrder.paymentAttempts.count} attempt{selectedOrder.paymentAttempts.count === 1 ? '' : 's'} on Razorpay
+                                    </span>
+                                )}
+                            </p>
+                            {selectedOrder.paymentAttempts?.count === 0 && (
+                                <p className="text-gray-500">The customer left the checkout without choosing a payment method.</p>
+                            )}
+                            {attemptsError && <p className="text-red-600">{attemptsError}</p>}
+                            {paymentAttempts && paymentAttempts.length > 0 && (
+                                <ul className="space-y-1">
+                                    {paymentAttempts.slice(0, 5).map(a => (
+                                        <li key={a.id} className="border-t border-gray-200 pt-1">
+                                            <span className={`font-bold ${a.status === 'captured' ? 'text-green-700' : a.status === 'failed' ? 'text-red-600' : 'text-gray-700'}`}>{a.status}</span>
+                                            {a.method && <> · {a.method}</>}
+                                            {a.at && <> · {new Date(a.at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</>}
+                                            {a.errorDescription && <span className="block text-gray-500">{a.errorDescription}{a.errorSource ? ` (${a.errorSource} side${a.errorStep ? `, ${a.errorStep.replace(/_/g, ' ')}` : ''})` : ''}</span>}
+                                        </li>
+                                    ))}
+                                    {paymentAttempts.length > 5 && <li className="text-gray-400">+{paymentAttempts.length - 5} older attempts</li>}
+                                </ul>
+                            )}
+                        </div>
+                    )}
                     {/* Customer paid but neither the browser callback nor the
                         webhook reached us — Razorpay itself has the answer. */}
                     {selectedOrder.paymentStatus !== 'Paid' && selectedOrder.razorpayOrderId?.startsWith('order_') && (
@@ -1031,6 +1091,11 @@ function OrderManager() {
                                             <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold border bg-gray-50 text-gray-500 border-gray-200">
                                                 Reminded
                                             </span>
+                                        )}
+                                        {isAbandoned(order) && order.paymentAttempts?.reason && (
+                                            <p className="mt-1 text-xs text-gray-500" title={order.paymentAttempts.detail || undefined}>
+                                                {order.paymentAttempts.reason}
+                                            </p>
                                         )}
                                         <p className="mt-1 text-xs text-gray-500">
                                             {order.paymentMethod === 'COD' ? 'COD' : 'Prepaid'}
