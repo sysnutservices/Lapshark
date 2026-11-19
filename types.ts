@@ -206,6 +206,33 @@ export interface Order {
     count: number;
     lastBy?: string;
   };
+  // Razorpay's account of the checkout's payment attempts: why an unpaid
+  // order was abandoned. Kept fresh by the backend's payment reconciler.
+  paymentAttempts?: PaymentAttemptsSummary;
+}
+
+export interface PaymentAttemptsSummary {
+  checkedAt: string;
+  count: number;
+  reason: string; // e.g. "Never tried to pay", "Cancelled by customer"
+  detail?: string; // Razorpay's error_description for the last failure
+  lastStatus?: string;
+  lastMethod?: string;
+  lastAt?: string;
+  errorSource?: string;
+  errorReason?: string;
+}
+
+// One Razorpay payment attempt, as the admin order view lists them.
+export interface PaymentAttempt {
+  id: string;
+  status: string;
+  method?: string;
+  at?: string;
+  errorDescription?: string;
+  errorSource?: string;
+  errorStep?: string;
+  errorReason?: string;
 }
 
 export interface Address {

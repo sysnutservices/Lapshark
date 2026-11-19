@@ -8,7 +8,7 @@ import React, {
   ReactNode,
 } from "react";
 
-import { Product, Order, Coupon, User, SiteConfig, BlogPost } from "../types";
+import { Product, Order, Coupon, User, SiteConfig, BlogPost, PaymentAttempt, PaymentAttemptsSummary } from "../types";
 import { api } from "../api/api";
 import { useAuth } from "./AuthContext";
 
@@ -59,6 +59,7 @@ interface StoreContextType {
   requestReview: (orderId: string) => Promise<void>;
   setCodCollected: (orderId: string, collected: boolean) => Promise<Order>;
   syncPayment: (orderId: string) => Promise<{ order: Order; paid: boolean; message: string }>;
+  getPaymentAttempts: (orderId: string) => Promise<{ summary: PaymentAttemptsSummary; attempts: PaymentAttempt[] }>;
   retryRefund: (orderId: string) => Promise<{ order: Order; message: string }>;
   sendPaymentReminder: (orderId: string) => Promise<{ order: Order; sent: boolean; message: string }>;
 
@@ -332,6 +333,15 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     return { order: updated, paid: !!res.data.paid, message: res.data.message as string };
   };
 
+  // Razorpay's payment attempts for an order and why it's unpaid. Read-only:
+  // never marks the order paid (that's syncPayment).
+  const getPaymentAttempts = async (orderId: string) => {
+    const res = await api.get(`/orders/${orderId}/payment-attempts`, { headers: authHeaders() });
+    const summary = res.data.summary as PaymentAttemptsSummary;
+    setOrders(prev => prev.map(o => (o.orderId === orderId ? { ...o, paymentAttempts: summary } : o)));
+    return { summary, attempts: res.data.attempts as PaymentAttempt[] };
+  };
+
   // Re-attempts a failed cancellation refund. Errors still carry the updated
   // order (refund.error set) so the caller can show Razorpay's reason.
   const retryRefund = async (orderId: string) => {
@@ -460,6 +470,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         requestReview,
         setCodCollected,
         syncPayment,
+        getPaymentAttempts,
         retryRefund,
         sendPaymentReminder,
         addCoupon,
